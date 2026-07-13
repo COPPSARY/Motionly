@@ -19,10 +19,10 @@
 
   <br/><br/>
 
-  <a href="#overview">Overview</a> ·
-  <a href="#showcase">Showcase</a> ·
-  <a href="#motion-files">Motion Files</a> ·
-  <a href="#goals">Goals</a> ·
+  <a href="#overview">Overview</a> &middot;
+  <a href="#showcase">Showcase</a> &middot;
+  <a href="#motion-files">Motion Files</a> &middot;
+  <a href="#goals">Goals</a> &middot;
   <a href="#contributing">Contributing</a>
 </div>
 
@@ -137,6 +137,24 @@ Core folders:
 | `src/export` | WebM/GIF/MP4 export boundary |
 | `src/app` | Browser UI |
 | `video-motion` | Showcase `.motion` entry point and assets |
+
+---
+
+## Open Source
+
+Motionly is MIT licensed.
+
+Project docs:
+
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+- [Motion Language](docs/motion-language.md)
+- [Animation Presets](docs/animation-presets.md)
+- [Export](docs/export.md)
+- [AI Agent Guide](docs/ai-agents.md)
 
 ---
 
