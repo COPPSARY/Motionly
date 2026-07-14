@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Motionly"
+  short_description: "Create polished Motionly animation projects"
+  default_prompt: "Use $write-motionly to storyboard and create a polished .motion animation."

@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  font-family: Inter, "SF Pro Text", "Segoe UI", Arial, sans-serif;
+  font-family: Inter, 'SF Pro Text', 'Segoe UI', Arial, sans-serif;
   background: #07080b;
   color: #f4f6fa;
 }
@@ -202,7 +202,7 @@ textarea {
   color: #eef3fb;
   padding: 8px;
   line-height: 1.36;
-  font-family: "Cascadia Code", "SF Mono", Consolas, monospace;
+  font-family: 'Cascadia Code', 'SF Mono', Consolas, monospace;
   font-size: 11px;
   outline: none;
 }
@@ -221,8 +221,7 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(138, 180, 255, 0.12), transparent 34%),
-    #040509;
+    radial-gradient(circle at 50% 20%, rgba(138, 180, 255, 0.12), transparent 34%), #040509;
 }
 
 canvas {

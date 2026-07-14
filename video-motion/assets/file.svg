@@ -1,7 +1,0 @@
-<svg width="150" height="180" viewBox="0 0 150 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M30 14H91L120 44V150C120 158.8 112.8 166 104 166H30C21.2 166 14 158.8 14 150V30C14 21.2 21.2 14 30 14Z" fill="#111721"/>
-  <path d="M91 14V44H120" stroke="white" stroke-opacity="0.18" stroke-width="3"/>
-  <path d="M30 14H91L120 44V150C120 158.8 112.8 166 104 166H30C21.2 166 14 158.8 14 150V30C14 21.2 21.2 14 30 14Z" stroke="white" stroke-opacity="0.16" stroke-width="3"/>
-  <path d="M42 78H94M42 104H82M42 130H98" stroke="white" stroke-opacity="0.48" stroke-width="8" stroke-linecap="round"/>
-</svg>
-

@@ -1,28 +1,35 @@
 # Export
 
-Motionly export is still an active V1 priority.
+## Current Editor Support
 
-Current support:
+Motionly currently exposes MP4 export in the top toolbar.
 
-- WebM through browser `MediaRecorder`.
-- MP4 when the browser exposes MP4 recording support.
-- GIF through the built-in lightweight GIF encoder.
+- Uses the project's canvas resolution and FPS
+- Shows export progress in the toolbar
+- Downloads a file named after the current `.motion` project
+- Disables or reports an error when the browser cannot record MP4
 
-## Current Problem
+The current path uses browser `MediaRecorder`, so export runs in real time and can lose pacing if the browser throttles or the renderer cannot keep up. Keep the editor tab active while exporting.
 
-Export is not yet production-ready. It can be laggy and unreliable, especially for longer showcase scenes.
+Audio is not currently included in exported MP4 files.
 
-## Goals
+WebM and GIF code exists internally but is not a supported editor workflow yet.
 
-- Deterministic frame capture.
-- Stable frame pacing.
-- Reliable duration and FPS.
-- Clear export options for 720p, 1080p, 1440p, 4K, 30 FPS, and 60 FPS.
-- Better progress reporting.
+## Near-Term Work
 
-## Rules
+- Deterministic frame capture
+- Stable frame pacing, duration, and audio synchronization
+- Audio inclusion in MP4 output
+- Visual 24, 30, and 60 FPS choices
+- Resolution and aspect-ratio presets
+- 720p, 1080p, 1440p, and 4K output choices
+- Clear cancellation and failure handling
+- WebM, GIF, PNG stills, and image-sequence export
 
-- Export should render from the same scene graph as preview.
-- Export should not mutate scene assets.
-- Export should not depend on live playback timing.
-- Export should report failures clearly.
+## Export Rules
+
+- Render from the same scene graph as preview
+- Never mutate the source scene or loaded assets
+- Make output settings explicit
+- Report unsupported browsers and failures clearly
+- Prefer reliable output over a large format list

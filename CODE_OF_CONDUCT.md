@@ -1,29 +1,38 @@
 # Code of Conduct
 
-Motionly follows the Contributor Covenant Code of Conduct.
-
 ## Our Pledge
 
-We pledge to make participation in this project a harassment-free experience for everyone.
+We pledge to make participation in Motionly a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
 ## Our Standards
 
 Examples of behavior that contributes to a positive environment:
 
-- Using welcoming and inclusive language.
-- Respecting differing viewpoints and experiences.
-- Giving and gracefully accepting constructive feedback.
-- Focusing on what is best for the project.
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints and experiences
+- Gracefully accepting constructive criticism
+- Focusing on what is best for the community
+- Showing empathy towards other community members
 
 Examples of unacceptable behavior:
 
-- Harassment, insults, or discriminatory language.
-- Public or private intimidation.
-- Publishing private information without permission.
-- Other conduct that could reasonably be considered inappropriate in a professional setting.
+- Trolling, insulting/derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information without explicit permission
+- Other conduct which could reasonably be considered inappropriate
+
+## Our Responsibilities
+
+Project maintainers are responsible for clarifying standards of acceptable behavior and are expected to take appropriate and fair corrective action in response to any instances of unacceptable behavior.
+
+## Scope
+
+This Code of Conduct applies within all project spaces, and it also applies when an individual is representing the project in public spaces.
 
 ## Enforcement
 
-Project maintainers may remove, edit, or reject comments, commits, code, issues, and pull requests that do not align with this Code of Conduct.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting the project team. All complaints will be reviewed and investigated promptly and fairly.
 
-Instances of abusive behavior may be reported through the contact links in the README.
+## Attribution
+
+This Code of Conduct is adapted from the Contributor Covenant, version 2.0.
