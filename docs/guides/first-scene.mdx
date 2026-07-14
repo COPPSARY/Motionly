@@ -1,0 +1,42 @@
+---
+title: First Scene
+description: Build a simple editable Motionly scene.
+---
+
+# First Scene
+
+Start with one focal subject, one supporting text layer, and one simple entrance.
+
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
+
+text title {
+  value "Motionly"
+  center
+  size 96
+  color #ffffff
+}
+
+animate title {
+  from {
+    opacity 0
+    y 80
+  }
+
+  to {
+    opacity 1
+    y 0
+  }
+
+  duration 1s
+  easing power3.out
+}
+```
+
+Open the project in Motionly, scrub the timeline, adjust the text layer visually, and save the resulting `.motion` file.
+

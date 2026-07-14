@@ -1,0 +1,39 @@
+---
+title: Logo Reveal
+description: Build a simple logo reveal with supported Motionly syntax.
+---
+
+# Logo Reveal
+
+Use one clear logo asset and one polished entrance.
+
+```motion
+import "./assets/logo.svg" as logo
+
+logo {
+  center
+  layer hero
+  width 220
+  opacity 0
+}
+
+animate logo {
+  from {
+    opacity 0
+    scale .85
+    blur 12
+  }
+
+  to {
+    opacity 1
+    scale 1
+    blur 0
+  }
+
+  duration 1s
+  easing power3.out
+}
+```
+
+Use `drawSVG` only for simple stroked SVG logos. Use normal image reveals, `maskReveal`, or `dynamicSlide` for detailed logos, screenshots, and illustrations.
+

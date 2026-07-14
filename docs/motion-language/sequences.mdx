@@ -1,0 +1,45 @@
+---
+title: Sequences
+description: Stagger and time animated element groups in Motionly scenes.
+---
+
+# Sequences
+
+Sequences use delay, duration, and layer timing to create rhythm across related elements.
+
+```motion
+animate title {
+  from {
+    opacity 0
+    y 80
+  }
+
+  to {
+    opacity 1
+    y 0
+  }
+
+  duration 900ms
+  delay 200ms
+  easing power3.out
+}
+
+animate subtitle {
+  from {
+    opacity 0
+    y 48
+  }
+
+  to {
+    opacity 1
+    y 0
+  }
+
+  duration 900ms
+  delay 420ms
+  easing power3.out
+}
+```
+
+Prefer one clear focal subject per shot. Use staggered word reveals for important copy, not every label.
+

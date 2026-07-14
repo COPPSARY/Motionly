@@ -1,0 +1,49 @@
+---
+title: Elements
+description: Define visual objects, imported assets, layers, and common properties in .motion files.
+---
+
+# Elements
+
+Motionly elements are named objects that can be selected, positioned, animated, serialized, and edited visually.
+
+## Imported Assets
+
+```motion
+import "./assets/logo.svg" as logo
+
+logo {
+  center
+  layer hero
+  width 240
+  opacity 1
+}
+```
+
+Use clear names and preserve asset aspect ratios. Do not stretch logos, screenshots, or photos.
+
+## Common Properties
+
+- `x`
+- `y`
+- `width`
+- `height`
+- `scale`
+- `rotation`
+- `opacity`
+- `blur`
+- `brightness`
+- `shadow`
+- `color`
+- `center`
+- `layer`
+
+Recommended semantic layers:
+
+- `background`
+- `hero`
+- `supporting`
+- `details`
+- `text`
+- `effects`
+
