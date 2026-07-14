@@ -1,0 +1,31 @@
+---
+title: Keyframes
+description: Use from-to animation blocks to change element properties over time.
+---
+
+# Keyframes
+
+Use `animate` blocks to define how an element changes over time.
+
+```motion
+animate logo {
+  from {
+    opacity 0
+    scale .85
+    blur 12
+  }
+
+  to {
+    opacity 1
+    scale 1
+    blur 0
+  }
+
+  duration 1s
+  delay 0s
+  easing power3.out
+}
+```
+
+Animate only the properties that need to change. Keep keyframes readable so the editor and serializer can preserve intent.
+

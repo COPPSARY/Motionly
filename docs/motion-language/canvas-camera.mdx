@@ -1,0 +1,32 @@
+---
+title: Canvas And Camera
+description: Configure canvas size, frame rate, duration, background, and camera framing in .motion files.
+---
+
+# Canvas And Camera
+
+The `canvas` block defines the project output surface.
+
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
+```
+
+Use canvas settings as the source of truth for preview and export. Motionly currently reads canvas resolution, aspect ratio, FPS, and duration from `.motion`.
+
+The optional `camera` block controls global framing.
+
+```motion
+camera {
+  zoom 1
+  x 0
+  y 0
+}
+```
+
+Camera movement should mark a real focal shift or scene change. Avoid constant random drift.
+

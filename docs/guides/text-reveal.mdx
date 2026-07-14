@@ -1,0 +1,37 @@
+---
+title: Text Reveal
+description: Reveal titles and captions with readable timing.
+---
+
+# Text Reveal
+
+Use a title and subtitle with a slight delay between them.
+
+```motion
+text title {
+  value "Create the scene."
+  center
+  size 80
+  color #ffffff
+}
+
+animate title {
+  from {
+    opacity 0
+    y 80
+    blur 12
+  }
+
+  to {
+    opacity 1
+    y 0
+    blur 0
+  }
+
+  duration 1s
+  easing power3.out
+}
+```
+
+Keep text motion subtle enough that the words stay readable while moving.
+

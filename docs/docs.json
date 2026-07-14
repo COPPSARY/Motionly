@@ -27,43 +27,59 @@
             "group": "Get Started",
             "pages": [
               "introduction",
-              "installation",
-              "QUICK_START",
-              "USER_GUIDE"
+              "quickstart",
+              "installation"
             ]
           },
           {
             "group": "Visual Editor",
             "pages": [
-              "UI_GUIDE",
-              "scene-graph"
+              "editor/ui-guide",
+              "editor/scene-graph"
             ]
           },
           {
             "group": "Motion Language",
             "pages": [
-              "motion-language"
+              "motion-language/overview",
+              "motion-language/canvas-camera",
+              "motion-language/elements",
+              "motion-language/text",
+              "motion-language/sequences"
             ]
           },
           {
             "group": "Animation",
             "pages": [
-              "animation-presets",
-              "motion-design-principles",
-              "preset-development-guide"
+              "animation/presets",
+              "animation/text-presets",
+              "animation/keyframes",
+              "animation/easing",
+              "animation/motion-design-principles",
+              "animation/preset-development-guide"
             ]
           },
           {
             "group": "Export",
             "pages": [
-              "export"
+              "export/overview",
+              "export/formats"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/user-guide",
+              "guides/first-scene",
+              "guides/logo-reveal",
+              "guides/text-reveal"
             ]
           },
           {
             "group": "Agents And LLMs",
             "pages": [
-              "ai-agents",
-              "write-motionly-skill"
+              "agents/ai-authoring",
+              "agents/write-motionly-skill"
             ]
           }
         ]

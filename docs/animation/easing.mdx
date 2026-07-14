@@ -1,0 +1,36 @@
+---
+title: Easing
+description: Choose easing curves that make Motionly animations feel polished.
+---
+
+# Easing
+
+Use `easing`, not `ease`.
+
+```motion
+animate title {
+  from {
+    opacity 0
+    y 80
+  }
+
+  to {
+    opacity 1
+    y 0
+  }
+
+  duration 1.2s
+  easing power3.out
+}
+```
+
+Preferred easing values:
+
+- `power3.out`
+- `smooth`
+- `soft`
+- `ease-out`
+- `linear`
+
+Default to `power3.out` for professional entrance motion. Avoid linear easing unless the motion is intentionally mechanical or continuous.
+
