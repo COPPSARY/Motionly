@@ -1,39 +1,89 @@
 # Motionly Roadmap
 
-Motionly is focused on foundation first. The goal is not a large feature list; it is a simple renderer that produces smooth, professional motion from readable scene files.
+Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap items are ordered by user value and dependency, not by novelty.
 
-## V1 Foundation
+## Now: Stabilize The Core Editor
 
-- Keep `.motion` syntax minimal and CSS-like.
-- Maintain a clear pipeline: parser -> AST -> scene graph -> animation evaluator -> renderer.
-- Render every frame from deterministic scene graph state.
-- Support SVG, image, text, camera, layers, preview playback, and export.
-- Keep the showcase animation polished enough to prove the system.
+- [x] Centered canvas preview with correct aspect ratio
+- [x] Play, pause, reset, scrubber, timecode, and frame display
+- [x] Fit, zoom, and fullscreen preview
+- [x] Scene list and direct canvas selection
+- [x] Drag-to-move and corner scaling
+- [x] Visual transform, opacity, text, color, timing, and easing controls
+- [x] Add text and delete selected layers
+- [x] Resizable multi-layer timeline with clip ranges and trim handles
+- [x] Audio attachment, preview synchronization, and timeline row
+- [x] Open, edit, serialize, and save `.motion` projects
+- [x] Browser-supported MP4 export with progress
+- [ ] Improve preview and export frame pacing on longer projects
+- [ ] Make selection, trimming, saving, and export errors clearer
+- [ ] Add focused editor workflow and MP4 output tests
+- [ ] Continue accessibility, responsive layout, and interaction polish
 
-## Near Term
+## Next: Canvas And Export Controls
 
-- Make the showcase animation better: stronger story, clearer hierarchy, better camera movement, and more deliberate transitions.
-- Fix export reliability and lag.
-- Improve GIF/WebM/MP4 export options.
-- Add tests around frame pacing, camera transforms, scene layers, and animation presets.
-- Document the `.motion` language and preset library.
+- [ ] Visual canvas settings for resolution, duration, and FPS
+- [ ] Aspect-ratio presets for 16:9, 9:16, 1:1, and 4:5
+- [ ] Custom canvas width and height with aspect-ratio locking
+- [ ] Export resolution presets for 720p, 1080p, 1440p, and 4K
+- [ ] Export FPS choices such as 24, 30, and 60 FPS
+- [ ] Deterministic MP4 frame capture with reliable duration and audio sync
+- [ ] Include attached audio in MP4 export
+- [ ] WebM export
+- [ ] GIF export for short lightweight animations
+- [ ] PNG frame and image-sequence export
+- [ ] Still-frame PNG export
 
-## Later
+## Next: Media In The Timeline
 
-- More professional animation presets.
-- More examples for product launches, logo reveals, and UI demos.
-- Better editor diagnostics for invalid `.motion` files.
-- Timeline inspection tools.
-- Performance profiling tools.
+- [ ] Add images and SVGs from the UI
+- [ ] Add video clips from the UI
+- [ ] Add and persist audio tracks in the project
+- [ ] Show media thumbnails and audio waveforms on timeline clips
+- [ ] Drag clips to change their start time
+- [ ] Trim image, video, and audio duration from either edge
+- [ ] Set video in/out points and audio offsets
+- [ ] Add basic mute, volume, fit, fill, and crop controls
+- [ ] Keep imported media references portable and explicit in `.motion`
 
-## Not Yet
+## Animation And Editing Quality
 
-Do not add these before V1 is stable:
+- [ ] Improve existing preset timing, easing, exits, and interruption behavior
+- [ ] Add a small curated set of text, logo, media, and scene transitions
+- [ ] Add visual entrance and exit controls without exposing preset syntax
+- [ ] Add reusable transition controls between scenes
+- [ ] Improve snapping, alignment guides, keyboard movement, and rotation handles
+- [ ] Improve timeline zoom, clip movement, key timing, and multi-selection
+- [ ] Add undo and redo before expanding advanced editing
+- [ ] Keep presets purposeful; do not build a huge library of minor variations
 
-- AI generation.
-- Cloud rendering.
-- Collaboration.
-- Plugins.
-- 3D.
-- Physics.
-- Audio.
+## Hosted App And Sandbox
+
+- [ ] Deploy a hosted Motionly editor that works without local setup
+- [ ] Provide a safe browser sandbox with sample projects and temporary uploads
+- [ ] Support shareable read-only previews
+- [ ] Add project persistence only after storage, privacy, and deletion rules are clear
+- [ ] Keep local/self-hosted use fully supported
+
+## Optional AI-Assisted Drafting
+
+This comes after visual editing, media, and export are dependable.
+
+- [ ] Let users connect an external AI provider or existing agent through a user-supplied API key
+- [ ] Keep provider credentials local or session-only by default
+- [ ] Generate a first `.motion` draft from a prompt, script, or asset list
+- [ ] Open generated output as a normal editable project instead of a black-box video
+- [ ] Validate generated `.motion` and show proposed changes before replacing the current project
+- [ ] Keep AI optional; Motionly should not require its own hosted agent
+- [ ] Document the existing `.agents/skills/write-motionly` workflow for local agent tools
+
+## Later, Not Near-Term
+
+- Node graphs
+- Plugin systems or marketplaces
+- Advanced compositing pipelines
+- Large preset marketplaces
+- Multi-user real-time collaboration
+- Training or hosting a proprietary Motionly model
+
+Last updated: 2026-07-14

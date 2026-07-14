@@ -1,0 +1,508 @@
+# Motion Design Research & Principles
+
+## Executive Summary
+
+This document captures research on professional motion design, analyzing what makes animations feel polished and intentional. It serves as the foundation for Motionly's animation preset library.
+
+---
+
+## Research Sources
+
+### Industry Leaders
+
+1. **Apple**
+   - Product reveal animations (iPhone, MacBook, Vision Pro)
+   - WWDC presentations
+   - Website interactions
+   - Marketing videos
+
+2. **Linear**
+   - Product interface animations
+   - Smooth transitions
+   - Micro-interactions
+
+3. **Framer**
+   - Component animations
+   - Page transitions
+   - Prototyping examples
+
+4. **GSAP (GreenSock)**
+   - Professional timeline animations
+   - Easing functions
+   - Stagger effects
+
+5. **Remotion**
+   - Programmatic video generation
+   - React-based animations
+
+6. **Adobe Animate / Flash**
+   - Classic animation principles
+   - Timeline-based motion
+   - Character animation
+
+---
+
+## Core Motion Principles
+
+### 1. Timing
+
+**Key Insight**: Duration determines the character of motion.
+
+- **Fast (0.15-0.3s)**: Snappy UI interactions, button feedback
+- **Medium (0.4-0.8s)**: Standard transitions, reveals
+- **Slow (1.0-2.0s)**: Hero moments, product reveals
+- **Cinematic (2.0-4.0s)**: Camera movements, scene transitions
+
+**Apple Pattern**: 1.2-1.6s for hero reveals
+
+**Motionly Defaults**:
+```
+UI interactions: 0.3s
+Text reveals: 1.2s
+Logo animations: 1.4s
+Camera movements: 2.0s
+Scene transitions: 1.5s
+```
+
+---
+
+### 2. Easing
+
+**Key Insight**: Easing creates natural acceleration/deceleration.
+
+#### Professional Easing Curves
+
+**Ease Out** (Most Common):
+- Natural deceleration
+- Smooth landing
+- Use: 70% of animations
+- Bezier: cubic-bezier(0, 0, 0.2, 1)
+
+**Spring** (Apple's Favorite):
+- Gentle overshoot
+- Natural feel
+- Use: Logo reveals, hero moments
+- Tension: 80-120
+
+**Soft Spring**:
+- Minimal overshoot
+- Refined motion
+- Use: Premium products
+- Damping: 0.75
+
+**Power3 Out**:
+- Strong deceleration
+- Impactful landing
+- Use: Hero text, important reveals
+
+**Motionly Default**: Power3 Out (softer than standard ease-out)
+
+---
+
+### 3. Staggering
+
+**Key Insight**: Staggered timing creates rhythm and hierarchy.
+
+#### Stagger Rules
+
+**Character Animations**:
+- 30-50ms per character
+- Creates smooth wave
+- Readable while animating
+
+**Word Animations**:
+- 80-120ms per word
+- Apple uses 90ms
+- Maintains readability
+
+**Object Sequences**:
+- 100-200ms per object
+- Creates visual flow
+- Guides eye movement
+
+**Motionly Defaults**:
+```
+Characters: 35ms
+Words: 90ms
+Objects: 150ms
+```
+
+---
+
+### 4. Acceleration & Deceleration
+
+**Key Insight**: Nothing moves at constant speed in nature.
+
+#### Motion Curves
+
+**Start Slow, End Fast** (Ease In):
+- Gravity falling
+- User-initiated actions
+- Rare in UI
+
+**Start Fast, End Slow** (Ease Out):
+- Most natural
+- Safe default
+- Professional feel
+
+**Both** (Ease In-Out):
+- Pendulum motion
+- Looping animations
+- Continuous movement
+
+**Apple's Approach**: Almost exclusively ease-out
+
+---
+
+### 5. Springs
+
+**Key Insight**: Springs add life and personality.
+
+#### Spring Parameters
+
+**Tension** (How stiff):
+- Low (40-60): Bouncy, playful
+- Medium (80-100): Natural, balanced
+- High (120-150): Quick, tight
+
+**Friction** (How much resistance):
+- Low (5-10): Many bounces
+- Medium (15-25): Controlled
+- High (30-40): Minimal overshoot
+
+**Apple Pattern**: Tension 90, Friction 20
+
+**Motionly Springs**:
+```typescript
+softSpring: { tension: 85, friction: 22 }  // Default
+spring: { tension: 100, friction: 18 }     // Bouncy
+tightSpring: { tension: 120, friction: 25 } // Snappy
+```
+
+---
+
+### 6. Anticipation
+
+**Key Insight**: Prepare viewers for movement.
+
+**Techniques**:
+- Small backward motion before forward
+- Scale down slightly before scaling up
+- Fade in slightly before full reveal
+
+**Example** (Logo Reveal):
+```
+0%: scale 0.92, opacity 0
+10%: scale 0.95, opacity 0.3
+100%: scale 1, opacity 1
+```
+
+---
+
+### 7. Overshoot
+
+**Key Insight**: Slight overshoot feels natural and intentional.
+
+**When to Use**:
+- Logo reveals
+- Hero moments
+- Celebratory actions
+- Emphasis
+
+**When to Avoid**:
+- Subtle transitions
+- Background elements
+- Text body
+- UI feedback
+
+**Amount**: 2-8% over target
+
+---
+
+### 8. Camera Movement
+
+**Key Insight**: Camera creates depth and focus.
+
+#### Camera Patterns
+
+**Push In** (Most Common):
+- Slow zoom: 1.0 → 1.05-1.15
+- Duration: 2-3s
+- Creates intimacy
+- Guides focus
+
+**Pull Out**:
+- Reveals context
+- Transitions between scenes
+- Duration: 1.5-2.5s
+
+**Pan**:
+- Horizontal movement
+- Reveals width
+- Slow and controlled
+
+**Apple Pattern**: 
+- Start at 1.0
+- Push to 1.08-1.12
+- 2.5s duration
+- Soft spring easing
+
+---
+
+### 9. Layer Depth
+
+**Key Insight**: Create visual hierarchy through stacking.
+
+#### Layer Order (Back to Front)
+
+1. **Background**: Gradients, colors, patterns
+2. **Effects**: Noise, glow, particles
+3. **Supporting**: Secondary content
+4. **Hero**: Main focal point
+5. **Details**: Fine elements
+6. **Text**: Overlays, captions
+7. **Foreground**: Optional highlights
+
+**Parallax**: Different layers move at different speeds during camera movement
+
+---
+
+### 10. Transitions
+
+**Key Insight**: Smooth scene changes maintain flow.
+
+#### Professional Transition Types
+
+**Fade** (Universal):
+- Duration: 0.8-1.2s
+- Overlap: 0.3-0.5s
+- Safe default
+
+**Mask**:
+- Circular or rectangular
+- Directional wipes
+- Duration: 1.0-1.5s
+
+**Blur**:
+- Gaussian blur: 0 → 20px → 0
+- Creates depth
+- Duration: 0.6-1.0s
+
+**Camera Push/Pull**:
+- Zoom transition
+- Most cinematic
+- Duration: 1.5-2.5s
+
+---
+
+## Animation Preset Categories
+
+### Text Animations
+
+#### 1. Keynote Text (Apple Style)
+**Description**: Word-by-word reveal with subtle blur
+**Properties**:
+- Split: words
+- Stagger: 90ms
+- Duration: 1.2s
+- Blur: 0 → 6px → 0
+- Opacity: 0 → 1
+- Easing: power3.out
+
+#### 2. Blur Reveal
+**Description**: Elegant blur-in effect
+**Properties**:
+- Blur: 8px → 0
+- Opacity: 0 → 1
+- Duration: 1.0s
+- Y-offset: +20px → 0
+
+#### 3. Character Cascade
+**Description**: Character-by-character animation
+**Properties**:
+- Split: characters
+- Stagger: 35ms
+- Scale: 0.85 → 1.0
+- Opacity: 0 → 1
+
+#### 4. Typewriter
+**Description**: Sequential character reveal
+**Properties**:
+- Split: characters
+- Stagger: 60ms (slower)
+- Instant appearance per character
+- Cursor optional
+
+#### 5. Gradient Sweep
+**Description**: Color gradient animation
+**Properties**:
+- Gradient position animated
+- Duration: 2.0s
+- Multiple color stops
+
+---
+
+### Logo Animations
+
+#### 1. Hero Logo (Apple Pattern)
+**Description**: Premium logo entrance
+**Properties**:
+- Scale: 0.92 → 1.0 → 1.02 → 1.0
+- Rotation: -2° → 0°
+- Opacity: 0 → 1
+- Duration: 1.4s
+- Easing: softSpring
+- Blur: 3px → 0
+
+#### 2. Draw SVG
+**Description**: Path drawing animation
+**Properties**:
+- Stroke dasharray animated
+- Duration: 1.5-2.5s
+- Easing: ease-in-out
+
+#### 3. Logo Float
+**Description**: Gentle floating motion
+**Properties**:
+- Y-axis: 0 → -10px → 0
+- Duration: 3.0s
+- Loop: true
+- Easing: sine
+
+---
+
+### Product Animations
+
+#### 1. Product Reveal
+**Description**: Showcase product with camera
+**Properties**:
+- Camera push: 1.0 → 1.12
+- Product opacity: 0 → 1
+- Product scale: 0.95 → 1.0
+- Duration: 2.0s
+- Blur background slightly
+
+#### 2. Card Reveal
+**Description**: Panel/card entrance
+**Properties**:
+- Y-offset: +50px → 0
+- Opacity: 0 → 1
+- Scale: 0.96 → 1.0
+- Duration: 0.8s
+- Shadow: 0 → strong
+
+#### 3. Device Showcase
+**Description**: Show product in device frame
+**Properties**:
+- Rotation: 5° → 0°
+- Scale: 0.9 → 1.0
+- Opacity: 0 → 1
+- Duration: 1.5s
+
+---
+
+### Camera Animations
+
+#### 1. Cinematic Push
+**Description**: Slow zoom with subtle movement
+**Properties**:
+- Zoom: 1.0 → 1.08
+- Y-offset: 0 → -20px
+- Duration: 2.5s
+- Easing: softSpring
+
+#### 2. Dolly Movement
+**Description**: Camera travels along path
+**Properties**:
+- X-movement: -100px → +100px
+- Smooth curve
+- Duration: 3.0s
+
+---
+
+### Background Effects
+
+#### 1. Gradient Motion
+**Description**: Animated gradient background
+**Properties**:
+- Color stops shift
+- Multiple palettes
+- Loop: true
+- Duration: 8.0s
+
+#### 2. Subtle Noise
+**Description**: Film grain texture
+**Properties**:
+- Opacity: 10-20%
+- Animated seed
+- Creates depth
+
+---
+
+## Motion Style Guide
+
+### Motionly Design Principles
+
+1. **Polished Over Flashy**
+   - Subtle > obvious
+   - Refined > aggressive
+   - Intentional > random
+
+2. **Consistent Timing**
+   - Use preset durations
+   - Predictable rhythm
+   - Avoid custom values unless necessary
+
+3. **Natural Easing**
+   - Power3 out default
+   - Springs for emphasis
+   - Avoid linear
+
+4. **Purposeful Motion**
+   - Every animation has intent
+   - Guides viewer attention
+   - Supports narrative
+
+5. **Restrained Effects**
+   - Blur: max 10px
+   - Rotation: max ±5°
+   - Scale: 0.9-1.1 range
+   - Opacity: smooth transitions
+
+---
+
+## Implementation Guidelines
+
+### Creating New Presets
+
+1. **Research**: Study professional examples
+2. **Identify Principles**: What makes it work?
+3. **Define Parameters**: What should be adjustable?
+4. **Choose Defaults**: Test and refine
+5. **Document**: Clear description and use cases
+6. **Test**: Visual verification
+7. **Iterate**: Improve until it feels right
+
+### Preset Quality Checklist
+
+- [ ] Smooth easing (no jarring motion)
+- [ ] Appropriate duration
+- [ ] Works at different scales
+- [ ] Looks good with various content
+- [ ] Respects layer order
+- [ ] Composable with other presets
+- [ ] Professional feel
+- [ ] Clear documentation
+
+---
+
+## Conclusion
+
+Professional motion design is about intentionality, restraint, and understanding natural movement. Motionly should embody these principles in every preset, making it easy for anyone to create polished animations.
+
+**Core Philosophy**: 
+> Start with excellent defaults. Make customization possible but unnecessary for most use cases.
+
+---
+
+Last Updated: 2026-07-14

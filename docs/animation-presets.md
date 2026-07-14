@@ -1,49 +1,43 @@
 # Animation Presets
 
-Animation presets encode professional motion decisions behind simple names.
+Motionly should offer a small set of polished presets before a large library.
 
-Authors should be able to describe intent:
+## Current Editor Presets
 
-```motion
-text title {
-  value "Built with Codex"
-  textAnimation splitReveal(split words stagger 80ms duration 1.2s)
-}
-```
+- Fade in: opacity entrance
+- Rise in: opacity plus vertical movement
+- Scale in: gentle scale entrance
+- Blur reveal: blur, opacity, and slight vertical movement
+- Soft drift: subtle horizontal movement
 
-Instead of manually defining every opacity, position, blur, and scale keyframe.
+These five presets are available from the Properties panel.
 
-## Current Preset Areas
+## Language-Level Presets
 
-- Text reveals.
-- Logo/object entrances.
-- Camera pushes and pulls.
-- Background atmosphere.
-- Product-style panels.
-- Scene exits.
+The `.motion` engine also supports presets used by authored and agent-generated projects. They are not all exposed as visual editor controls yet.
 
-## Design Rules
+- `drawSVG`: path-first reveal for simple stroked SVG logos
 
-- Presets must generate deterministic timeline instructions.
-- Presets should avoid random motion.
-- Presets should not make every element move at once.
-- Presets should support hierarchy: one hero object, supporting content, and background atmosphere.
-- Fade can support motion, but should not replace motion.
+## Transitions
+
+- `shapeWipe(direction right)`: directional full-scene wipe
+- `irisWipe`: circular full-scene wipe
+- `maskReveal(direction right)`: clipped media reveal
+- `dynamicSlide(direction left)`: slide with a small skew and settle
+- `speedZoom`: camera punch used at a scene change
+
+Use transitions to mark a real change in subject or scene. Do not place one between every object animation.
+
+Visual scene-transition controls are roadmap work.
+
+## Timing Defaults
+
+- Duration: `1s` to `1.2s`
+- Delay: `0s` unless sequencing elements
+- Easing: `power3.out`
 
 ## Quality Bar
 
-Good presets feel:
+Good presets are smooth, readable, and subtle.
 
-- smooth
-- subtle
-- confident
-- premium
-- readable
-
-Avoid:
-
-- excessive blur
-- bouncing
-- cartoon timing
-- random effects
-- repeated logo entrances
+Avoid bouncy, random, noisy, or oversized motion.

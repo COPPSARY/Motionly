@@ -1,0 +1,11 @@
+dist
+node_modules
+coverage
+*.log
+.git
+.vscode
+.idea
+*.min.js
+*.min.css
+package-lock.json
+pnpm-lock.yaml

@@ -1,36 +1,33 @@
 # Security Policy
 
-Motionly is a local, browser-first renderer. It still handles user-provided scene files and assets, so security reports are welcome.
-
 ## Supported Versions
 
-The current `main` branch is the supported development target until formal releases begin.
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.x     | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
-Please do not open a public issue for sensitive security problems.
+If you discover a security vulnerability in Motionly, please report it by:
 
-Report privately through the maintainer contact links in the README, or open a minimal GitHub issue asking for a private disclosure channel without including exploit details.
+1. **DO NOT** open a public issue
+2. Email the maintainers with details
+3. Include steps to reproduce if possible
+4. Allow time for a fix before public disclosure
 
-Helpful reports include:
+We take security seriously and will respond promptly to legitimate reports.
 
-- A clear description of the issue.
-- Steps to reproduce.
-- A minimal `.motion` file or asset when relevant.
-- Browser and operating system details.
-- Expected impact.
+## Security Best Practices
 
-## Scope
+When using Motionly:
 
-In scope:
+- Only load `.motion` files from trusted sources
+- Validate user-provided content before parsing
+- Be cautious with assets from untrusted sources
+- Keep dependencies up to date
 
-- Unsafe parsing behavior.
-- Asset handling issues.
-- Export issues that write unexpected data.
-- Cross-site scripting or unsafe HTML/script injection in the preview UI.
+## Known Security Considerations
 
-Out of scope:
-
-- Vulnerabilities in local files supplied by the user outside Motionly's control.
-- Browser bugs unrelated to Motionly.
-- Denial-of-service reports based only on extremely large local assets unless they expose a fixable parser or renderer flaw.
+- The `.motion` parser does not execute arbitrary code
+- Asset loading is restricted to images and SVGs
+- Export functionality runs in browser sandbox

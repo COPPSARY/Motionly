@@ -1,262 +1,96 @@
-# Motionly Agent Rules
+# Motionly Agent Notes
 
-## Mission
+Keep Motionly simple and visual.
 
-Build Motionly.
+For substantial `.motion` creation, retiming, transition, or storyboard work, read `.agents/skills/write-motionly/SKILL.md` first.
 
-Motionly is a lightweight motion graphics engine inspired by Apple product videos.
+## Product Rule
 
-The goal is simplicity, not feature count.
+Motionly is a motion graphics editor around `.motion`. The user edits visually; `.motion` is the saved source format underneath.
 
-Every implementation decision must prioritize readability, smooth animation, performance, and maintainability.
+Do not make users hand-write `.motion` for normal animation creation.
 
----
+## Current Scope
 
-# Core Philosophy
+Work on:
 
-Motionly is NOT:
+- professional centered canvas preview
+- correct aspect ratio
+- play/pause
+- timeline scrubber
+- time/frame display
+- zoom controls
+- object selection
+- visual controls for position, scale, rotation, opacity, text, duration, delay, easing
+- smooth useful animation presets
+- clean `.motion` serialization from UI edits
 
-- Adobe After Effects
-- Blender
-- Unreal Engine
-- Unity
+Avoid for now:
 
-Motionly IS:
+- node graphs
+- AI generation
+- plugin systems
+- complex pipelines
+- huge preset libraries
+- speculative architecture
 
-- Lightweight
-- Declarative
-- Deterministic
-- Fast
-- File-based
-- AI-friendly
-- Browser-first
+## `.motion` Syntax
 
----
+Use this shape:
 
-# Guiding Principles
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
 
-## Simplicity First
+text title {
+  value "Hello"
+  center
+  size 72
+  color #ffffff
+  opacity 1
+}
 
-If there are two possible implementations, always choose the simpler one.
+animate title {
+  from {
+    opacity 0
+    y 80
+    blur 10
+  }
 
-Avoid abstraction unless it provides measurable value.
+  to {
+    opacity 1
+    y 0
+    blur 0
+  }
 
-Avoid unnecessary configuration.
+  duration 1.2s
+  delay 0s
+  easing power3.out
+}
+```
 
-Avoid unnecessary options.
+Prefer these properties: `x`, `y`, `scale`, `rotation`, `opacity`, `blur`, `size`, `color`, `center`, `duration`, `delay`, `easing`.
 
-Avoid unnecessary nesting.
+Use `size`, not `fontSize`. Use `easing`, not `ease`.
 
----
+## Preset Guidance
 
-## The Source of Truth
+Presets should be subtle:
 
-Everything originates from `.motion`.
+- Fade in: `opacity 0` to target opacity
+- Rise in: `opacity 0`, `y + 80` to target
+- Scale in: `opacity 0`, `scale .85` to target
+- Blur reveal: `opacity 0`, `blur 12`, slight `y` offset to target
+- Soft drift: slight `x` offset to target
 
-Never generate hidden state.
+Default to `power3.out` for smooth professional motion.
 
-The renderer must only reflect what is written inside the scene file.
+Build scenes around one focal subject. Use scene color changes and purposeful object movement to mark progression; avoid constant camera drift and repeating the same fade on every object.
 
----
+For simple stroked SVG logos, `animation drawSVG(...)` animates their paths and resolves into the original artwork. Use it sparingly on a hero logo; use normal image reveals for detailed SVGs, mockups, and photos.
 
-## Animation Philosophy
-
-Animations should feel premium.
-
-Inspired by:
-
-- Apple
-- Linear
-- Arc Browser
-- Framer
-- WWDC presentations
-
-Characteristics:
-
-- smooth
-- subtle
-- spring-based
-- soft easing
-- minimal movement
-- generous spacing
-- no excessive motion
-
-Avoid flashy effects.
-
----
-
-## Performance
-
-Target:
-
-60 FPS minimum
-
-120 FPS when supported
-
-GPU accelerated
-
-Live updates while editing
-
-Fast parsing
-
-Small memory footprint
-
----
-
-## Rendering
-
-Render vectors as vectors.
-
-Do not rasterize SVGs during editing.
-
-Only rasterize during export if required.
-
----
-
-## Architecture
-
-Prefer
-
-Parser
-
-↓
-
-AST
-
-↓
-
-Scene Graph
-
-↓
-
-Animation Engine
-
-↓
-
-Renderer
-
-Never mix responsibilities.
-
----
-
-## Language
-
-The `.motion` language must remain extremely small.
-
-Every keyword should justify its existence.
-
-Adding syntax requires strong justification.
-
----
-
-## Writing `.motion` Files
-
-The primary video entry point lives in:
-
-`video-motion/codex-showcase.motion`
-
-Use `video-motion/assets/` for scene-specific SVG/UI assets.
-
-When authoring `.motion`:
-
-- Treat the scene file as the complete source of truth.
-- Write scenes like a product film, not a slideshow.
-- Give each section one clear hero object and one clear viewer focus.
-- Use semantic layers: `background`, `hero`, `supporting`, `details`, `text`, `effects`.
-- Use camera movement intentionally: push in for importance, pull back for transitions, pan only when it supports the story.
-- Use multiple scene atmospheres with `effect` layers instead of keeping one static background for the whole video.
-- Keep SVG/UI panels inside the canvas after camera transforms; avoid layouts that only fit before zoom/pan.
-- Prefer word-based text reveals for readable phrases. Use character reveals only for short, deliberate moments.
-- Do not overuse blur. Prefer position, scale, camera, staging, and scene transitions.
-- Avoid repeated logo entrances. Introduce the hero once, remove it when it no longer has purpose, and return it only for a final lockup.
-- Use `sequence` for staggered code/text beats instead of hand-aligning many simultaneous delays.
-- Use animation presets when they communicate intent: `keynoteText`, `heroLogo`, `productPanel`, `sceneExit`, `springIn`, `scaleReveal`, `rotateReveal`.
-
-Recommended showcase structure:
-
-1. Atmosphere: establish mood and question.
-2. Hero: introduce the main object with camera push.
-3. System: show scene file and preview as connected product objects.
-4. Export: show rendering/output.
-5. Final lockup: logo, Motionly, and one short line.
-
----
-
-## UI
-
-Minimal.
-
-No floating windows.
-
-No complex panels.
-
-Focus on:
-
-Explorer
-
-Editor
-
-Preview
-
-Inspector
-
-Export
-
----
-
-## Dependencies
-
-Only introduce dependencies when they significantly reduce complexity.
-
-Avoid large frameworks.
-
----
-
-## Code Quality
-
-Prefer explicit code.
-
-Avoid magic.
-
-Avoid hidden behavior.
-
-Avoid singleton-heavy architecture.
-
-Prefer composition.
-
----
-
-## Future Features
-
-Do not implement future features early.
-
-Ignore:
-
-- AI
-- Physics
-- Audio
-- Collaboration
-- Cloud
-- Plugins
-- Particles
-- 3D
-
-Until Version 1 is complete.
-
----
-
-## Success
-
-Version 1 is successful if a user can:
-
-Import SVGs
-
-Reference them
-
-Animate them
-
-Preview instantly
-
-Export MP4
-
-Nothing else is required.
+Use the small transition set when a shot actually changes: `shapeWipe`, `irisWipe`, `maskReveal`, `dynamicSlide`, and camera `speedZoom`. Prefer one strong transition per scene over stacking effects.
