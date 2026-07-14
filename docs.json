@@ -1,0 +1,66 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Motionly",
+  "theme": "luma",
+  "colors": {
+    "primary": "#848486",
+    "light": "#bcbbbc",
+    "dark": "#15151d"
+  },
+  "logo": {
+    "light": "https://media.brand.dev/dc88e5fd-9a5d-421b-b192-093c3642e16b.png",
+    "dark": "https://media.brand.dev/dc88e5fd-9a5d-421b-b192-093c3642e16b.png"
+  },
+  "favicon": "https://media.brand.dev/2f2b6a46-d0d0-4c48-af3e-69d1784247c6.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/COPPSARY/Motionly"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "README",
+              "docs/QUICK_START",
+              "docs/USER_GUIDE",
+              "docs/UI_GUIDE"
+            ]
+          },
+          {
+            "group": "Motion Language",
+            "pages": [
+              "docs/motion-language",
+              "docs/scene-graph",
+              "docs/motion-design-principles"
+            ]
+          },
+          {
+            "group": "Animation",
+            "pages": [
+              "docs/animation-presets",
+              "docs/preset-development-guide"
+            ]
+          },
+          {
+            "group": "Export",
+            "pages": [
+              "docs/export"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "docs/ai-agents"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
