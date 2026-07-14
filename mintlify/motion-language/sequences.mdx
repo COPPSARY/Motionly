@@ -1,0 +1,31 @@
+---
+title: Sequences
+description: Stagger and time animated element groups.
+---
+
+# Sequences
+
+Sequences organize related animation timing so multiple elements can enter, hold, and exit with readable intent.
+
+Use delays and durations to create clear rhythm:
+
+```motion
+animate title {
+  from { opacity 0 y 80 }
+  to { opacity 1 y 0 }
+  duration 900ms
+  delay 200ms
+  easing power3.out
+}
+
+animate subtitle {
+  from { opacity 0 y 48 }
+  to { opacity 1 y 0 }
+  duration 900ms
+  delay 420ms
+  easing power3.out
+}
+```
+
+Prefer a small number of intentional beats over animating every object independently.
+

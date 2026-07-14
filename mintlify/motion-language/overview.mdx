@@ -1,0 +1,44 @@
+---
+title: Motion Language Overview
+description: Learn the structure of Motionly .motion files.
+---
+
+# Motion Language Overview
+
+`.motion` files describe a canvas, optional camera settings, imported assets, elements, and animations.
+
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
+
+text title {
+  value "Hello"
+  center
+  size 72
+  color #ffffff
+  opacity 1
+}
+
+animate title {
+  from {
+    opacity 0
+    y 80
+  }
+
+  to {
+    opacity 1
+    y 0
+  }
+
+  duration 1.2s
+  delay 0s
+  easing power3.out
+}
+```
+
+Use `.motion` as a portable source format, but prefer the visual editor for normal project creation.
+

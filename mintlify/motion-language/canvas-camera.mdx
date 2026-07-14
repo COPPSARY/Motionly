@@ -1,0 +1,34 @@
+---
+title: Canvas And Camera
+description: Configure project size, duration, frame rate, background, and camera.
+---
+
+# Canvas And Camera
+
+## Canvas
+
+The `canvas` block defines project-level output settings.
+
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
+```
+
+## Camera
+
+The optional `camera` block controls global framing.
+
+```motion
+camera {
+  zoom 1
+  x 0
+  y 0
+}
+```
+
+Keep camera movement purposeful. Use it to support a scene change or focal shift, not as constant background motion.
+

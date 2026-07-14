@@ -1,0 +1,29 @@
+---
+title: Keyframes
+description: Define from-to animation blocks in .motion files.
+---
+
+# Keyframes
+
+Use `animate` blocks to define how an element changes over time.
+
+```motion
+animate logo {
+  from {
+    opacity 0
+    scale .85
+  }
+
+  to {
+    opacity 1
+    scale 1
+  }
+
+  duration 1s
+  delay 0s
+  easing power3.out
+}
+```
+
+Animate only the properties that need to change.
+

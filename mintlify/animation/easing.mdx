@@ -1,0 +1,26 @@
+---
+title: Easing
+description: Choose easing curves for professional motion.
+---
+
+# Easing
+
+Easing controls the perceived weight and polish of a movement.
+
+Use `easing`, not `ease`.
+
+```motion
+animate title {
+  from { opacity 0 y 80 }
+  to { opacity 1 y 0 }
+  duration 1.2s
+  easing power3.out
+}
+```
+
+Recommended default:
+
+```motion
+easing power3.out
+```
+
