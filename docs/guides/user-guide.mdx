@@ -50,18 +50,44 @@ Motionly updates the `.motion` source after each visual edit.
 
 The timeline shows a row and visible clip range for each layer.
 
-- Scrub the ruler to seek.
-- Click a row or clip to select its layer.
-- Drag the timeline divider to make the timeline taller or shorter.
-- Drag a clip's left or right trim handle to adjust its visible range.
-- Delete removes the selected layer.
-- The playhead marks the current frame across every row.
+- Scrub the ruler to seek
+- Click a row or clip to select its layer
+- Drag the timeline divider to make the timeline taller or shorter
+- Drag a clip's left or right trim handle to adjust its visible range
+- **Drag assets from the Assets panel onto the timeline to create clips**
+- Green drop indicator shows where the clip will be placed
+- Timeline clips show thumbnails for visual reference
+- Click X on a clip to delete it
+- Delete removes the selected layer
+- The playhead marks the current frame across every row
+
+## Timeline Clips (New!)
+
+Motionly now supports dragging media directly onto the timeline:
+
+1. Open the Assets panel from the left navigation rail
+2. Browse your images, SVGs, videos, and audio files
+3. Drag any asset onto the timeline
+4. Drop it at the desired position (green line shows drop point)
+5. Clip appears with thumbnail and persists in `.motion` format
+
+Clips automatically save to your project using the `clip` syntax. Keep original asset files in the same location to reload projects correctly.
 
 ## Audio
 
-Click Audio in the timeline toolbar to attach an audio file. Playback follows the audio clock and the timeline shows an audio row.
+Audio is now persisted in `.motion` format using the `audio` syntax:
 
-Audio is currently session-based and is not included in MP4 export. Persistent audio references, export audio, waveform editing, offsets, volume, and multi-track audio are roadmap work.
+```motion
+audio "/assets/my-project/background.mp3"
+```
+
+Audio files:
+- Show in the organized Audio panel
+- Play synchronized with preview playback
+- Persist in saved `.motion` projects
+- Are **not yet included in MP4 export** (see AUDIO_EXPORT_LIMITATION.md)
+
+Export audio mixing requires WebAudio API implementation and is planned for future work.
 
 ## Animation Presets
 

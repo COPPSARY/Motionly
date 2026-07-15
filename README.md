@@ -4,9 +4,9 @@
 
   <h1>Motionly</h1>
 
-  <p><strong>Motion graphics, written.</strong></p>
+  <p><strong>AI-native motion graphics you can still direct.</strong></p>
 
-  <p><em>A lightweight visual editor and renderer for polished motion graphics.<br/>Create the scene. Tune the motion. Export the result.</em></p>
+  <p><em>AI generates an editable project instead of a finished video.<br/>What AI makes is a starting point you can actually direct.</em></p>
 
   <br/>
 
@@ -41,11 +41,9 @@
 
 ## Overview
 
-Motionly is a browser-first motion graphics editor and renderer built around one idea:
+Motionly is an AI-native motion graphics editor. AI generates an editable project instead of a finished video, then you refine it visually—drag, scale, tune timing, scrub, and export.
 
-> Motion graphics should be simple to create, easy to edit, and portable.
-
-Motionly uses readable `.motion` files as the source of truth, but normal creation happens visually. Select objects, adjust transforms, tune timing and easing, scrub the timeline, preview each frame, save the project, and export MP4 without manually writing animation code.
+Underneath, every project is a plain, readable `.motion` file. What AI makes is a starting point you can actually direct.
 
 The current focus is the core editing loop: reliable preview, direct manipulation, useful animation presets, clear timeline control, clean serialization, and dependable export.
 
@@ -55,22 +53,54 @@ The current focus is the core editing loop: reliable preview, direct manipulatio
 
 Current editor features:
 
+**Interface:**
+- Left navigation rail with icon-based navigation (Media, Audio, Text, Effects, Scenes, Adjustments, Settings)
+- Organized Assets panel with folder structure showing audio and visual assets
+- Preset browser with animated GIF previews
+- Professional properties panel with custom sliders, styled inputs, and visual preset cards
+
+**Canvas & Preview:**
 - Centered canvas preview with the project aspect ratio
 - Play, pause, reset, timeline scrubber, timecode, and frame display
 - Fit, zoom, and fullscreen preview controls
-- Scene, canvas, and timeline selection
-- Drag-to-move and corner scaling
+- Click asset thumbnails for temporary full-screen preview (no timeline disruption)
+
+**Editing:**
+- Drag-to-move and corner scaling for elements
 - Visual position, scale, rotation, opacity, text, color, timing, and easing controls
 - Add text, delete layers, resize the timeline, and trim layer ranges
-- Session-based audio attachment for synchronized preview
+- Scene, canvas, and timeline selection
+
+**Timeline Clips (New!):**
+- Drag and drop media from Assets panel directly onto timeline
+- Visual timeline clips with thumbnails
+- Create clips at any position with automatic .motion persistence
+- Delete clips with one click
+- Clips render in preview at correct times
+
+**Audio:**
+- Audio defined in `.motion` format (persists with project)
+- Synchronized audio preview playback
+- Audio shown in organized Assets panel
+
+**Project Management:**
 - Open and save `.motion` projects
+- Load presets with confirmation dialog
+- All edits automatically serialize to `.motion` format
+
+**AI Assistant:**
+- BYOK Motionly Assistant that generates and loads editable `.motion` projects
+- OpenAI, Anthropic, OpenRouter, Google Gemini, Hugging Face, and custom OpenAI-compatible endpoints
+- Locally stored keys and model overrides
+
+**Export:**
 - Browser-supported MP4 export with progress
 
 Current limits:
 
-- MP4 export runs in real time and does not include audio yet
+- MP4 export runs in real time and does not include audio from clips yet (see AUDIO_EXPORT_LIMITATION.md)
 - Canvas resolution, aspect ratio, and FPS still come from `.motion`
-- Full image, video, and audio clip import/editing from the timeline is roadmap work
+- Clip trimming/repositioning UI is basic (delete and re-add for now)
 - WebM, GIF, still-image, and image-sequence export are not exposed yet
 
 ---
@@ -105,7 +135,10 @@ camera {
   y 0
 }
 
+audio "/assets/my-project/background.mp3"
+
 import "/video-motion/assets/my-project/logo.svg" as mark
+import "/video-motion/assets/my-project/video.mp4" as bgVideo
 
 mark {
   center
@@ -122,9 +155,17 @@ text title {
   size 72
   textAnimation keynoteText(split words stagger 80ms duration 800ms delay 1s ease power3.out)
 }
+
+clip bgVideo {
+  track 1
+  start 0s
+  duration 5s
+  trimIn 0s
+  trimOut 0s
+}
 ```
 
-Motionly supports semantic layers, camera animation, reusable presets, SVG/image assets, text reveals, generated background effects, preview playback, and MP4 export.
+Motionly supports semantic layers, camera animation, reusable presets, SVG/image assets, text reveals, generated background effects, timeline clips, audio, preview playback, and MP4 export.
 
 ### Use Your Own Assets
 
@@ -133,26 +174,33 @@ For a new animation:
 1. Copy `video-motion/motionly.motion` to a new `.motion` file or replace its contents.
 2. Remove sample files you do not need from `video-motion/assets/motionly/`.
 3. Prefer creating a separate folder such as `video-motion/assets/my-project/`.
-4. Add your own images, SVGs, logos, and audio files.
+4. Add your own images, SVGs, logos, audio files, and videos.
 5. Update every `import` path in the `.motion` project.
 6. Open the project in Motionly and finish positioning and timing visually.
+7. Or drag assets from the Assets panel onto the timeline to create clips.
 
-Images and SVGs can be imported by `.motion` today. Audio can be attached in the timeline for preview, but it is not persisted in `.motion` or included in export yet. Visual video and media-clip import is planned.
+Images, SVGs, and videos can be imported and used as timeline clips. Audio persists in `.motion` format. Drag assets onto the timeline to create clips that persist in the project file.
 
-See [Using Agents And LLMs](docs/ai-agents.md) for a complete asset and prompting workflow.
+**Note:** Timeline clips reference assets by filename. Keep original files in the same location to reload projects with clips.
+
+See [AI Authoring Guide](docs/agents/ai-authoring.mdx) for a complete asset and prompting workflow.
 
 ---
 
 ## Agent And LLM Support
 
-Motionly includes repository instructions and a reusable skill for agentic coding tools:
+Motionly includes a built-in AI Chat panel and repository guidance for external agent tools.
+
+Open Motionly Assistant beside Assets, enter your own provider key, and describe the animation you want. Motionly detects OpenAI, Anthropic, OpenRouter, Google Gemini, and Hugging Face keys, or accepts a custom OpenAI-compatible endpoint. You can leave the model blank for Motionly's default or enter an exact model ID. The key and chat history stay in browser storage; requests go directly from the browser to that provider, never through a Motionly server. The assistant receives the current project and imported asset list, returns a `.motion` draft, and exposes a **Load into Editor** action that validates the source through the normal parser and scene-graph pipeline.
+
+For agents working inside the repository, use these files:
 
 | Path | Purpose |
 |---|---|
 | `AGENTS.md` | Product scope and core `.motion` syntax |
 | `.agents/skills/write-motionly/SKILL.md` | Storyboard, timing, composition, asset, and validation workflow |
 | `.agents/skills/write-motionly/references/motion-syntax.md` | Supported syntax and preset reference |
-| `docs/ai-agents.md` | Prompting and project setup guide |
+| `docs/agents/ai-authoring.mdx` | Prompting and project setup guide |
 
 Use this short prompt with an LLM or agent working inside the repository:
 
@@ -164,7 +212,7 @@ avoid overlap and repeated fade-only scenes, and validate the final project.
 Open the result for visual refinement instead of treating the generated file as final.
 ```
 
-The agent creates the first editable version. Motionly remains the place where you preview, adjust, save, and export it.
+The in-app assistant or external agent creates the first editable version. Motionly remains the place where you preview, adjust, save, and export it.
 
 ---
 
@@ -179,7 +227,7 @@ Current product goals:
 - Improve existing animation presets and add a small set of distinct transitions.
 - Add more export formats only after MP4 is dependable.
 - Provide a hosted editor/sandbox without removing local or self-hosted use.
-- Allow optional external AI providers to draft editable `.motion` projects without requiring Motionly to host its own agent.
+- Keep BYOK AI drafting optional, local-first, and compatible with external providers.
 
 See the [Roadmap](ROADMAP.md) for the planned order of work.
 
@@ -221,18 +269,20 @@ Motionly is licensed under the Apache License 2.0.
 
 Project docs:
 
-- [Quick Start](docs/QUICK_START.md)
-- [User Guide](docs/USER_GUIDE.md)
-- [UI Guide](docs/UI_GUIDE.md)
+- [Introduction](docs/introduction.mdx)
+- [Quick Start](docs/quickstart.mdx)
+- [Installation](docs/installation.mdx)
+- [User Guide](docs/guides/user-guide.mdx)
+- [UI Guide](docs/editor/ui-guide.mdx)
+- [Motion Language Overview](docs/motion-language/overview.mdx)
+- [Animation Presets](docs/animation/presets.mdx)
+- [Export Overview](docs/export/overview.mdx)
+- [AI Authoring Guide](docs/agents/ai-authoring.mdx)
 - [Contributing](CONTRIBUTING.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Security Policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
-- [Motion Language](docs/motion-language.md)
-- [Animation Presets](docs/animation-presets.md)
-- [Export](docs/export.md)
-- [Agent And LLM Guide](docs/ai-agents.md)
 
 ---
 

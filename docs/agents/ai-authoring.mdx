@@ -2,7 +2,26 @@
 
 An agent or LLM can create the first `.motion` draft. Motionly then lets you inspect, edit, preview, save, and export that draft visually.
 
-## Repository Instructions
+## Use The In-App Assistant
+
+Open **Motionly Assistant** beside Assets:
+
+1. Paste your own API key. Motionly detects Anthropic, OpenRouter, OpenAI, Google Gemini, and Hugging Face keys.
+2. Optionally enter the exact model ID. Leave it blank to use Motionly's provider default.
+3. If the prefix is unknown, enable **Custom endpoint** and enter the base URL for an OpenAI-compatible service.
+4. Describe the animation. The assistant receives the current `.motion` project and imported asset list, so it can reuse real asset paths.
+5. Review the response and choose **Load into Editor**. Motionly parses and validates the generated source before replacing the current project.
+6. Continue the same chat to refine the draft, then make final visual edits in the canvas, Properties panel, and timeline.
+
+The API key and conversation history are stored in browser `localStorage`. Requests travel directly from the browser to the configured provider and are never sent through a Motionly server. A custom endpoint must allow browser requests from the Motionly origin.
+
+The assistant asks for a brief explanation followed by one fenced `.motion` project. Generated projects use the same parser → scene graph → renderer pipeline as projects opened or edited manually.
+
+## Use An External Agent
+
+Agents that work directly inside the repository can use Motionly's authoring guidance instead of the in-app panel.
+
+### Repository Instructions
 
 Ask the agent to read these files before writing a project:
 
@@ -12,17 +31,17 @@ Ask the agent to read these files before writing a project:
 
 The `write-motionly` skill is designed for Codex and other agentic tools that can read repository files. Other LLMs can use the same files as prompt context.
 
-## Prepare Your Project
+### Prepare Your Project
 
 1. Create a folder such as `video-motion/assets/my-project/`.
-2. Add the images, SVGs, logos, and audio references needed for the story.
+2. Add the images, SVGs, logos, videos, and audio references needed for the story.
 3. Keep original aspect ratios and use clear filenames.
 4. Provide the script, target duration, canvas ratio, and preferred output path.
 5. Tell the agent which text must appear exactly and provide narration timestamps when available.
 
-Images and SVGs can be imported into `.motion`. Audio is currently attached through the editor for preview and is not persisted or exported. Video clip support is roadmap work.
+Images, SVGs, and videos can be imported and used as timeline clips. Audio persists in `.motion` format. You can also drag assets from the Assets panel onto the timeline in the editor to create clips visually.
 
-## Prompt Template
+### Prompt Template
 
 ```text
 Read AGENTS.md, .agents/skills/write-motionly/SKILL.md, and its syntax reference.
@@ -51,7 +70,7 @@ Requirements:
 Return a complete .motion project that I can refine in the visual editor.
 ```
 
-## Replace The Sample
+### Replace The Sample
 
 To start from the included sample:
 
@@ -63,7 +82,7 @@ To start from the included sample:
 
 Do not ask the agent to invent unsupported engine features. Add missing editor or renderer capabilities as separate engineering work.
 
-## Review The Result
+## Review Any Generated Result
 
 Before export:
 

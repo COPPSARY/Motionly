@@ -22,12 +22,55 @@ import type {
  */
 export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
   const camera = evaluateCamera(scene, time);
-  const elements = scene.elements.map((element) => ({
-    ...element,
-    render: evaluateElement(element, scene.animations, time),
-  }));
+  const clippedAssets = new Set(scene.clips.map((clip) => clip.assetName));
+
+  // Evaluate regular elements
+  const elements = scene.elements
+    .filter(
+      (element) =>
+        element.kind !== 'asset' || !element.assetName || !clippedAssets.has(element.assetName)
+    )
+    .map((element) => ({
+      ...element,
+      render: evaluateElement(element, scene.animations, time),
+    }));
+
+  // Visual tracks stack bottom-to-top: higher track numbers render last.
+  const activeClips = scene.clips
+    .filter((clip) => time >= clip.start && time < clip.start + clip.duration)
+    .sort((a, b) => trackRank(a.track) - trackRank(b.track));
+
+  for (const clip of activeClips) {
+    if (!clip.asset) continue;
+
+    // Create an element from the clip for rendering
+    const clipElement: import('../types/scene').EvaluatedElement = {
+      id: clip.id,
+      kind: 'asset',
+      assetName: clip.assetName,
+      asset: clip.asset,
+      properties: {} as ElementProperties,
+      render: {
+        x: 0,
+        y: 0,
+        scale: 1,
+        rotation: 0,
+        opacity: 1,
+        center: true,
+        cover: true,
+        layer: 'content',
+      } as ElementProperties,
+    };
+
+    elements.push(clipElement);
+  }
 
   return { canvas: scene.canvas, camera, elements };
+}
+
+function trackRank(track: number | string): number {
+  const rank = Number(track);
+  return Number.isFinite(rank) ? rank : 0;
 }
 
 /**

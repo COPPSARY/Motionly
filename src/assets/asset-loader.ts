@@ -29,23 +29,35 @@ export async function loadAssets(
   baseUrl: string = document.baseURI
 ): Promise<Map<string, LoadedAsset>> {
   const entries = await Promise.all(
-    scene.imports.map(async (asset): Promise<[string, LoadedAsset]> => [
-      asset.name,
-      await loadAsset(asset.path, baseUrl, asset.type === 'svg'),
-    ])
+    scene.imports.map(async (asset): Promise<[string, LoadedAsset] | null> => {
+      try {
+        return [asset.name, await loadAsset(asset.path, baseUrl, asset.type === 'svg')];
+      } catch (error) {
+        console.warn(`Could not load asset ${asset.path}:`, error);
+        return null;
+      }
+    })
   );
-  return new Map(entries);
+  return new Map(entries.filter((entry): entry is [string, LoadedAsset] => entry !== null));
 }
 
 /**
  * Load single asset
  */
 async function loadAsset(path: string, baseUrl: string, isSvg: boolean): Promise<LoadedAsset> {
-  const url = new URL(path, baseUrl).href;
+  const url = new URL(
+    path.startsWith('/') ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
+    baseUrl
+  ).href;
   const image = new Image() as LoadedAsset;
   image.decoding = 'async';
   image.src = url;
-  const svgSource = isSvg ? fetch(url).then((response) => response.text()) : null;
+  const svgSource = isSvg
+    ? fetch(url).then((response) => {
+        if (!response.ok) throw new Error(`Asset request failed (${response.status})`);
+        return response.text();
+      })
+    : null;
   await Promise.all([image.decode(), svgSource]);
   if (svgSource) image.motionlySvg = parseSvg(await svgSource);
   return image;

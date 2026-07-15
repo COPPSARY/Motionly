@@ -156,6 +156,25 @@ export interface Sequence {
 /**
  * Complete scene graph
  */
+/**
+ * Timeline clip for media/audio
+ */
+export interface Clip {
+  id: string;
+  assetName: string;
+  asset: Asset | null;
+  track: number | string;
+  start: number;
+  duration: number;
+  trimIn: number;
+  trimOut: number;
+  volume?: number;
+  mute?: boolean;
+}
+
+/**
+ * Complete scene graph
+ */
 export interface Scene {
   canvas: Canvas;
   camera: Camera;
@@ -163,6 +182,8 @@ export interface Scene {
   imports: Asset[];
   elements: Element[];
   animations: Animation[];
+  clips: Clip[];
+  audio?: string; // Path to audio file
 }
 
 /**

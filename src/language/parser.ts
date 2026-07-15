@@ -110,6 +110,21 @@ class Parser {
       return createCamera(this.parseBlockProperties());
     }
 
+    if (this.matchWord('audio')) {
+      const path = this.consume('String', 'Expected audio path').value;
+      this.skipNewlines();
+      return { type: 'Audio', path } as import('../types/parser').AudioNode;
+    }
+
+    if (this.matchWord('clip')) {
+      const assetName = this.consume('Word', 'Expected clip asset name').value;
+      return {
+        type: 'Clip',
+        assetName,
+        properties: this.parseBlockProperties(),
+      } as import('../types/parser').ClipNode;
+    }
+
     if (this.matchWord('sequence')) {
       const name = this.consume('Word', 'Expected sequence name').value;
       return createSequence(name, this.parseBlockProperties());

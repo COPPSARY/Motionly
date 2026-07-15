@@ -36,15 +36,16 @@ Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap i
 
 ## Next: Media In The Timeline
 
-- [ ] Add images and SVGs from the UI
-- [ ] Add video clips from the UI
-- [ ] Add and persist audio tracks in the project
-- [ ] Show media thumbnails and audio waveforms on timeline clips
+- [x] Add images and SVGs from the UI (drag-and-drop from Assets panel)
+- [x] Add video clips from the UI (drag-and-drop from Assets panel)
+- [x] Add and persist audio tracks in the project (audio blocks in .motion)
+- [x] Show media thumbnails on timeline clips
+- [x] Keep imported media references portable and explicit in `.motion` (clip blocks)
+- [ ] Show audio waveforms on timeline clips
 - [ ] Drag clips to change their start time
 - [ ] Trim image, video, and audio duration from either edge
 - [ ] Set video in/out points and audio offsets
-- [ ] Add basic mute, volume, fit, fill, and crop controls
-- [ ] Keep imported media references portable and explicit in `.motion`
+- [ ] Add basic mute, volume, fit, fill, and crop controls for clips
 
 ## Animation And Editing Quality
 
@@ -67,15 +68,14 @@ Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap i
 
 ## Optional AI-Assisted Drafting
 
-This comes after visual editing, media, and export are dependable.
-
-- [ ] Let users connect an external AI provider or existing agent through a user-supplied API key
-- [ ] Keep provider credentials local or session-only by default
-- [ ] Generate a first `.motion` draft from a prompt, script, or asset list
-- [ ] Open generated output as a normal editable project instead of a black-box video
-- [ ] Validate generated `.motion` and show proposed changes before replacing the current project
-- [ ] Keep AI optional; Motionly should not require its own hosted agent
-- [ ] Document the existing `.agents/skills/write-motionly` workflow for local agent tools
+- [x] Let users connect OpenAI, Anthropic, OpenRouter, Google Gemini, Hugging Face, or a custom compatible endpoint with their own key and model choice
+- [x] Keep provider credentials in browser storage and send requests directly to the provider
+- [x] Generate a `.motion` draft from a prompt, current project, conversation, and local asset list
+- [x] Open generated output as a normal editable project instead of a black-box video
+- [x] Validate generated `.motion` before replacing the current project
+- [x] Keep AI optional; Motionly does not require its own hosted agent
+- [x] Document the in-app assistant and `.agents/skills/write-motionly` workflow
+- [ ] Add optional asset uploads directly from the chat composer
 
 ## Later, Not Near-Term
 
@@ -86,4 +86,4 @@ This comes after visual editing, media, and export are dependable.
 - Multi-user real-time collaboration
 - Training or hosting a proprietary Motionly model
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15

@@ -1,0 +1,385 @@
+canvas {
+  size 1920x1080
+  fps 60
+  duration 32.1s
+  background #050608
+}
+
+camera {
+  zoom 1
+  x 0
+  y 0
+  rotation 0
+  cameraAnimation "speedZoom(delay 13.85s duration 1.05s from 1 peak 1.075 to 1.012 xPeak -14 yPeak 6 ease power3.out)"
+}
+
+audio "/preset/motionly/assets/audio/audio.mp3"
+
+import "/preset/motionly/assets/svg/motionly-logo.svg" as motionlyLogo
+
+import "/preset/motionly/assets/svg/motionly-logo.svg" as finalLogo
+
+import "/preset/motionly/assets/svg/file.svg" as sourceFile
+
+import "/preset/motionly/assets/svg/code.svg" as codeIcon
+
+import "/preset/motionly/assets/svg/code-window.svg" as editorWindow
+
+import "/preset/motionly/assets/svg/file.svg" as parserFile
+
+import "/preset/motionly/assets/svg/render-frame.svg" as rendererPanel
+
+import "/preset/motionly/assets/svg/codex-color.svg" as codex
+
+import "/preset/motionly/assets/svg/claude-code-color.svg" as claudeCode
+
+import "/preset/motionly/assets/svg/antigravity-color.svg" as antigravity
+
+overlay originScene {
+  layer background
+  fill #09111d
+  opacity 0
+  animation "shapeWipe(delay 2.7s duration 800ms direction right ease power3.out)"
+}
+
+overlay agentScene {
+  layer background
+  fill #0d0b13
+  opacity 0
+  animation "shapeWipe(delay 8.75s duration 800ms direction up ease power3.out)"
+}
+
+overlay editorScene {
+  layer background
+  fill #0a1010
+  opacity 0
+  animation "shapeWipe(delay 13.75s duration 820ms direction left ease power3.out)"
+}
+
+overlay pipelineScene {
+  layer background
+  fill #11100d
+  opacity 0
+  animation "shapeWipe(delay 23.05s duration 780ms direction down ease power3.out)"
+}
+
+overlay finalScene {
+  layer background
+  fill #050608
+  opacity 0
+  animation "irisWipe(delay 28.85s duration 850ms ease power3.out)"
+}
+
+overlay atmosphere {
+  layer background
+  opacity 0
+  backgroundEffect "aurora(duration 32.1s opacity .13 intensity .42)"
+}
+
+overlay fade {
+  layer effects
+  fill #050608
+  opacity 1
+}
+
+motionlyLogo {
+  center
+  layer hero
+  width 220
+  x -480
+  y -24
+  opacity 0
+  scale 1.55
+  shadow 32
+  animation "maskReveal(delay 3s duration 0.85s direction down exitAt 8.257s exitDuration 0.48s ease power3.out)"
+}
+
+sourceFile {
+  center
+  layer supporting
+  width 150
+  x 804
+  y -156
+  opacity 0
+  scale 0.753
+  shadow 20
+  animation "dynamicSlide(delay 5.204s duration 0.7s direction up distance 80 exitAt 8.287s exitDuration 0.45s ease power3.out)"
+  rotation 20
+}
+
+codex {
+  center
+  layer hero
+  width 150
+  x -330
+  y -38
+  opacity 0
+  scale 1
+  shadow 26
+  animation "dynamicSlide(delay 8.832s duration 0.7s direction up distance 90 exitAt 13.5s exitDuration 0.45s ease power3.out)"
+}
+
+claudeCode {
+  center
+  layer hero
+  width 150
+  y -38
+  opacity 0
+  scale 1
+  shadow 26
+  animation "dynamicSlide(delay 9.326s duration 0.7s direction up distance 90 exitAt 13.5s exitDuration 0.45s ease power3.out)"
+}
+
+antigravity {
+  center
+  layer hero
+  width 150
+  x 330
+  y -38
+  opacity 0
+  scale 1
+  shadow 26
+  animation "dynamicSlide(delay 10.732s duration 0.7s direction up distance 90 exitAt 13.5s exitDuration 0.45s ease power3.out)"
+}
+
+editorWindow {
+  center
+  layer hero
+  width 820
+  y 130
+  opacity 0
+  scale 1
+  shadow 44
+  animation "maskReveal(delay 14.15s duration 900ms direction right exitAt 22.85s exitDuration 500ms ease power3.out)"
+  x 3
+}
+
+parserFile {
+  center
+  layer hero
+  width 250
+  x -450
+  y 40
+  opacity 0
+  scale 1
+  shadow 30
+  animation "dynamicSlide(delay 23.35s duration 800ms direction right distance 150 exitAt 25.55s exitDuration 450ms ease power3.out)"
+}
+
+rendererPanel {
+  center
+  layer hero
+  width 650
+  x -470
+  y 38
+  opacity 0
+  scale 1
+  shadow 40
+  animation "maskReveal(delay 25.7s duration 850ms direction right exitAt 28.65s exitDuration 450ms ease power3.out)"
+}
+
+finalLogo {
+  center
+  layer hero
+  width 190
+  y -78
+  opacity 0
+  scale 1
+  shadow 32
+  animation "maskReveal(delay 29.15s duration 750ms direction down exitAt 31.85s exitDuration 220ms ease power3.out)"
+}
+
+text hook {
+  value "What if motion graphics could be written like code?"
+  center
+  layer text
+  y -18
+  size 72
+  weight 740
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 85ms duration 850ms delay 200ms ease power3.out exitAt 2.6s exitDuration 450ms)"
+}
+
+text originLine1 {
+  value "This animation started as a simple Motionly file,"
+  center
+  layer text
+  x 239
+  y -147
+  size 42
+  weight 730
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 0.062s duration 0.8s delay 3s ease power3.out exitAt 8.116s exitDuration 0.45s)"
+  scale 1
+}
+
+text originLine2 {
+  value "created with help from an AI agent."
+  center
+  layer text
+  x 73
+  y -80
+  size 36
+  weight 500
+  color #8cf3cb
+  opacity 1
+  textAnimation "blurReveal(split words stagger 0.055s duration 0.7s delay 6.021s ease power3.out exitAt 8.135s exitDuration 0.45s)"
+}
+
+text agentIntro {
+  value "Tools like"
+  center
+  layer text
+  y -270
+  size 42
+  weight 730
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 0.045s duration 0.7s delay 8.528s ease power3.out exitAt 13.5s exitDuration 0.42s)"
+}
+
+text codexLabel {
+  value Codex
+  center
+  layer text
+  x -330
+  y 112
+  size 26
+  weight 650
+  color #f7f8fb
+  opacity 1
+  textAnimation "fadeUp(split words stagger 0.045s duration 0.6s delay 9.383s ease power3.out exitAt 13.5s exitDuration 0.42s)"
+}
+
+text claudeLabel {
+  value "Claude Code"
+  center
+  layer text
+  y 112
+  size 26
+  weight 650
+  color #f7f8fb
+  opacity 1
+  textAnimation "fadeUp(split words stagger 0.045s duration 0.6s delay 9.82s ease power3.out exitAt 13.5s exitDuration 0.42s)"
+}
+
+text antigravityLabel {
+  value Antigravity
+  center
+  layer text
+  x 330
+  y 112
+  size 26
+  weight 650
+  color #f7f8fb
+  opacity 1
+  textAnimation "fadeUp(split words stagger 0.045s duration 0.6s delay 10.827s ease power3.out exitAt 13.5s exitDuration 0.42s)"
+}
+
+text agentCopy {
+  value "can help you create a first version quickly."
+  center
+  layer text
+  y 250
+  size 34
+  weight 500
+  color rgba(235,239,247,.75)
+  opacity 1
+  textAnimation "keynoteText(split words stagger 45ms duration 700ms delay 12s ease power3.out exitAt 13.5s exitDuration 420ms)"
+}
+
+text editorLine1 {
+  value "But instead of getting a black-box video,"
+  center
+  layer text
+  y -354
+  size 38
+  weight 680
+  color rgba(235,239,247,.78)
+  opacity 1
+  textAnimation "keynoteText(split words stagger 52ms duration 750ms delay 14.2s ease power3.out exitAt 22.8s exitDuration 480ms)"
+}
+
+text editorLine2 {
+  value "Motionly gives you a structured animation"
+  center
+  layer text
+  y -292
+  size 46
+  weight 750
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 0.058s duration 0.78s delay 16.81s ease power3.out exitAt 22.8s exitDuration 0.48s)"
+}
+
+text editorLine3 {
+  value "you can open, edit, adjust, and control in the editor."
+  center
+  layer text
+  y -222
+  size 34
+  weight 520
+  color #8cf3cb
+  opacity 1
+  textAnimation "blurReveal(split words stagger 48ms duration 750ms delay 19.15s ease power3.out exitAt 22.8s exitDuration 480ms)"
+}
+
+text parserCopy {
+  value "A parser turns your file into scenes."
+  center
+  layer text
+  x 270
+  y -20
+  size 44
+  weight 730
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 65ms duration 750ms delay 23.4s ease power3.out exitAt 25.55s exitDuration 430ms)"
+}
+
+text rendererCopy {
+  value "A renderer turns those scenes into the animation you see."
+  center
+  layer text
+  x 400
+  y -24
+  size 34
+  weight 700
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 0.045s duration 0.76s delay 26.25s ease power3.out exitAt 29.182s exitDuration 0.43s)"
+}
+
+text finalCopy {
+  value "Motion graphics, written."
+  center
+  layer text
+  y 100
+  size 58
+  weight 740
+  color #f7f8fb
+  opacity 1
+  textAnimation "keynoteText(split words stagger 0.105s duration 0.7s delay 30.03s ease power3.out exitAt 31.85s exitDuration 0.22s)"
+}
+
+animate fade {
+  keyframes {
+    0% {
+      opacity 1
+    }
+    2% {
+      opacity 0
+    }
+    97% {
+      opacity 0
+    }
+    100% {
+      opacity 1
+    }
+  }
+  delay 0s
+  duration 32.1s
+  easing power3.out
+}
