@@ -40,6 +40,7 @@ const LAYER_ORDER: Record<Layer, number> = {
 export function buildSceneGraph(ast: ProgramNode): Scene {
   const canvasNode = ast.body.find((node) => node.type === 'Canvas');
   const cameraNode = ast.body.find((node) => node.type === 'Camera');
+  const audioNode = ast.body.find((node) => node.type === 'Audio');
 
   const canvas = normalizeCanvas(
     canvasNode && 'properties' in canvasNode ? canvasNode.properties : {}
@@ -52,6 +53,7 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
   const imports = new Map<string, Asset>();
   const elements: Element[] = [];
   const animations: Animation[] = [];
+  const clips: import('../types/scene').Clip[] = [];
 
   for (const node of ast.body) {
     if (node.type === 'Import') {
@@ -79,6 +81,23 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     if (node.type === 'Animation') {
       animations.push(normalizeAnimation(node, sequences));
     }
+
+    if (node.type === 'Clip') {
+      const asset = imports.get(node.assetName) ?? null;
+      const props = normalizeProperties(node.properties);
+      clips.push({
+        id: `clip_${node.assetName}_${clips.length}`,
+        assetName: node.assetName,
+        asset,
+        track: props['track'] ?? 1,
+        start: normalizeProperty('start', props['start'] ?? 0) as number,
+        duration: normalizeProperty('duration', props['duration'] ?? 5) as number,
+        trimIn: normalizeProperty('trimIn', props['trimIn'] ?? 0) as number,
+        trimOut: normalizeProperty('trimOut', props['trimOut'] ?? 0) as number,
+        volume: props['volume'] !== undefined ? Number(props['volume']) : 1.0,
+        mute: Boolean(props['mute'] ?? false),
+      });
+    }
   }
 
   // Add camera animations from camera node
@@ -93,6 +112,8 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     imports: Array.from(imports.values()),
     elements,
     animations,
+    clips,
+    audio: audioNode && 'path' in audioNode ? audioNode.path : undefined,
   });
 
   // Sort elements by layer
@@ -171,6 +192,6 @@ function layerRank(layer: Layer): number {
  */
 function assetType(path: string): AssetType {
   const lower = path.toLowerCase();
-  if (lower.endsWith('.svg')) return 'svg';
+  if (lower.endsWith('.svg') || lower.startsWith('data:image/svg+xml')) return 'svg';
   return 'image';
 }

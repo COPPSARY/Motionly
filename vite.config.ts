@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const motionProjectPath = resolve('video-motion/motionly.motion');
@@ -11,8 +11,9 @@ const motionProject = {
     server.middlewares.use('/api/motion-project', async (request, response, next) => {
       try {
         if (request.method === 'GET') {
-          response.setHeader('content-type', 'text/plain;charset=utf-8');
-          response.end(await readFile(motionProjectPath, 'utf8'));
+          // Return 404 to use fallback motion instead of loading saved project
+          response.statusCode = 404;
+          response.end();
           return;
         }
         if (request.method === 'PUT') {
@@ -45,6 +46,7 @@ const motionProject = {
 
 export default defineConfig({
   plugins: [svelte(), motionProject],
+  base: process.env.BASE_PATH ?? '/',
   root: '.',
   server: {
     port: 5173,

@@ -25,6 +25,7 @@ Use `size`, not `fontSize`. Use `easing` in explicit animation blocks. Preset ca
 
 ```motion
 import "./assets/logo.svg" as logo
+import "./assets/video.mp4" as bgVideo
 
 logo {
   center
@@ -42,6 +43,43 @@ logo {
 Preserve aspect ratio by setting one of `width` or `height`. Useful properties include `x`, `y`, `width`, `height`, `scale`, `rotation`, `opacity`, `blur`, `brightness`, `shadow`, `center`, `cover`, and `layer`.
 
 Layer order: `background`, `hero`, `supporting`, `content`, `details`, `text`, `effects`.
+
+## Audio
+
+```motion
+audio "/assets/my-project/background.mp3"
+```
+
+Audio files persist in `.motion` format and play during preview. Audio is not yet included in MP4 export.
+
+## Timeline Clips
+
+```motion
+import "/assets/my-project/video.mp4" as bgVideo
+
+clip bgVideo {
+  track 1
+  start 0s
+  duration 5s
+  trimIn 0s
+  trimOut 0s
+  volume 1
+  mute false
+}
+```
+
+Timeline clips reference imported assets (images, SVGs, videos). They appear on the timeline and can be created visually by dragging from the Assets panel.
+
+Properties:
+- `track`: timeline track number (default 1)
+- `start`: when clip starts on timeline
+- `duration`: how long clip plays
+- `trimIn`: source media start offset (default 0s)
+- `trimOut`: source media end offset (default 0s)
+- `volume`: audio volume 0-1 (optional, default 1)
+- `mute`: whether to mute clip audio (optional, default false)
+
+Clips are rendered at their natural size unless transformed. Keep original asset files in the same location for projects to reload correctly.
 
 ## Text
 

@@ -6,30 +6,56 @@ Motionly uses one focused editor screen.
 
 - Open a `.motion` project
 - Save the current project
+- Load preset animations with confirmation dialog
 - Export MP4 with progress feedback
 - Open and star the GitHub repository
 
-## Scene
+## Left Navigation Rail
 
-The left panel lists project layers with type icons, media thumbnails, short descriptions, and their first visible time.
+Icon-based tabs for quick access to tools and content:
 
-- Click a layer to select it and seek to its first visible frame.
-- Click Text to add a text layer.
+- **Media** - Assets panel with organized folders (Images & Graphics)
+- **Audio** - Audio assets panel
+- **Text** - Text tools
+- **Effects** - Animation presets library (text, object, transition, camera)
+- **Scenes** - Scene backgrounds and overlays
+- **Adjustments** - Color and timing adjustments
+- **Settings** - Project settings
+
+## Assets Panel
+
+Browse and manage project assets:
+
+- Click thumbnails for full-screen preview (temporary, no timeline disruption)
+- Organized folder structure showing audio and visual assets
+- Drag assets directly onto timeline to create clips
+- Green drop indicator shows where clips will be placed
+
+## Presets
+
+Browse animation templates:
+
+- Animated GIF preview thumbnails
+- Load preset with confirmation dialog (red warning button)
+- Presets load as fully editable projects
 
 ## Preview
 
 The center panel renders the scene at the project's aspect ratio.
 
-- Click an object to select it.
-- Drag a selected object to move it.
-- Drag corner handles to scale it.
-- Click empty space to deselect.
-- Use Fit, zoom, and fullscreen to inspect the canvas.
+- Click an object to select it
+- Drag a selected object to move it
+- Drag corner handles to scale it
+- Click empty space to deselect
+- Use Fit, zoom, and fullscreen to inspect the canvas
 
 ## Properties
 
 The right panel edits the selected layer without requiring source changes.
 
+- Custom polished sliders for smooth value control
+- Styled inputs for precise values
+- Visual preset cards for animation selection
 - Position, scale, width, rotation, and opacity
 - Text content, font size, and color
 - Scene background color
@@ -42,10 +68,12 @@ The lower panel contains playback and clip timing.
 - Reset, Play/Pause, timecode, and frame display
 - Scrubbable ruler and playhead
 - One clip row per scene, text, media, or effect layer
+- **Timeline clips with thumbnails** for dragged assets
 - Media thumbnails and text labels inside clips
 - Start and end trim handles
+- Click X button to delete clips
 - Resizable panel height
-- Audio attachment and audio timeline row
+- Audio playback synchronized with preview
 - Delete selected layer and preview zoom controls
 
 ## `.motion` Source

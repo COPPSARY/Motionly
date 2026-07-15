@@ -9,7 +9,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
-    "types": ["svelte"],
+    "types": ["svelte", "vite/client"],
     
     /* Emit */
     "noEmit": true,

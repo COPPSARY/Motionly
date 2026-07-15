@@ -115,10 +115,35 @@ export interface SequenceNode extends BaseNode {
 }
 
 /**
+ * Audio configuration node
+ */
+export interface AudioNode extends BaseNode {
+  type: 'Audio';
+  path: string;
+}
+
+/**
+ * Timeline clip node
+ */
+export interface ClipNode extends BaseNode {
+  type: 'Clip';
+  assetName: string;
+  properties: Record<string, unknown>; // track, start, duration, trimIn, trimOut, volume, mute
+}
+
+/**
  * Union of all AST node types
  */
 export type ASTNode =
-  ProgramNode | CanvasNode | ImportNode | CameraNode | ElementNode | AnimationNode | SequenceNode;
+  | ProgramNode
+  | CanvasNode
+  | ImportNode
+  | CameraNode
+  | ElementNode
+  | AnimationNode
+  | SequenceNode
+  | AudioNode
+  | ClipNode;
 
 /**
  * Parse error with location information

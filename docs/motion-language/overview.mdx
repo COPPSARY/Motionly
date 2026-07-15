@@ -82,6 +82,41 @@ Use `easing`, not `ease`.
 - `center`
 - `layer`
 
+## Audio
+
+```motion
+audio "/assets/my-project/background.mp3"
+```
+
+Audio files persist in `.motion` format and play during preview.
+
+## Timeline Clips
+
+```motion
+import "/assets/my-project/video.mp4" as bgVideo
+
+clip bgVideo {
+  track 1
+  start 0s
+  duration 5s
+  trimIn 0s
+  trimOut 0s
+  volume 1
+  mute false
+}
+```
+
+Clips reference imported assets and appear on the timeline. They can be images, SVGs, or videos. Drag assets from the Assets panel onto the timeline to create clips visually.
+
+Properties:
+- `track`: timeline track number (default 1)
+- `start`: when clip starts on timeline
+- `duration`: how long clip plays
+- `trimIn`: source media start offset (default 0s)
+- `trimOut`: source media end offset (default 0s)
+- `volume`: audio volume 0-1 (optional, default 1)
+- `mute`: whether to mute clip audio (optional, default false)
+
 ## Easing
 
 Preferred:

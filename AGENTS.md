@@ -24,11 +24,15 @@ Work on:
 - visual controls for position, scale, rotation, opacity, text, duration, delay, easing
 - smooth useful animation presets
 - clean `.motion` serialization from UI edits
+- optional BYOK AI drafting that produces editable `.motion` through the existing parser and renderer pipeline
+
+The in-app Motionly Assistant stores its API key in the user's browser and sends requests directly to the selected provider. Generated source must be validated and loaded as a normal editable project; AI output is never a black-box final video.
 
 Avoid for now:
 
 - node graphs
-- AI generation
+- hosted API-key proxies or a required Motionly AI account
+- autonomous project replacement without an explicit user load action
 - plugin systems
 - complex pipelines
 - huge preset libraries

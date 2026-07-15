@@ -16,7 +16,7 @@ import type {
   EffectProperties,
 } from '../types/scene';
 
-const TIME_PROPERTIES = new Set(['duration', 'delay']);
+const TIME_PROPERTIES = new Set(['duration', 'delay', 'start', 'trimIn', 'trimOut']);
 const NUMBER_PROPERTIES = new Set([
   'x',
   'y',
