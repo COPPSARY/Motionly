@@ -199,6 +199,87 @@ Supported text presets:
 
 Common options: `split`, `stagger`, `delay`, `duration`, `ease`, `exitAt`, `exitDuration`.
 
+## Image Layers And Vector Overlays
+
+Use an `image` layer when vector annotations must stay attached to a static picture. `source` names an imported bitmap. An `overlay` with `parent` uses the source image's intrinsic pixel coordinate system, so `x`, `y`, `x2`, `y2`, radii, and path coordinates continue to line up when the image is resized, centered, rotated, or animated.
+
+```motion
+import "./assets/dashboard.png" as dashboardPng
+
+image dashboard {
+  source dashboardPng
+  center
+  layer content
+  width 1400
+  opacity 1
+}
+
+overlay focusRing {
+  parent dashboard
+  shape circle
+  x 1060
+  y 310
+  radius 92
+  fill none
+  stroke #7cf7c5
+  strokeWidth 10
+  opacity 1
+  animation highlight-circle-reveal(delay 800ms duration 900ms ease power3.out)
+}
+
+overlay pointer {
+  parent dashboard
+  shape arrow
+  x 760
+  y 470
+  x2 230
+  y2 -120
+  fill none
+  stroke #ffffff
+  strokeWidth 8
+  opacity 1
+  animation animated-arrow-point(delay 1.3s duration 700ms ease power3.out)
+}
+
+overlay label {
+  parent dashboard
+  shape text
+  x 650
+  y 520
+  value "Review this trend"
+  fill #ffffff
+  font "Inter, sans-serif"
+  size 46
+  weight 700
+  opacity 1
+  animation callout-text-pop(delay 1.5s duration 650ms ease power3.out)
+}
+
+overlay spotlight {
+  parent dashboard
+  shape spotlight
+  x 1060
+  y 310
+  radiusX 150
+  radiusY 110
+  fill rgba(0,0,0,.58)
+  opacity 1
+  clip
+  animation spotlight-mask(delay 2.4s duration 800ms ease power3.out)
+}
+```
+
+Supported shapes are `circle`, `ellipse`, `rect`, `line`, `arrow`, `path`, `text`, and `spotlight`. For `path`, set `path` to SVG `d` data. `clip` confines a sublayer to the image. All overlay properties use the normal `animate` blocks and keyframes; overlays also follow their parent's evaluated visibility and transform.
+
+Starter presets:
+
+- `highlight-circle-reveal`: draws a circle/ellipse stroke around the target.
+- `animated-arrow-point`: draws an arrow toward the target.
+- `callout-text-pop`: reveals a vector callout with a restrained scale and rise.
+- `spotlight-mask`: opens an elliptical cutout in a dimming mask.
+
+Motionly uses native SVG-compatible path data with Canvas2D rendering, not ThorVG. This avoids adding a WASM runtime and guarantees the same JS-evaluated frame in preview and export. The tradeoff is that advanced SVG filters and full SMIL semantics are not supported; convert those effects to ordinary Motionly properties or a pre-rendered asset.
+
 ## Scene Backgrounds
 
 ```motion

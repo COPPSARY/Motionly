@@ -68,15 +68,25 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     }
 
     if (node.type === 'Element') {
-      const asset = node.kind === 'asset' ? (imports.get(node.name) ?? null) : null;
+      const assetName =
+        node.kind === 'asset'
+          ? node.name
+          : node.kind === 'image'
+            ? String(node.properties['source'] ?? '')
+            : null;
+      const asset = assetName ? (imports.get(assetName) ?? null) : null;
+      const normalized = normalizeProperties(node.properties);
       elements.push({
         id: node.name,
         kind: node.kind as ElementKind,
-        assetName: asset ? node.name : null,
+        assetName: asset ? assetName : null,
         asset,
         properties: {
           ...defaultElementProperties(node.kind as ElementKind),
-          ...normalizeProperties(node.properties),
+          ...normalized,
+          ...(node.kind === 'overlay' && normalized['parent'] && !node.properties['layer']
+            ? { layer: 'details' }
+            : {}),
         },
       });
     }

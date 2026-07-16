@@ -15,7 +15,9 @@ Read [references/motion-syntax.md](references/motion-syntax.md) before writing s
 2. Determine canvas size, frame rate, exact duration, output path, and whether spoken copy must appear verbatim.
 3. Storyboard distinct shots before editing. For each shot define its purpose, focal subject, supporting elements, entrance, exit, and time range.
 4. Write or edit the smallest valid `.motion` project that realizes the storyboard.
-5. Parse the project, run the relevant tests, and inspect representative frames at scene starts, holds, transitions, and exits.
+5. Run the headless inspection command, inspect its duration, empty-frame ranges, invalid frames, round-trip result, and representative frame signatures.
+6. Fix the `.motion` source when inspection finds a problem, then repeat write -> inspect -> fix until it is clean.
+7. For visual changes, preview the project and inspect representative frames at scene starts, holds, transitions, and exits before running the relevant tests.
 
 Do not introduce new engine features while authoring a project. Use the syntax and presets Motionly already supports.
 
@@ -63,13 +65,29 @@ Use `drawSVG` only for simple stroked artwork and only when the user wants a pat
 
 ## Validation
 
+### Write -> Render -> Inspect -> Fix
+
+After every substantial `.motion` authoring pass, run:
+
+```powershell
+npm run inspect:motion -- path\to\project.motion --expect-duration=<seconds>
+```
+
+The command parses and builds the scene, evaluates every frame at the project's declared FPS using Motionly's production evaluator, checks for non-finite render state, detects ranges with no visible elements, verifies parse/serialize/parse stability, and prints deterministic signatures for the first, middle, and final frames. It exits non-zero for parse errors, invalid frame state, round-trip loss, or an expected-duration mismatch.
+
+Empty-frame ranges are reported as inspection evidence rather than an automatic failure because an intentional blank hold can be valid. Review each reported range against the storyboard. For any unexpected empty range, broken timing, invalid frame, or duration mismatch, revise the `.motion` file and rerun the command. A changed render signature after an edit is expected; an unchanged signature when a visible change was intended is a reason to inspect the animation target and timing.
+
+The command is a semantic headless render and cannot prove pixel-level layout or asset decoding. After it passes, open the project in Motionly and inspect the actual canvas at representative timestamps when composition, clipping, fonts, images, SVG paths, or overlays changed.
+
 Before finishing:
 
 1. Parse the final `.motion` file and build its scene graph.
-2. Confirm canvas duration, imports, and expected scene elements.
+2. Run `inspect:motion` and confirm duration, FPS, imports, expected scene elements, valid frames, and round-trip stability.
 3. Verify any exact script against the ordered text layer values.
-4. Inspect frames around each timestamp for blank frames, overlap, clipping, distortion, and stale layers.
-5. Confirm the project survives parse/serialize/parse without losing keyframes.
-6. Run the repository test and build commands that cover the changed project.
+4. Review every reported empty-frame range against the storyboard.
+5. Inspect rendered canvas frames around each timestamp for overlap, clipping, distortion, missing assets, and stale layers.
+6. Confirm the project survives parse/serialize/parse without losing keyframes or overlay relationships.
+7. Revise and repeat inspection until no unexplained issue remains.
+8. Run the repository test and build commands that cover the changed project.
 
 Return the completed `.motion` file, not only a storyboard or code sample.

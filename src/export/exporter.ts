@@ -1,6 +1,10 @@
 /**
- * Video and GIF exporter
- * Handles export to various formats (WebM, MP4, GIF)
+ * Deterministic video and GIF export.
+ *
+ * MP4 frames are rendered in the browser, then encoded by the local Motionly
+ * server. Keeping ffmpeg on the Node side avoids a large wasm download and
+ * gives us dependable H.264/AAC support, at the cost of requiring the local
+ * Vite server for MP4 export rather than a static-only deployment.
  */
 
 import { evaluateScene } from '../animation/evaluator';
@@ -10,24 +14,16 @@ import { synchronizeVideoAssets, type LoadedAsset } from '../assets/asset-loader
 import type { Scene, Animation, Element, Keyframe } from '../types/scene';
 import type { ExportFormat, ExportSupport } from '../types/export';
 
-const MIME_TYPES: Record<string, string[]> = {
-  webm: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'],
-  mp4: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E', 'video/mp4'],
-  gif: [],
-};
+const EXPORT_API = '/api/exports';
+const WEBM_TYPES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
 
-/**
- * Check if format can be exported
- */
+/** Check whether this runtime has the browser primitives needed for a format. */
 export function canExport(format: ExportFormat): boolean {
-  if (format === 'gif') return typeof document !== 'undefined';
+  if (format === 'gif' || format === 'mp4') return typeof document !== 'undefined';
   if (typeof MediaRecorder === 'undefined') return false;
-  return Boolean(selectMimeType(format));
+  return Boolean(selectWebmMimeType());
 }
 
-/**
- * Get export support for all formats
- */
 export function exportSupport(): ExportSupport {
   return {
     webm: canExport('webm'),
@@ -36,9 +32,6 @@ export function exportSupport(): ExportSupport {
   };
 }
 
-/**
- * Export video to specified format
- */
 export async function exportVideo(options: {
   scene: Scene;
   assets: Map<string, LoadedAsset>;
@@ -53,17 +46,97 @@ export async function exportVideo(options: {
   if (format === 'gif') {
     return exportGif({ scene, assets, height, fps, onProgress });
   }
-
-  const mimeType = selectMimeType(format);
-  if (!mimeType) {
-    throw new Error(`${format.toUpperCase()} export is not supported by this browser`);
+  if (format === 'mp4') {
+    return exportMp4Frames({ scene, assets, height, fps, audioUrl, onProgress });
   }
+
+  return exportWebmRealtime({ scene, assets, height, fps, audioUrl, onProgress });
+}
+
+async function exportMp4Frames(options: {
+  scene: Scene;
+  assets: Map<string, LoadedAsset>;
+  height: number;
+  fps: number;
+  audioUrl?: string;
+  onProgress?: (progress: number) => void;
+}): Promise<Blob> {
+  const { scene, assets, height, fps, audioUrl, onProgress } = options;
+  const width = Math.round((height * scene.canvas.width) / scene.canvas.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const renderer = new CanvasRenderer(canvas);
+  const scaledScene = scaleScene(scene, width, height);
+  const totalFrames = frameCount(scaledScene.canvas.duration, fps);
+
+  const job = await requestJson<{ id: string }>(EXPORT_API, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      width,
+      height,
+      fps,
+      duration: scaledScene.canvas.duration,
+      totalFrames,
+      hasAudio: Boolean(audioUrl),
+    }),
+  });
+
+  try {
+    for (let frame = 0; frame < totalFrames; frame += 1) {
+      renderer.render(evaluateScene(scaledScene, frame / fps), assets);
+      const image = await canvasToPng(canvas);
+      await request(`${EXPORT_API}/${job.id}/frames/${frame}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/png' },
+        body: image,
+      });
+      onProgress?.(((frame + 1) / totalFrames) * 0.8);
+      if (frame % 4 === 0) await wait(0);
+    }
+
+    if (audioUrl) {
+      const audioResponse = await fetch(audioUrl);
+      if (!audioResponse.ok) {
+        throw new Error(`Could not load audio (${audioResponse.status})`);
+      }
+      await request(`${EXPORT_API}/${job.id}/audio`, {
+        method: 'PUT',
+        headers: {
+          'content-type': audioResponse.headers.get('content-type') ?? 'application/octet-stream',
+        },
+        body: await audioResponse.blob(),
+      });
+    }
+
+    onProgress?.(0.85);
+    const response = await request(`${EXPORT_API}/${job.id}/finish`, { method: 'POST' });
+    const video = await response.blob();
+    onProgress?.(1);
+    return video;
+  } catch (error) {
+    await fetch(`${EXPORT_API}/${job.id}`, { method: 'DELETE' }).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function exportWebmRealtime(options: {
+  scene: Scene;
+  assets: Map<string, LoadedAsset>;
+  height: number;
+  fps: number;
+  audioUrl?: string;
+  onProgress?: (progress: number) => void;
+}): Promise<Blob> {
+  const { scene, assets, height, fps, audioUrl, onProgress } = options;
+  const mimeType = selectWebmMimeType();
+  if (!mimeType) throw new Error('WEBM export is not supported by this browser');
 
   const width = Math.round((height * scene.canvas.width) / scene.canvas.height);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-
   const renderer = new CanvasRenderer(canvas);
   const scaledScene = scaleScene(scene, width, height);
   const stream = canvas.captureStream(fps);
@@ -73,23 +146,19 @@ export async function exportVideo(options: {
     videoBitsPerSecond: bitrateFor(height, fps),
   });
   const chunks: Blob[] = [];
-
   recorder.ondataavailable = (event: BlobEvent) => {
-    if (event.data.size > 0) {
-      chunks.push(event.data);
-    }
+    if (event.data.size > 0) chunks.push(event.data);
   };
-
   const finished = new Promise<Blob>((resolve, reject) => {
     recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
     recorder.onerror = (event) =>
-      reject((event as ErrorEvent).error ?? new Error('MP4 recording failed'));
+      reject((event as ErrorEvent).error ?? new Error('WebM recording failed'));
   });
 
   recorder.start();
   audio?.start();
   try {
-    await renderTimeline({ renderer, scene: scaledScene, assets, fps, onProgress });
+    await renderTimelineRealtime({ renderer, scene: scaledScene, assets, fps, onProgress });
     recorder.stop();
     return await finished;
   } finally {
@@ -129,9 +198,6 @@ async function attachAudio(stream: MediaStream, url: string) {
   }
 }
 
-/**
- * Export as animated GIF
- */
 async function exportGif(options: {
   scene: Scene;
   assets: Map<string, LoadedAsset>;
@@ -140,16 +206,14 @@ async function exportGif(options: {
   onProgress?: (progress: number) => void;
 }): Promise<Blob> {
   const { scene, assets, height, fps, onProgress } = options;
-
   const width = Math.round((height * scene.canvas.width) / scene.canvas.height);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-
   const renderer = new CanvasRenderer(canvas);
   const scaledScene = scaleScene(scene, width, height);
   const encoder = new GifEncoder(width, height, 1000 / fps);
-  const totalFrames = Math.ceil(scaledScene.canvas.duration * fps);
+  const totalFrames = frameCount(scaledScene.canvas.duration, fps);
 
   for (let frame = 0; frame <= totalFrames; frame += 1) {
     const time = Math.min(scaledScene.canvas.duration, frame / fps);
@@ -158,28 +222,19 @@ async function exportGif(options: {
     renderer.render(evaluated, assets);
     const ctx = (renderer as unknown as { context: CanvasRenderingContext2D }).context;
     encoder.addFrame(ctx.getImageData(0, 0, width, height));
-    onProgress?.(frame / totalFrames);
-    if (frame % 4 === 0) {
-      await wait(0);
-    }
+    onProgress?.((frame + 1) / totalFrames);
+    if (frame % 4 === 0) await wait(0);
   }
 
   return encoder.finish();
 }
 
-/**
- * Select supported MIME type
- */
-function selectMimeType(format: ExportFormat): string | undefined {
-  const types = MIME_TYPES[format];
-  if (!types) return undefined;
-  return types.find((type) => MediaRecorder.isTypeSupported(type));
+function selectWebmMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  return WEBM_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
 }
 
-/**
- * Render timeline frame by frame
- */
-async function renderTimeline(options: {
+async function renderTimelineRealtime(options: {
   renderer: CanvasRenderer;
   scene: Scene;
   assets: Map<string, LoadedAsset>;
@@ -187,7 +242,7 @@ async function renderTimeline(options: {
   onProgress?: (progress: number) => void;
 }): Promise<void> {
   const { renderer, scene, assets, fps, onProgress } = options;
-  const totalFrames = Math.ceil(scene.canvas.duration * fps);
+  const totalFrames = frameCount(scene.canvas.duration, fps);
   const frameDuration = 1000 / fps;
 
   for (let frame = 0; frame <= totalFrames; frame += 1) {
@@ -195,14 +250,43 @@ async function renderTimeline(options: {
     const evaluated = evaluateScene(scene, time);
     await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
     renderer.render(evaluated, assets);
-    onProgress?.(frame / totalFrames);
+    onProgress?.((frame + 1) / totalFrames);
     await wait(frameDuration);
   }
 }
 
-/**
- * Scale scene to target dimensions
- */
+function frameCount(duration: number, fps: number): number {
+  return Math.max(1, Math.ceil(duration * fps));
+}
+
+function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not capture an export frame'));
+    }, 'image/png');
+  });
+}
+
+async function request(url: string, init: RequestInit): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch {
+    throw new Error('MP4 export requires the local Motionly server with ffmpeg installed');
+  }
+  if (!response.ok) {
+    const message = (await response.text()).trim();
+    throw new Error(message || `MP4 export failed (${response.status})`);
+  }
+  return response;
+}
+
+async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
+  const response = await request(url, init);
+  return (await response.json()) as T;
+}
+
 function scaleScene(scene: Scene, width: number, height: number): Scene {
   const scale = width / scene.canvas.width;
 
@@ -232,9 +316,6 @@ function scaleScene(scene: Scene, width: number, height: number): Scene {
   };
 }
 
-/**
- * Scale numeric properties by scale factor
- */
 function scaleProperties<T extends Record<string, unknown>>(properties: T, scale: number): T {
   const scaled = { ...properties };
 
@@ -248,9 +329,6 @@ function scaleProperties<T extends Record<string, unknown>>(properties: T, scale
   return scaled;
 }
 
-/**
- * Calculate bitrate for export
- */
 function bitrateFor(height: number, fps: number): number {
   const base =
     height >= 2160
@@ -260,13 +338,9 @@ function bitrateFor(height: number, fps: number): number {
         : height >= 1080
           ? 10_000_000
           : 5_000_000;
-
   return Math.round(base * (fps / 60));
 }
 
-/**
- * Wait for specified milliseconds
- */
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

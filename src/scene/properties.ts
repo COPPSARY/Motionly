@@ -12,6 +12,7 @@ import type {
   ElementKind,
   BaseElementProperties,
   TextProperties,
+  ImageProperties,
   OverlayProperties,
   EffectProperties,
 } from '../types/scene';
@@ -50,8 +51,14 @@ const NUMBER_PROPERTIES = new Set([
   'intensity',
   'offset',
   'overscan',
+  'radius',
+  'radiusX',
+  'radiusY',
   'weight',
   'tracking',
+  'strokeWidth',
+  'x2',
+  'y2',
   'zoom',
 ]);
 const COLOR_PROPERTIES = new Set(['background', 'color', 'fill', 'stroke']);
@@ -145,10 +152,32 @@ export function defaultElementProperties(kind: ElementKind): ElementProperties {
     } as TextProperties;
   }
 
+  if (kind === 'image') {
+    return {
+      ...common,
+      source: '',
+    } as ImageProperties;
+  }
+
   if (kind === 'overlay') {
     return {
       ...common,
+      parent: '',
+      shape: 'rect',
       fill: '#000',
+      stroke: 'none',
+      strokeWidth: 4,
+      radius: 48,
+      radiusX: 48,
+      radiusY: 48,
+      x2: 0,
+      y2: 0,
+      path: '',
+      value: '',
+      font: 'Inter, SF Pro Display, Segoe UI, Arial, sans-serif',
+      size: 48,
+      weight: 700,
+      clip: false,
       opacity: 0,
       layer: 'effects',
     } as OverlayProperties;

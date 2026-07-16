@@ -23,7 +23,7 @@ import type {
   AnimationNode,
 } from '../types/parser';
 
-const ELEMENT_KINDS = new Set(['text', 'overlay', 'effect']);
+const ELEMENT_KINDS = new Set(['image', 'text', 'overlay', 'effect']);
 const PROPERTY_NAMES = new Set([
   'background',
   'backgroundEffect',
@@ -39,11 +39,13 @@ const PROPERTY_NAMES = new Set([
   'maskInvert',
   'maskVisible',
   'center',
+  'clip',
   'color',
   'cover',
   'fill',
   'effect',
   'font',
+  'fps',
   'height',
   'gridSize',
   'gridThickness',
@@ -52,17 +54,25 @@ const PROPERTY_NAMES = new Set([
   'cameraAnimation',
   'textAnimation',
   'opacity',
+  'parent',
+  'path',
   'pathProgress',
   'revealProgress',
   'offset',
   'intensity',
   'rotation',
+  'radius',
+  'radiusX',
+  'radiusY',
   'scale',
   'skewX',
   'skewY',
   'shadow',
   'size',
+  'shape',
+  'source',
   'stroke',
+  'strokeWidth',
   'tracking',
   'track',
   'role',
@@ -85,7 +95,9 @@ const PROPERTY_NAMES = new Set([
   'weight',
   'width',
   'x',
+  'x2',
   'y',
+  'y2',
   'zoom',
 ]);
 
@@ -183,7 +195,7 @@ class Parser {
     if (current.type === 'Word') {
       const first = this.advance().value;
 
-      if (ELEMENT_KINDS.has(first)) {
+      if (ELEMENT_KINDS.has(first) && this.check('Word')) {
         const name = this.consume('Word', `Expected ${first} name`).value;
         return createElement(first, name, this.parseBlockProperties());
       }
@@ -280,7 +292,16 @@ class Parser {
 
       // Bare boolean properties serialize without an explicit `true` value.
       if (
-        ['center', 'cover', 'maskInvert', 'maskVisible', 'mute', 'hidden', 'muted'].includes(key) &&
+        [
+          'center',
+          'cover',
+          'clip',
+          'maskInvert',
+          'maskVisible',
+          'mute',
+          'hidden',
+          'muted',
+        ].includes(key) &&
         (this.check('Newline') || this.check('RightBrace'))
       ) {
         properties[key] = true;

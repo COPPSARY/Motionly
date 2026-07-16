@@ -4,6 +4,7 @@
  */
 
 import { parsePresetCall } from './preset-parser';
+import { countDecimalPlaces, resolveCountSeparator } from './count-up';
 import type { Scene, Element, Animation, PropertyMap, ElementProperties } from '../types/scene';
 
 const TEXT_PRESETS = new Set([
@@ -18,6 +19,7 @@ const TEXT_PRESETS = new Set([
   'wordReveal',
   'gradientReveal',
   'keynoteText',
+  'countUp',
 ]);
 
 const OBJECT_PRESETS = new Set([
@@ -40,6 +42,10 @@ const OBJECT_PRESETS = new Set([
   'productReveal',
   'appleHero',
   'startupLaunch',
+  'highlight-circle-reveal',
+  'animated-arrow-point',
+  'callout-text-pop',
+  'spotlight-mask',
 ]);
 
 /**
@@ -52,9 +58,21 @@ export function applyAnimationPresets(scene: Scene): Scene {
 
   for (const element of scene.elements) {
     const props = element.properties as unknown as Record<string, unknown>;
-    const textPreset = props['textAnimation'] ?? props['animation'];
+    const animationPreset = props['animation'];
+    const textAnimationPreset = props['textAnimation'];
+    const textPreset =
+      parsePresetCall(animationPreset).name === 'countUp'
+        ? animationPreset
+        : (textAnimationPreset ?? animationPreset);
 
     if (element.kind === 'text' && textPreset && isTextPreset(textPreset as string)) {
+      if (parsePresetCall(textPreset).name === 'countUp') {
+        const generated = expandCountUpPreset(element, textPreset as string);
+        sourceElements.push(generated.element);
+        generatedAnimations.push(generated.animation);
+        continue;
+      }
+
       const generated = expandTextPreset(element, textPreset as string);
       sourceElements.push(hideElement(element));
       generatedElements.push(...generated.elements);
@@ -77,6 +95,10 @@ export function applyAnimationPresets(scene: Scene): Scene {
         properties: {
           ...element.properties,
           ...(preset === 'drawSVG' ? { pathProgress: 0 } : {}),
+          ...(['highlight-circle-reveal', 'animated-arrow-point'].includes(preset)
+            ? { pathProgress: 0 }
+            : {}),
+          ...(preset === 'spotlight-mask' ? { revealProgress: 0 } : {}),
           ...(['shapeWipe', 'irisWipe', 'maskReveal'].includes(preset)
             ? { revealProgress: 0, revealStyle: preset === 'irisWipe' ? 'iris' : 'linear' }
             : {}),
@@ -98,6 +120,46 @@ export function applyAnimationPresets(scene: Scene): Scene {
     elements: [...sourceElements, ...generatedElements],
     animations: [...generatedAnimations, ...scene.animations],
   };
+}
+
+function expandCountUpPreset(
+  element: Element,
+  value: string
+): { element: Element; animation: Animation } {
+  const { options } = parsePresetCall(value);
+  const props = element.properties as unknown as Record<string, unknown>;
+  const from = finiteNumber(options['from'], 0);
+  const to = finiteNumber(options['to'], finiteNumber(props['value'], 0));
+  const direction = String(options['direction'] ?? 'up').toLowerCase();
+  const start = direction === 'down' ? to : from;
+  const end = direction === 'down' ? from : to;
+
+  return {
+    element: {
+      ...element,
+      properties: {
+        ...element.properties,
+        value: start,
+        countSeparator: resolveCountSeparator(options['separator']),
+        countDecimals: Math.max(countDecimalPlaces(from), countDecimalPlaces(to)),
+        countTo: to,
+      } as unknown as ElementProperties,
+    },
+    animation: {
+      target: element.id,
+      from: { value: start },
+      to: { value: end },
+      keyframes: [],
+      delay: finiteNumber(options['delay'], 0),
+      duration: Math.max(0.001, finiteNumber(options['duration'], 2)),
+      easing: String(options['ease'] ?? options['easing'] ?? 'power3.out'),
+    },
+  };
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 /**
@@ -313,6 +375,48 @@ function objectPresetAnimations(element: Element): Animation[] {
     (options['ease'] as string) ??
       (name === 'springIn' || name === 'bounceIn' ? 'spring' : 'ease-out')
   );
+
+  if (name === 'highlight-circle-reveal' || name === 'animated-arrow-point') {
+    return [
+      basicAnimation(
+        target,
+        delay,
+        duration,
+        (options['ease'] as string) ?? 'power3.out',
+        { opacity: 1, pathProgress: 0 },
+        { opacity: (props['opacity'] as number) || 1, pathProgress: 1 }
+      ),
+    ];
+  }
+
+  if (name === 'callout-text-pop') {
+    const x = (props['x'] as number) ?? 0;
+    const y = (props['y'] as number) ?? 0;
+    const scale = (props['scale'] as number) ?? 1;
+    return [
+      basicAnimation(
+        target,
+        delay,
+        duration,
+        (options['ease'] as string) ?? 'power3.out',
+        { opacity: 0, x, y: y + ((options['yFrom'] as number) ?? 18), scale: scale * 0.84 },
+        { opacity: (props['opacity'] as number) || 1, x, y, scale }
+      ),
+    ];
+  }
+
+  if (name === 'spotlight-mask') {
+    return [
+      basicAnimation(
+        target,
+        delay,
+        duration,
+        (options['ease'] as string) ?? 'power3.out',
+        { opacity: 1, revealProgress: 0 },
+        { opacity: (props['opacity'] as number) || 1, revealProgress: 1 }
+      ),
+    ];
+  }
 
   if (name === 'heroLogo') {
     return [
