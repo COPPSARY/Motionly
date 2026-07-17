@@ -6,7 +6,7 @@ import { evaluateScene } from '../../src/animation/evaluator';
 
 describe('Motionly product showcase', () => {
   it('parses into a renderable scene graph', () => {
-    const source = readFileSync('video-motion/motionly.motion', 'utf8');
+    const source = readFileSync('preset/motionly/motionly.motion', 'utf8');
     const ast = parseMotion(source);
     const scene = buildSceneGraph(ast);
     const displayedText = ast.body

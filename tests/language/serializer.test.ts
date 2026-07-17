@@ -7,7 +7,7 @@ import { evaluateScene } from '../../src/animation/evaluator';
 
 describe('motion serializer', () => {
   it('preserves keyframes and editable text through a round trip', () => {
-    const ast = parseMotion(readFileSync('video-motion/motionly.motion', 'utf8'));
+    const ast = parseMotion(readFileSync('preset/motionly/motionly.motion', 'utf8'));
     const title = ast.body.find((node) => node.type === 'Element' && node.name === 'hook');
     if (!title || title.type !== 'Element') throw new Error('hook element missing');
     title.properties['value'] = 'Create "fast"\nwithout friction.';
