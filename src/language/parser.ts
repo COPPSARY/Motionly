@@ -152,7 +152,8 @@ class Parser {
     if (this.matchWord('audio')) {
       const path = this.consume('String', 'Expected audio path').value;
       this.skipNewlines();
-      return { type: 'Audio', path } as import('../types/parser').AudioNode;
+      const properties = this.check('LeftBrace') ? this.parseBlockProperties() : {};
+      return { type: 'Audio', path, properties } as import('../types/parser').AudioNode;
     }
 
     if (
@@ -267,9 +268,21 @@ class Parser {
         ? Number.parseFloat(offsetToken.value) / 100
         : Number.parseFloat(offsetToken.value);
 
+      const properties = this.parseBlockProperties();
+      // A per-keyframe `ease`/`easing` controls the transition into this frame.
+      const easingValue =
+        typeof properties['ease'] === 'string'
+          ? (properties['ease'] as string)
+          : typeof properties['easing'] === 'string'
+            ? (properties['easing'] as string)
+            : undefined;
+      delete properties['ease'];
+      delete properties['easing'];
+
       frames.push({
         offset,
-        properties: this.parseBlockProperties(),
+        properties,
+        ...(easingValue ? { easing: easingValue } : {}),
       });
     }
 

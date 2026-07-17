@@ -1,6 +1,15 @@
-# Using Agents And LLMs With Motionly
+---
+title: Prompt Guide For Agents And LLMs
+description: Prompt templates and the recommended workflow for creating editable Motionly projects with the in-app assistant or an external coding agent.
+---
 
-An agent or LLM can create the first `.motion` draft. Motionly then lets you inspect, edit, preview, save, and export that draft visually.
+# Prompt Guide For Agents And LLMs
+
+An agent or LLM can create the first `.motion` draft. Motionly then lets you inspect, edit, preview, save, and export that draft visually. Strong prompts describe the story and constraints; they do not ask the model to invent `.motion` syntax.
+
+<Tip>
+  In Motionly Assistant, choose **Copy Prompt Template** beneath the prompt-guide link to copy the complete template below.
+</Tip>
 
 ## Use The In-App Assistant
 
@@ -17,7 +26,20 @@ The API key and conversation history are stored in browser `localStorage`. Reque
 
 The assistant asks for a brief explanation followed by one fenced `.motion` project. Generated projects use the same parser → scene graph → renderer pipeline as projects opened or edited manually.
 
-**Model quality matters.** The AI model you choose directly affects the quality of generated `.motion` projects. More capable models (like Claude 3.5 Sonnet, GPT-4, or equivalent) produce better composition, timing, and use of animation presets. Smaller or older models may generate valid syntax but produce less polished results. For best results, use a frontier model with strong code generation capabilities.
+## AI Config Knowledge
+
+Motionly gives the in-app assistant persistent knowledge through two rail items. Everything is stored in the browser and appended to the assistant's system context on each request:
+
+- **AI Config (AI/Bot icon)** — enable or disable the built-in skills the assistant should follow. Each enabled skill loads its instructions into the context:
+  - `write-motionly` — authoring workflow: storyboard, retime, validate.
+  - `motion-graphics` — motion design principles: one focal subject, restrained easing/timing, deliberate exits.
+  - `motionly-rules` — core product rules and `.motion` syntax (this replaces a per-project `AGENTS.md`).
+  - A **Context** view previews what the assistant knows (enabled skills, brand, asset count, project info).
+- **Settings (gear icon)** — the **Brand Profile** editor. Brand name, logo, colors, typography, visual style, motion style, and things to avoid are edited visually and Motionly generates `BRAND.md` (or switch to Edit Markdown mode).
+
+When skills are enabled or a brand is set, the assistant is told to honor them while generating `.motion`.
+
+**Model quality matters.** The AI model you choose directly affects composition, timing, and correct preset use. Smaller models may generate valid syntax but weaker visual decisions. Prefer a current, high-capability model with strong code-generation and instruction-following performance.
 
 ## Use An External Agent
 
@@ -43,33 +65,80 @@ The `write-motionly` skill is designed for Codex and other agentic tools that ca
 
 Images, SVGs, and videos can be imported and used as timeline clips. Audio persists in `.motion` format. You can also drag assets from the Assets panel onto the timeline in the editor to create clips visually.
 
-### Prompt Template
+## Prompt Template
+
+Replace every bracketed value. Delete sections that genuinely do not apply, but keep the validation requirements.
 
 ```text
-Read AGENTS.md, .agents/skills/write-motionly/SKILL.md, and its syntax reference.
+Read AGENTS.md, .agents/skills/write-motionly/SKILL.md, and .agents/skills/write-motionly/references/motion-syntax.md before editing.
 
-Create an editable Motionly project at video-motion/my-project.motion.
+Create or update an editable Motionly project.
 
-Goal:
-[Describe the animation and audience.]
+Project:
+- Output file: [path/to/project.motion]
+- Audience and goal: [who it is for and what it should communicate]
+- Format: [aspect ratio or canvas size]
+- Duration and FPS: [exact duration and frame rate]
+
+Story:
+[Describe the sequence of shots and the single focal subject in each shot.]
 
 Assets:
-video-motion/assets/my-project/
+- Folder: [path/to/assets]
+- Required assets: [files that must appear]
+- Optional assets: [files the agent may use]
 
 Script and timing:
-[Paste the script and timestamps, or provide the audio path.]
+[Paste narration, exact on-screen copy, timestamps, or an audio path. Mark text that must remain verbatim.]
+
+Brand direction:
+[Colors, typography, visual style, motion style, and anything to avoid.]
 
 Requirements:
-- Inspect every relevant asset before placing it.
-- Storyboard distinct shots before writing the file.
-- Give each shot one clear focal subject.
-- Use only syntax and presets already supported by Motionly.
-- Preserve supplied copy exactly when it must match narration.
-- Avoid accidental overlap, repeated fade-only scenes, and random camera movement.
-- Ask before generating or converting visual assets when that would materially help.
-- Parse and validate the final project, then inspect representative frames.
+- Inspect the existing project and every relevant asset before editing.
+- Probe media duration and dimensions; do not guess or stretch assets.
+- Storyboard shot purpose, time range, focal subject, entrance, hold, and exit before writing source.
+- Use only syntax and presets supported by Motionly's current parser and renderer.
+- Keep visual tracks as predictable layers; keep audio on the bottom audio track.
+- Preserve supplied copy exactly when requested and synchronize it to supplied timestamps.
+- Use restrained professional motion, deliberate exits, and one strong transition per real scene change.
+- Avoid accidental overlap, clipped text, stale layers, repeated fade-only scenes, and constant camera drift.
+- Keep all output editable in Motionly; do not replace the project with a black-box rendered video.
+- Run inspect:motion, review reported empty ranges, inspect representative frames, and verify parse/serialize/parse stability.
 
-Return a complete .motion project that I can refine in the visual editor.
+Return the completed .motion file and briefly report validation performed.
+```
+
+## What To Include For Better Results
+
+<CardGroup cols={2}>
+  <Card title="Exact timing">
+    Give narration timestamps, audio paths, required holds, and the exact canvas duration/FPS.
+  </Card>
+  <Card title="Asset intent">
+    Separate required assets from optional assets and say which file is the hero in each shot.
+  </Card>
+  <Card title="Copy rules">
+    Mark text that must remain verbatim. State whether the agent may shorten or split anything else.
+  </Card>
+  <Card title="Visual boundaries">
+    Provide brand colors, typography, motion character, and treatments the agent must avoid.
+  </Card>
+</CardGroup>
+
+## Refinement Prompt
+
+For a second pass, name the observed problem and timestamp instead of asking for a generic improvement:
+
+```text
+Update the existing project; do not replace unrelated work.
+
+At [timestamp], [describe the visible/timing problem].
+Change [specific layer, shot, transition, or copy].
+Preserve [timing, assets, brand rules, or exact text that must not change].
+
+Re-run inspect:motion and verify frames immediately before, during, and after the edit.
+Return the complete updated .motion file.
 ```
 
 ### Replace The Sample
@@ -93,6 +162,6 @@ Before export:
 - Check text wrapping, image aspect ratios, and layer overlap.
 - Confirm entrances and exits match the script.
 - Save the edited `.motion` file.
-- Remember that MP4 export does not include attached audio yet.
+- Confirm project audio starts at the intended timeline offset and is present in MP4 export.
 
 Generated output is a starting point, not a black-box final video.

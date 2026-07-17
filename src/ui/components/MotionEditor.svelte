@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Eye, EyeOff, FileImage, Layers3, Magnet, Maximize2, Minus, Music2, Pause, Play, Plus, Redo2, Scissors, SkipBack, Sparkles, Square, Trash2, Type, Upload, Video, Volume2, VolumeX, Undo2, X, FolderOpen, Headphones, Wand2 } from 'lucide-svelte';
+  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Bot, Eye, EyeOff, FileImage, Layers3, Magnet, Maximize2, Minus, Music2, Pause, Play, Plus, Redo2, Scissors, Settings, SkipBack, Sparkles, Square, Trash2, Type, Upload, Video, Volume2, VolumeX, Undo2, X, FolderOpen, Headphones, Wand2 } from 'lucide-svelte';
   import { parseMotion } from '../../language/parser';
   import { buildSceneGraph } from '../../scene/scene-graph';
   import { evaluateScene } from '../../animation/evaluator';
@@ -8,12 +8,12 @@
   import type { LoadedAsset } from '../../assets/asset-loader';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
   import { canExport, exportVideo } from '../../export/exporter';
-  import type { AnimationNode, CameraNode, ClipNode, ElementNode, KeyframeNode, ProgramNode, TrackNode } from '../../types/parser';
+  import type { AnimationNode, AudioNode, CameraNode, ClipNode, ElementNode, ProgramNode, TrackNode } from '../../types/parser';
   import { serializeProgram } from '../../language/serializer';
   import type { Asset, Clip, Element, EvaluatedElement, EvaluatedScene, Scene, Track } from '../../types/scene';
   import { combinePersistentTrackRows, packClipTrackLanes, packTimelineLanes, type TimelineLane } from '../timeline-lanes';
   import { alignRect, snapRect, type Alignment, type SnapGuides } from '../canvas-geometry';
-  import { moveKeyframe, removeKeyframe, seedKeyframes, upsertKeyframe } from '../keyframe-editing';
+  import { moveKeyframe, removeKeyframe, seedKeyframes, setKeyframeEasing, upsertKeyframe } from '../keyframe-editing';
   import { splitClip, type ClipTiming } from '../clip-timing';
   import {
     adjacentClipBoundaries,
@@ -21,13 +21,15 @@
     removedClipTransitionProperties,
     type ClipTransitionBoundary,
   } from '../clip-transitions';
-  import { elementWindowProperties, splitElementClip } from '../element-clips';
+  import { elementWindowProperties, moveElementClip, splitElementClip } from '../element-clips';
   import { restoreEmbeddedAssetPaths } from '../../ai/chat';
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
-  import { allocateOverlayTrack, isTrackCompatible, moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
+  import { moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
   import { anchoredTimelineScroll, clampTimelineZoom, quantizeTimelineTime as quantizeFrameTime } from '../timeline-viewport';
   import { appUrl } from '../../app/routing';
   import AiChatPanel from './AiChatPanel.svelte';
+  import AiConfigPanel from './AiConfigPanel.svelte';
+  import BrandConfigPanel from './BrandConfigPanel.svelte';
 
   export let code = '';
   let canvas: HTMLCanvasElement;
@@ -52,6 +54,22 @@
     | { mode: 'resize'; id: string; centerX: number; centerY: number; startDistance: number; startScale: number }
     | null = null;
   let snapGuides: SnapGuides = { vertical: null, horizontal: null };
+  // Live ghost preview for dragging a clip or element layer on the timeline.
+  let clipDrag:
+    | {
+        id: string;
+        kind: 'clip' | 'element' | 'audio';
+        duration: number;
+        grabOffset: number;
+        originTrackId: string;
+        startClientX: number;
+        startClientY: number;
+        ghostStart: number;
+        ghostTrackId: string;
+        valid: boolean;
+        moved: boolean;
+      }
+    | null = null;
   let selectedKeyframeOffset: number | null = null;
   let showCodeEditor = false;
   let selectedElementId = '';
@@ -68,7 +86,7 @@
   let isExporting = false;
   let exportError = '';
   let assetError = '';
-  let activeNavTab: 'media' | 'audio' | 'text' | 'effects' | 'scenes' = 'media';
+  let activeNavTab: 'media' | 'audio' | 'text' | 'effects' | 'scenes' | 'ai' | 'settings' = 'media';
   let showAiChat = false;
   let mediaSubTab: 'assets' | 'presets' = 'assets';
   let showConfirmDialog = false;
@@ -83,7 +101,7 @@
   let editorHistory = createEditorHistory(code);
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
-  let magnetEnabled = true;
+  let snapEnabled = false;
   let historyGestureBase: string | null = null;
 
   interface AnimationPresetDef {
@@ -263,6 +281,10 @@
   $: selectedClip = scene?.clips.find((clip) => clip.id === selectedElementId) ?? null;
   $: selectedAnimation =
     scene?.animations.find((animation) => animation.target === selectedElement?.id) ?? null;
+  $: keyframeDragDelta =
+    clipDrag?.kind === 'element' && clipDrag.id === selectedElementId
+      ? clipDrag.ghostStart - timelineRange(clipDrag.id).start
+      : 0;
   $: sourceElements = scene?.elements.filter((element) => !element.id.includes('__')) ?? [];
   $: allTimelineRows = packTimelineLanes(sourceElements, timelineRange);
   $: combinedTimelineRows = combinePersistentTrackRows(
@@ -290,6 +312,13 @@
   $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets);
   $: canvasWidth = scene?.canvas.width ?? 1920;
   $: canvasHeight = scene?.canvas.height ?? 1080;
+  $: aiProjectInfo = {
+    width: canvasWidth,
+    height: canvasHeight,
+    fps: scene?.canvas.fps ?? 60,
+    duration: totalDuration,
+    elementCount: sourceElements.length,
+  };
   $: canvasStyle = `width: ${Math.round(canvasWidth * zoom)}px; aspect-ratio: ${canvasWidth} / ${canvasHeight};`;
   $: timelineContentWidth = Math.max(820, 220 + totalDuration * 100 * timelineZoom);
 
@@ -422,12 +451,7 @@
   function play() {
     if (!scene) return;
     isPlaying = true;
-    if (audioUrl && audioElement) {
-      audioElement.currentTime = Math.min(currentTime, audioDuration || currentTime);
-      audioElement.play().catch((error) => {
-        console.warn('Audio playback failed (this is normal if no user interaction yet):', error.message);
-      });
-    }
+    resumeAudioAtCurrentTime();
 
     const fps = scene.canvas.fps;
     const frameTime = 1000 / fps;
@@ -439,9 +463,10 @@
       const delta = now - lastTime;
       if (delta >= frameTime) {
         if (audioUrl && audioElement && !audioElement.paused && !audioElement.ended) {
-          currentTime = quantizeTimelineTime(audioElement.currentTime);
+          currentTime = quantizeTimelineTime((scene?.audioStart ?? 0) + audioElement.currentTime);
         } else {
           currentTime = quantizeTimelineTime(currentTime + delta / 1000);
+          resumeAudioAtCurrentTime();
         }
         
         if (currentTime >= totalDuration) {
@@ -627,6 +652,7 @@
     ast.body.splice(insertAt < 0 ? ast.body.length : insertAt, 0, {
       type: 'Audio',
       path: dataUrl,
+      properties: {},
     });
     audioInput.value = '';
     code = serializeProgram(ast);
@@ -761,7 +787,22 @@
 
   function syncAudio() {
     if (!audioUrl || !audioElement) return;
-    audioElement.currentTime = Math.min(currentTime, audioDuration || currentTime);
+    audioElement.currentTime = Math.min(
+      Math.max(0, currentTime - (scene?.audioStart ?? 0)),
+      audioDuration || currentTime
+    );
+  }
+
+  function resumeAudioAtCurrentTime() {
+    if (!audioUrl || !audioElement || !scene) return;
+    const localTime = currentTime - scene.audioStart;
+    if (localTime < 0 || localTime >= (audioDuration || Number.POSITIVE_INFINITY)) return;
+    syncAudio();
+    if (audioElement.paused) {
+      audioElement.play().catch((error) => {
+        console.warn('Audio playback failed (this is normal if no user interaction yet):', error.message);
+      });
+    }
   }
 
   function numericProperty(element: Element | EvaluatedElement | null, key: string, fallback: number): number {
@@ -1057,45 +1098,6 @@
     dropTargetTrack = track && !Number.isNaN(Number(track)) ? Number(track) : (track || 1);
   }
 
-  function timelineAllocationItems(excludeClipId = '', excludeElementId = '') {
-    const clipItems = (scene?.clips ?? [])
-      .filter((clip) => clip.id !== excludeClipId)
-      .map((clip) => ({
-        trackId: String(clip.track),
-        content: clip.asset?.type === 'video' ? 'video' as const : 'image' as const,
-        start: clip.start,
-        end: clip.start + clip.duration,
-      }));
-    const elementItems = allTimelineRows.flatMap((row) =>
-      row.items.filter((item) => item.element.id !== excludeElementId).map((item) => ({
-        trackId: row.trackId,
-        content: row.kind === 'text' ? 'text' as const : row.kind === 'effect' || row.kind === 'overlay' ? 'effect' as const : item.element.asset?.type === 'video' ? 'video' as const : 'image' as const,
-        start: item.range.start,
-        end: item.range.end,
-      }))
-    );
-    return [...clipItems, ...elementItems];
-  }
-
-  function resolveOverlayPlacement(
-    preferred: Track,
-    content: 'video' | 'image' | 'text' | 'effect',
-    start: number,
-    end: number,
-    excludeClipId = '',
-    excludeElementId = ''
-  ): Track {
-    if (preferred.role !== 'overlay') return preferred;
-    const items = timelineAllocationItems(excludeClipId, excludeElementId);
-    const preferredIsFree = items
-      .filter((item) => item.trackId === preferred.id)
-      .every((item) => item.end <= start || item.start >= end);
-    if (preferredIsFree) return preferred;
-    const allocation = allocateOverlayTrack(scene?.tracks ?? [], items, content, start, end);
-    if (allocation.created) trackNodeFor(allocation.track);
-    return allocation.track;
-  }
-
   function handleTimelineDrop(event: DragEvent) {
     event.preventDefault();
     if (!draggingAsset || !ast || dropTargetTime === null) return;
@@ -1110,23 +1112,12 @@
     const duration = Math.min(naturalDuration, Math.max(frame, totalDuration - dropTargetTime));
     const start = Math.min(dropTargetTime, Math.max(0, totalDuration - duration));
     const targetId = String(dropTargetTrack || defaultMainTrack);
-    const requestedTrack = scene?.tracks.find((track) => track.id === targetId);
-    const content = draggingAsset.asset?.type === 'video' ? 'video' : 'image';
-    if (!requestedTrack || !isTrackCompatible(requestedTrack, content)) {
-      assetError = `This ${content} cannot be placed on ${requestedTrack?.label ?? 'that track'}.`;
-      return;
-    }
-    const targetTrack = resolveOverlayPlacement(
-      requestedTrack,
-      content,
-      start,
-      start + duration
-    );
+    const targetTrack = ensureLayerTrack(targetId);
     const clipNode: ClipNode = {
       type: 'Clip',
       assetName,
       properties: {
-        track: targetId,
+        track: targetTrack.id,
         start: `${start.toFixed(3)}s`,
         duration: `${duration.toFixed(3)}s`,
         trimIn: '0s',
@@ -1140,7 +1131,7 @@
         id: newId,
         assetName,
         asset: draggingAsset.asset,
-        track: targetId,
+        track: targetTrack.id,
         start,
         duration,
         trimIn: 0,
@@ -1154,9 +1145,7 @@
         newId,
         targetTrack,
         start,
-        totalDuration,
-        magnetEnabled,
-        [...scene.tracks, ...(scene.tracks.some((track) => track.id === targetTrack.id) ? [] : [targetTrack])]
+        totalDuration
       );
       if (next) {
         writeClipLayout(next, false);
@@ -1200,7 +1189,7 @@
     const node = clipNodeAt(scene.clips.findIndex((clip) => clip.id === clipId));
     if (!node) return;
     detachClipTransitions(clipId);
-    const next = removeClipFromTracks(scene.clips, clipId, scene.tracks, magnetEnabled);
+    const next = removeClipFromTracks(scene.clips, clipId);
     writeClipLayout(next, false);
     ast.body.splice(ast.body.indexOf(node), 1);
     if (selectedElementId === clipId) selectedElementId = '';
@@ -1267,6 +1256,40 @@
     return node;
   }
 
+  function ensureLayerTrack(trackId: string): Track {
+    const existing = scene?.tracks.find((track) => track.id === trackId);
+    if (existing?.declared) return existing;
+    const elementRow = allTimelineRows.findIndex((row) => row.trackId === trackId);
+    const track: Track = {
+      id: trackId,
+      label: existing?.label ?? `Layer ${trackId.replace(/^legacy-/, '')}`,
+      role: existing?.role ?? 'overlay',
+      content: existing?.content ?? 'mixed',
+      hidden: existing?.hidden ?? false,
+      muted: existing?.muted ?? false,
+      order: elementRow < 0
+        ? (existing?.order ?? Math.max(0, ...(scene?.tracks.map((item) => item.order) ?? [])) + 1)
+        : 9000 + elementRow,
+      declared: true,
+    };
+    trackNodeFor(track);
+    return track;
+  }
+
+  function materializeTimelineLayers() {
+    if (!ast) return;
+    for (const row of allTimelineRows) {
+      const track = ensureLayerTrack(row.trackId);
+      for (const item of row.items) {
+        const node = ast.body.find(
+          (candidate): candidate is ElementNode =>
+            candidate.type === 'Element' && candidate.name === item.element.id
+        );
+        if (node) node.properties = { ...node.properties, track: track.id };
+      }
+    }
+  }
+
   function updateTrack(track: Track, updates: { hidden?: boolean; muted?: boolean }) {
     const node = trackNodeFor(track);
     if (!node || !ast) return;
@@ -1290,28 +1313,13 @@
 
   function moveSelectedClipFromInspector(trackId: string, requestedStart: number) {
     if (!scene || !selectedClip) return;
-    const requestedTrack = scene.tracks.find((track) => track.id === trackId);
-    if (!requestedTrack) return;
-    const content = selectedClip.asset?.type === 'video' ? 'video' : 'image';
-    if (!isTrackCompatible(requestedTrack, content)) return;
-    const targetTrack = resolveOverlayPlacement(
-      requestedTrack,
-      content,
-      requestedStart,
-      requestedStart + selectedClip.duration,
-      selectedClip.id
-    );
-    const allTracks = scene.tracks.some((track) => track.id === targetTrack.id)
-      ? scene.tracks
-      : [...scene.tracks, targetTrack];
+    const targetTrack = ensureLayerTrack(trackId);
     const next = moveClipToTrack(
       scene.clips,
       selectedClip.id,
       targetTrack,
       requestedStart,
-      totalDuration,
-      magnetEnabled,
-      allTracks
+      totalDuration
     );
     if (next) writeClipLayout(next);
   }
@@ -1324,9 +1332,7 @@
       selectedClip.id,
       'end',
       requestedEnd,
-      scene.tracks,
-      1 / scene.canvas.fps,
-      magnetEnabled
+      1 / scene.canvas.fps
     );
     writeClipLayout(next);
   }
@@ -1422,58 +1428,133 @@
     code = serializeProgram(ast);
   }
 
+  function timelineLaneRect(trackId: string): DOMRect | null {
+    const lane = document.querySelector<HTMLElement>(
+      `.track-lane[data-track="${CSS.escape(trackId)}"]`
+    );
+    return lane?.getBoundingClientRect() ?? null;
+  }
+
+  function laneTrackAtPoint(clientX: number, clientY: number): string | null {
+    const hit = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    return hit?.closest<HTMLElement>('.track-lane[data-track]')?.dataset['track'] ?? null;
+  }
+
+  function updateClipDrag(pointer: PointerEvent) {
+    if (!clipDrag || !scene) return;
+    if (
+      Math.abs(pointer.clientX - clipDrag.startClientX) > 3 ||
+      Math.abs(pointer.clientY - clipDrag.startClientY) > 3
+    ) clipDrag.moved = true;
+    const targetTrackId = clipDrag.kind === 'audio'
+      ? clipDrag.originTrackId
+      : laneTrackAtPoint(pointer.clientX, pointer.clientY) ?? clipDrag.originTrackId;
+    const rect = timelineLaneRect(targetTrackId);
+    if (!rect) return;
+    const pointerTime = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
+    const rawStart = Math.min(
+      totalDuration,
+      Math.max(0, snapTimelineTime(pointerTime - clipDrag.grabOffset, rect.width, clipDrag.id))
+    );
+    clipDrag = { ...clipDrag, ghostStart: rawStart, ghostTrackId: targetTrackId, valid: true };
+  }
+
   function moveTimelineClip(event: PointerEvent, clip: Clip) {
     if (event.button !== 0 || !scene) return;
     event.preventDefault();
     event.stopPropagation();
     selectElement(clip.id, false);
-    const originLane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.track-lane');
-    if (!originLane) return;
-    beginHistoryGesture();
-    detachClipTransitions(clip.id);
-    const originRect = originLane.getBoundingClientRect();
-    const grabTime = ((event.clientX - originRect.left) / originRect.width) * totalDuration;
-    const grabOffset = grabTime - clip.start;
-    const move = (pointer: PointerEvent) => {
-      if (!scene) return;
-      const hit = document.elementFromPoint(pointer.clientX, pointer.clientY) as HTMLElement | null;
-      const lane = hit?.closest<HTMLElement>('.track-lane[data-track]') ?? originLane;
-      const trackId = lane.dataset['track'] ?? String(clip.track);
-      const requestedTrack = scene.tracks.find((track) => track.id === trackId);
-      if (!requestedTrack) return;
-      const rect = lane.getBoundingClientRect();
-      const pointerTime = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-      const requested = snapTimelineTime(pointerTime - grabOffset, rect.width, clip.id);
-      const content = clip.asset?.type === 'video' ? 'video' : 'image';
-      if (!isTrackCompatible(requestedTrack, content)) return;
-      const targetTrack = resolveOverlayPlacement(
-        requestedTrack,
-        content,
-        requested,
-        requested + clip.duration,
-        clip.id
-      );
-      const allTracks = scene.tracks.some((track) => track.id === targetTrack.id)
-        ? scene.tracks
-        : [...scene.tracks, targetTrack];
-      const next = moveClipToTrack(
-        scene.clips,
-        clip.id,
-        targetTrack,
-        requested,
-        totalDuration,
-        magnetEnabled,
-        allTracks
-      );
-      if (next) writeClipLayout(next);
+    const rect = timelineLaneRect(String(clip.track));
+    if (!rect) return;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    clipDrag = {
+      id: clip.id,
+      kind: 'clip',
+      duration: clip.duration,
+      grabOffset: grabTime - clip.start,
+      originTrackId: String(clip.track),
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      ghostStart: clip.start,
+      ghostTrackId: String(clip.track),
+      valid: true,
+      moved: false,
     };
-    const stop = () => {
-      endHistoryGesture();
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      /* pointer capture is best-effort */
+    }
+    const move = (pointer: PointerEvent) => updateClipDrag(pointer);
+    const stop = (pointer: PointerEvent) => {
+      updateClipDrag(pointer);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      commitClipDrag();
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  }
+
+  function commitClipDrag() {
+    const drag = clipDrag;
+    clipDrag = null;
+    if (!drag || !scene || !drag.moved || !drag.valid) return;
+    if (drag.kind === 'audio') {
+      const node = ast?.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
+      if (!node || !ast) return;
+      node.properties = { ...node.properties, start: `${drag.ghostStart.toFixed(3)}s` };
+      code = serializeProgram(ast);
+      return;
+    }
+    materializeTimelineLayers();
+    if (drag.kind === 'clip') {
+      const targetTrack = ensureLayerTrack(drag.ghostTrackId);
+      beginHistoryGesture();
+      detachClipTransitions(drag.id);
+      const next = moveClipToTrack(
+        scene.clips,
+        drag.id,
+        targetTrack,
+        drag.ghostStart,
+        totalDuration
+      );
+      if (next) writeClipLayout(next);
+      endHistoryGesture();
+      return;
+    }
+    commitElementDrag(
+      drag.id,
+      drag.ghostStart,
+      drag.ghostStart + drag.duration,
+      drag.ghostTrackId
+    );
+  }
+
+  function commitElementDrag(
+    id: string,
+    start: number,
+    end: number,
+    trackId: string
+  ) {
+    if (!ast || !scene) return;
+    const node = ast.body.find(
+      (item): item is ElementNode => item.type === 'Element' && item.name === id
+    );
+    if (!node) return;
+    const targetTrack = ensureLayerTrack(trackId);
+    beginHistoryGesture();
+    const previousStart = timelineRange(id).start;
+    if (selectedElement?.id === id) materializeSelectedAnimation();
+    moveElementClip(ast, id, start, end, previousStart, 1 / scene.canvas.fps);
+    node.properties = {
+      ...node.properties,
+      track: targetTrack.id,
+    };
+    code = serializeProgram(ast);
+    endHistoryGesture();
   }
 
   function moveTimelineElement(event: PointerEvent, element: Element) {
@@ -1484,69 +1565,81 @@
     const node = ast.body.find(
       (item): item is ElementNode => item.type === 'Element' && item.name === element.id
     );
-    const originLane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.track-lane');
-    if (!node || !originLane) return;
-    beginHistoryGesture();
+    if (!node) return;
     const range = timelineRange(element.id);
     const duration = range.end - range.start;
-    const content = element.kind === 'text'
-      ? 'text' as const
-      : element.kind === 'effect' || element.kind === 'overlay'
-        ? 'effect' as const
-        : element.asset?.type === 'video'
-          ? 'video' as const
-          : 'image' as const;
-    let originTrack = scene.tracks.find(
-      (track) => track.id === String(node.properties['track'] ?? '')
-    );
-    if (!originTrack) {
-      const allocation = allocateOverlayTrack(
-        scene.tracks,
-        timelineAllocationItems('', element.id),
-        content,
-        range.start,
-        range.end
-      );
-      originTrack = allocation.track;
-      if (allocation.created) trackNodeFor(originTrack);
-      node.properties = { ...node.properties, track: originTrack.id };
-    }
-    const rect = originLane.getBoundingClientRect();
-    const grabOffset = ((event.clientX - rect.left) / rect.width) * totalDuration - range.start;
-    const move = (pointer: PointerEvent) => {
-      if (!ast || !scene || !originTrack) return;
-      const hit = document.elementFromPoint(pointer.clientX, pointer.clientY) as HTMLElement | null;
-      const lane = hit?.closest<HTMLElement>('.track-lane[data-track]') ?? originLane;
-      const requestedTrack = scene.tracks.find(
-        (track) => track.id === (lane.dataset['track'] ?? originTrack!.id)
-      ) ?? originTrack;
-      if (requestedTrack.role !== 'overlay' || !isTrackCompatible(requestedTrack, content)) return;
-      const laneRect = lane.getBoundingClientRect();
-      const raw = ((pointer.clientX - laneRect.left) / laneRect.width) * totalDuration - grabOffset;
-      const start = Math.min(totalDuration - duration, snapTimelineTime(raw, laneRect.width, element.id));
-      const targetTrack = resolveOverlayPlacement(
-        requestedTrack,
-        content,
-        start,
-        start + duration,
-        '',
-        element.id
-      );
-      if (!scene.tracks.some((track) => track.id === targetTrack.id)) trackNodeFor(targetTrack);
-      node.properties = {
-        ...node.properties,
-        ...elementWindowProperties(node.properties, start, start + duration, 1 / scene.canvas.fps),
-        track: targetTrack.id,
-      };
-      code = serializeProgram(ast);
+    // Use the element's actual rendered lane as the drag origin. Never mutate
+    // the project here — that mid-gesture re-render would abort the drag.
+    const originLane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.track-lane[data-track]');
+    const originTrackId =
+      originLane?.dataset['track'] ??
+      String(node.properties['track'] ?? scene.tracks.find((track) => track.role === 'overlay')?.id ?? defaultMainTrack);
+    const rect = originLane?.getBoundingClientRect() ?? timelineLaneRect(originTrackId);
+    if (!rect) return;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    clipDrag = {
+      id: element.id,
+      kind: 'element',
+      duration,
+      grabOffset: grabTime - range.start,
+      originTrackId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      ghostStart: range.start,
+      ghostTrackId: originTrackId,
+      valid: true,
+      moved: false,
     };
-    const stop = () => {
-      endHistoryGesture();
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      /* pointer capture is best-effort */
+    }
+    const move = (pointer: PointerEvent) => updateClipDrag(pointer);
+    const stop = (pointer: PointerEvent) => {
+      updateClipDrag(pointer);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      commitClipDrag();
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  }
+
+  function moveTimelineAudio(event: PointerEvent) {
+    if (event.button !== 0 || !scene || !projectAudioTrack) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.track-lane[data-track]');
+    const rect = lane?.getBoundingClientRect();
+    if (!rect) return;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    clipDrag = {
+      id: '__audio__',
+      kind: 'audio',
+      duration: audioDuration || totalDuration,
+      grabOffset: grabTime - scene.audioStart,
+      originTrackId: projectAudioTrack.id,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      ghostStart: scene.audioStart,
+      ghostTrackId: projectAudioTrack.id,
+      valid: true,
+      moved: false,
+    };
+    const move = (pointer: PointerEvent) => updateClipDrag(pointer);
+    const stop = (pointer: PointerEvent) => {
+      updateClipDrag(pointer);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      commitClipDrag();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
   }
 
   function trimTimelineClip(event: PointerEvent, clip: Clip, edge: 'start' | 'end') {
@@ -1568,9 +1661,7 @@
         clip.id,
         edge,
         time,
-        scene.tracks,
-        minimum,
-        magnetEnabled
+        minimum
       );
       writeClipLayout(next);
     };
@@ -1641,7 +1732,7 @@
     const clamped = Math.max(0, Math.min(totalDuration, raw));
     const fps = scene?.canvas.fps ?? 60;
     const frameTime = Math.round(clamped * fps) / fps;
-    if (!magnetEnabled) return frameTime;
+    if (!snapEnabled) return frameTime;
     const candidates = [0, totalDuration, currentTime];
     for (const clip of scene?.clips ?? []) {
       if (clip.id === excludeClipId) continue;
@@ -1680,11 +1771,14 @@
     setTimelineZoom(timelineZoom * Math.exp(-event.deltaY * 0.002), event.clientX - rect.left);
   }
 
-  function timelineTrackDisplayOrder(track: Track | null | undefined): number {
-    if (!track) return 9000;
-    if (track.role === 'overlay') return 1000 - track.order;
-    if (track.role === 'main') return 10_000;
-    return 20_000 + track.order;
+  function timelineTrackDisplayOrder(
+    track: Track | null | undefined,
+    trackId: string
+  ): number {
+    if (track?.role === 'audio') return 1_000_000;
+    if (track) return track.order;
+    const elementRow = allTimelineRows.findIndex((row) => row.trackId === trackId);
+    return elementRow < 0 ? 9000 : 9000 + elementRow;
   }
 
   function timelineLaneLabel(row: TimelineLane): string {
@@ -1762,9 +1856,116 @@
     ) ?? null;
   }
 
-  function selectedKeyframeNodes(): KeyframeNode[] {
-    return selectedAnimationAst()?.keyframes ?? [];
+  // GSAP easing options offered per keyframe.
+  const KEYFRAME_EASINGS = [
+    { value: 'linear', label: 'Linear' },
+    { value: 'power1.in', label: 'Ease In' },
+    { value: 'power1.out', label: 'Ease Out' },
+    { value: 'power1.inOut', label: 'Ease In-Out' },
+    { value: 'power3.out', label: 'Smooth Out' },
+    { value: 'power3.inOut', label: 'Smooth In-Out' },
+    { value: 'back.out', label: 'Back Out' },
+    { value: 'elastic.out', label: 'Elastic Out' },
+  ] as const;
+
+  // Markers shown on the selected element's row. Explicit `animate` blocks show
+  // their real keyframes; preset-driven animations (animation/textAnimation)
+  // surface their compiled start/end (or keyframes) so every animated element
+  // shows editable keyframes.
+  function selectedKeyframeMarkers(): { offset: number; easing?: string }[] {
+    const node = selectedAnimationAst();
+    if (node?.keyframes?.length)
+      return node.keyframes.map((frame) => ({ offset: frame.offset, easing: frame.easing }));
+    if (node) {
+      const animated =
+        Object.keys(node.from ?? {}).length > 0 || Object.keys(node.to ?? {}).length > 0;
+      if (animated) return [{ offset: 0 }, { offset: 1 }];
+    }
+    // Preset-driven animation compiled into the scene graph.
+    if (selectedAnimation) {
+      if (selectedAnimation.keyframes?.length)
+        return selectedAnimation.keyframes.map((frame) => ({
+          offset: frame.offset,
+          easing: frame.easing,
+        }));
+      return [{ offset: 0 }, { offset: 1 }];
+    }
+    return [];
   }
+
+  /**
+   * Return an editable `animate` AST node for the selected element, converting a
+   * preset (animation/textAnimation) into explicit keyframes on first edit so
+   * timing and easing changes persist. Conversion is intentionally best-effort.
+   */
+  function materializeSelectedAnimation(): AnimationNode | null {
+    if (!ast || !selectedElement) return null;
+    const existing = selectedAnimationAst();
+    if (existing) return existing;
+    const compiled = selectedAnimation;
+    if (!compiled) return null;
+    const created: AnimationNode = {
+      type: 'Animation',
+      target: selectedElement.id,
+      from: { ...(compiled.from ?? {}) },
+      to: { ...(compiled.to ?? {}) },
+      keyframes: (compiled.keyframes ?? []).map((frame) => ({
+        offset: frame.offset,
+        properties: { ...frame.properties },
+        ...(frame.easing ? { easing: frame.easing } : {}),
+      })),
+      delay: compiled.delay ?? 0,
+      duration: compiled.duration ?? 1,
+      easing: compiled.easing ?? 'power3.out',
+    };
+    const elementNode = ast.body.find(
+      (candidate): candidate is ElementNode =>
+        candidate.type === 'Element' && candidate.name === selectedElement!.id
+    );
+    if (elementNode) {
+      const props = { ...elementNode.properties };
+      delete props['animation'];
+      delete props['textAnimation'];
+      elementNode.properties = props;
+    }
+    ast.body.push(created);
+    return created;
+  }
+
+  /** Convert a from/to animation into explicit keyframes so edits persist. */
+  function ensureSeededKeyframes(node: AnimationNode): void {
+    if (!node.keyframes?.length) node.keyframes = seedKeyframes(node.keyframes, node.from, node.to);
+  }
+
+  function keyframeEasingAt(offset: number | null): string {
+    if (offset === null) return '';
+    const frame = selectedAnimationAst()?.keyframes?.find(
+      (candidate) => Math.abs(candidate.offset - offset) < 1e-6
+    );
+    return frame?.easing ?? '';
+  }
+
+  function setSelectedKeyframeEasing(value: string) {
+    const node = materializeSelectedAnimation();
+    if (!ast || !node || selectedKeyframeOffset === null) return;
+    ensureSeededKeyframes(node);
+    node.keyframes = setKeyframeEasing(node.keyframes ?? [], selectedKeyframeOffset, value);
+    code = serializeProgram(ast);
+  }
+
+  function deleteKeyframeAt(event: Event, offset: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    const node = selectedAnimationAst();
+    if (!ast || !node?.keyframes?.length) return;
+    node.keyframes = removeKeyframe(node.keyframes, offset);
+    if (selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - offset) < 1e-6)
+      selectedKeyframeOffset = null;
+    code = serializeProgram(ast);
+  }
+
+  $: selectedKeyframeEasingValue =
+    code && selectedKeyframeOffset !== null ? keyframeEasingAt(selectedKeyframeOffset) : '';
 
   function keyframeTime(offset: number): number {
     return (selectedAnimation?.delay ?? 0) + offset * (selectedAnimation?.duration ?? 1);
@@ -1784,7 +1985,7 @@
 
   function addKeyframeAtPlayhead() {
     if (!ast || !selectedElement) return;
-    let node = selectedAnimationAst();
+    let node = materializeSelectedAnimation();
     if (!node) {
       const base = capturedKeyframeProperties();
       node = {
@@ -1835,7 +2036,15 @@
     event.stopPropagation();
     const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.track-lane');
     if (!lane) return;
+    // Materialize preset/from-to animations into real keyframes before editing.
+    const seedNode = materializeSelectedAnimation();
+    if (seedNode && !seedNode.keyframes?.length) {
+      ensureSeededKeyframes(seedNode);
+    }
+    code = serializeProgram(ast!);
     const rect = lane.getBoundingClientRect();
+    const animationDelay = selectedAnimation.delay;
+    const animationDuration = selectedAnimation.duration;
     let previousOffset = offset;
     selectedKeyframeOffset = offset;
     setTime(keyframeTime(offset));
@@ -1844,7 +2053,7 @@
       const snappedTime = snapTimelineTime(raw, rect.width);
       const nextOffset = Math.min(
         1,
-        Math.max(0, (snappedTime - selectedAnimation.delay) / Math.max(selectedAnimation.duration, 1e-6))
+        Math.max(0, (snappedTime - animationDelay) / Math.max(animationDuration, 1e-6))
       );
       const node = selectedAnimationAst();
       if (!node) return;
@@ -1856,9 +2065,11 @@
     const stop = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
   }
 
   function updateAnimationProperty(key: keyof AnimationNode, value: string | number) {
@@ -1871,15 +2082,6 @@
   function addTextElement() {
     if (!ast) return;
     const name = nextElementName('text');
-    const items = timelineAllocationItems();
-    const allocation = allocateOverlayTrack(
-      scene?.tracks ?? [],
-      items,
-      'text',
-      0,
-      totalDuration
-    );
-    if (allocation.created) trackNodeFor(allocation.track);
     ast.body.push({
       type: 'Element',
       kind: 'text',
@@ -1893,7 +2095,7 @@
         opacity: 1,
         start: '0s',
         duration: `${totalDuration.toFixed(3)}s`,
-        track: allocation.track.id,
+        track: defaultMainTrack,
       },
     });
     selectedElementId = name;
@@ -2051,6 +2253,24 @@
         title="Scenes"
       >
         <Layers3 size={20} />
+      </button>
+      <button 
+        type="button" 
+        class="nav-item" 
+        class:active={activeNavTab === 'ai'}
+        on:click={() => activeNavTab = 'ai'}
+        title="AI Config"
+      >
+        <Bot size={20} />
+      </button>
+      <button 
+        type="button" 
+        class="nav-item" 
+        class:active={activeNavTab === 'settings'}
+        on:click={() => activeNavTab = 'settings'}
+        title="Settings"
+      >
+        <Settings size={20} />
       </button>
     </nav>
 
@@ -2313,6 +2533,16 @@
             {/each}
           </div>
         </div>
+      {:else if activeNavTab === 'ai'}
+        <div class="panel-header">
+          <h3 class="panel-heading-title">AI Config</h3>
+        </div>
+        <AiConfigPanel assetList={assistantAssets} projectInfo={aiProjectInfo} />
+      {:else if activeNavTab === 'settings'}
+        <div class="panel-header">
+          <h3 class="panel-heading-title">Settings</h3>
+        </div>
+        <BrandConfigPanel assetList={assistantAssets} />
       {/if}
     </aside>
 
@@ -2633,6 +2863,21 @@
             <button type="button" class="icon-btn danger-btn" on:click={deleteSelectedKeyframe} title="Delete selected keyframe"><Trash2 size={14} /></button>
           {/if}
         </div>
+        {#if selectedKeyframeOffset !== null}
+          <div class="property-group">
+            <div class="property-label">Keyframe easing (into this keyframe)</div>
+            <select
+              class="text-input"
+              value={selectedKeyframeEasingValue}
+              on:change={(event) => setSelectedKeyframeEasing(event.currentTarget.value)}
+            >
+              <option value="">Animation default</option>
+              {#each KEYFRAME_EASINGS as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
 
         <div class="section-title">Animation</div>
         
@@ -2827,7 +3072,7 @@
         <button class="icon-btn" on:click={undoEditor} disabled={editorHistory.past.length === 0} title="Undo (Ctrl/Cmd+Z)"><Undo2 size={14} /></button>
         <button class="icon-btn" on:click={redoEditor} disabled={editorHistory.future.length === 0} title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={14} /></button>
         <button class="icon-btn" on:click={splitSelectedClip} disabled={!((selectedClip && currentTime > selectedClip.start && currentTime < selectedClip.start + selectedClip.duration) || (selectedElement && currentTime > timelineRange(selectedElement.id).start && currentTime < timelineRange(selectedElement.id).end))} title="Split selected clip at playhead"><Scissors size={14} /></button>
-        <button class="icon-btn" class:active={magnetEnabled} on:click={() => magnetEnabled = !magnetEnabled} title={magnetEnabled ? 'Disable timeline magnet' : 'Enable timeline magnet'}><Magnet size={15} /></button>
+        <button class="icon-btn" class:active={snapEnabled} on:click={() => snapEnabled = !snapEnabled} title={snapEnabled ? 'Disable edge snapping' : 'Enable edge snapping'}><Magnet size={15} /></button>
         <button on:click={() => setTimelineZoom(timelineZoom / 1.25)} class="icon-btn" title="Timeline zoom out"><Minus size={15} /></button>
         <span class="timeline-zoom-value">{Math.round(timelineZoom * 100)}%</span>
         <button on:click={() => setTimelineZoom(timelineZoom * 1.25)} class="icon-btn" title="Timeline zoom in"><Plus size={15} /></button>
@@ -2865,7 +3110,7 @@
         <div
           class="timeline-row"
           class:selected={row.items.some((item) => item.element.id === selectedElementId)}
-          style={`min-height: ${row.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(rowTrack)}`}
+          style={`min-height: ${row.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(rowTrack, row.trackId)}`}
         >
           <div class="track-label" class:track-hidden={rowTrack?.hidden}>
             <span class="track-thumb">
@@ -2889,7 +3134,15 @@
               <span class="track-time">{formatPreciseTime(row.start)} - {formatPreciseTime(row.end)}</span>
             {/if}
           </div>
-          <div class="track-lane" data-track={rowTrack?.id} style={`min-height: ${row.laneCount * 34 + 7}px`}>
+          <div class="track-lane" data-track={row.trackId} style={`min-height: ${row.laneCount * 34 + 7}px`}>
+            {#if clipDrag && clipDrag.ghostTrackId === row.trackId}
+              <span class="clip-ghost" class:invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}></span>
+              {#if clipDrag.kind === 'element' && clipDrag.id === selectedElementId && !row.items.some((item) => item.element.id === selectedElementId)}
+                {#each selectedKeyframeMarkers() as frame}
+                  <span class="keyframe-marker drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"></span>
+                {/each}
+              {/if}
+            {/if}
             {#each row.items as item}
               <span class="clip element-clip" class:selected-clip={item.element.id === selectedElementId} style={`left: ${timelinePercent(item.range.start)}%; width: ${Math.max(0.8, timelinePercent(item.range.end - item.range.start))}%; top: ${6 + item.lane * 34}px`}>
                 {#if item.element.kind === 'asset' && item.element.asset?.type === 'video'}
@@ -2909,18 +3162,29 @@
                 <button type="button" class="trim-handle trim-end" on:pointerdown={(event) => trimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}></button>
               </span>
             {/each}
-            {#if row.items.some((item) => item.element.id === selectedElementId)}
-              {#each selectedKeyframeNodes() as frame}
+            {#if row.items.some((item) => item.element.id === selectedElementId) && !(clipDrag?.kind === 'element' && clipDrag.id === selectedElementId && clipDrag.ghostTrackId !== row.trackId)}
+              {@const kfLane = row.items.find((item) => item.element.id === selectedElementId)?.lane ?? 0}
+              {#each selectedKeyframeMarkers() as frame}
                 <button
                   type="button"
                   class="keyframe-marker"
                   class:selected-keyframe={selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - frame.offset) < 0.000001}
-                  style={`left: ${timelinePercent(keyframeTime(frame.offset))}%; top: ${6 + (row.items.find((item) => item.element.id === selectedElementId)?.lane ?? 0) * 34 + 13.5}px`}
-                  title={`Keyframe ${Math.round(frame.offset * 100)}%`}
+                  style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                  title={`Keyframe ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
                   aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}
                   on:pointerdown={(event) => dragKeyframeMarker(event, frame.offset)}
+                  on:contextmenu={(event) => deleteKeyframeAt(event, frame.offset)}
                 ></button>
               {/each}
+              <button
+                type="button"
+                class="keyframe-add"
+                style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                title="Add keyframe at playhead"
+                aria-label="Add keyframe at playhead"
+                on:pointerdown|stopPropagation
+                on:click|stopPropagation={addKeyframeAtPlayhead}
+              >+</button>
             {/if}
             <span class="playhead" style={`left: ${timelinePercent(currentTime)}%`}></span>
           </div>
@@ -2928,7 +3192,7 @@
       {/each}
 
       {#each timelineClipTracks as clipTrack}
-          <div class="timeline-row clip-row" class:selected={clipTrack.clips.some(({ clip }) => clip.id === selectedElementId) || clipTrack.elements.some(({ item }) => item.element.id === selectedElementId)} style={`min-height: ${clipTrack.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(clipTrack.metadata)}`}>
+          <div class="timeline-row clip-row" class:selected={clipTrack.clips.some(({ clip }) => clip.id === selectedElementId) || clipTrack.elements.some(({ item }) => item.element.id === selectedElementId)} style={`min-height: ${clipTrack.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(clipTrack.metadata, String(clipTrack.track))}`}>
             <div class="track-label" class:track-hidden={clipTrack.metadata?.hidden}>
               <span class="track-thumb">
                 {#if clipTrack.metadata?.role === 'audio'}
@@ -2961,9 +3225,18 @@
               {/if}
             </div>
             <div class="track-lane" data-track={clipTrack.track} style={`min-height: ${clipTrack.laneCount * 34 + 7}px`}>
+              {#if clipDrag && clipDrag.ghostTrackId === String(clipTrack.track)}
+                <span class="clip-ghost" class:invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}></span>
+                {#if clipDrag.kind === 'element' && clipDrag.id === selectedElementId && !clipTrack.elements.some(({ item }) => item.element.id === selectedElementId)}
+                  {#each selectedKeyframeMarkers() as frame}
+                    <span class="keyframe-marker drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"></span>
+                  {/each}
+                {/if}
+              {/if}
               {#if clipTrack.metadata?.id === projectAudioTrack?.id && audioName}
-                <span class="clip audio-clip" style={`left: 0%; width: ${timelinePercent(Math.min(audioDuration || totalDuration, totalDuration))}%; top: 6px`}>
+                <span class="clip audio-clip" style={`left: ${timelinePercent(scene?.audioStart ?? 0)}%; width: ${timelinePercent(Math.min(audioDuration || totalDuration, Math.max(0, totalDuration - (scene?.audioStart ?? 0))))}%; top: 6px`}>
                   <span class="clip-text">{audioName}</span>
+                  <button type="button" class="clip-select" on:pointerdown={moveTimelineAudio} aria-label={`Move audio ${audioName}`}></button>
                 </span>
               {/if}
               {#each clipTrack.elements as packedElement}
@@ -2985,6 +3258,30 @@
                   <button type="button" class="trim-handle trim-end" on:pointerdown={(event) => trimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}></button>
                 </span>
               {/each}
+              {#if clipTrack.elements.some(({ item }) => item.element.id === selectedElementId) && !(clipDrag?.kind === 'element' && clipDrag.id === selectedElementId && clipDrag.ghostTrackId !== String(clipTrack.track))}
+                {@const kfLane = clipTrack.elements.find(({ item }) => item.element.id === selectedElementId)?.lane ?? 0}
+                {#each selectedKeyframeMarkers() as frame}
+                  <button
+                    type="button"
+                    class="keyframe-marker"
+                    class:selected-keyframe={selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - frame.offset) < 0.000001}
+                    style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                    title={`Keyframe ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
+                    aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}
+                    on:pointerdown={(event) => dragKeyframeMarker(event, frame.offset)}
+                    on:contextmenu={(event) => deleteKeyframeAt(event, frame.offset)}
+                  ></button>
+                {/each}
+                <button
+                  type="button"
+                  class="keyframe-add"
+                  style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                  title="Add keyframe at playhead"
+                  aria-label="Add keyframe at playhead"
+                  on:pointerdown|stopPropagation
+                  on:click|stopPropagation={addKeyframeAtPlayhead}
+                >+</button>
+              {/if}
               {#each clipTrack.clips as packedClip}
                 {@const clip = packedClip.clip}
                 <span class="clip timeline-clip" class:selected-clip={clip.id === selectedElementId} style={`left: ${timelinePercent(clip.start)}%; width: ${Math.max(0.8, timelinePercent(clip.duration))}%; top: ${6 + packedClip.lane * 34}px`}>
@@ -4900,7 +5197,24 @@
     border: 0;
     border-radius: 2px;
     background: transparent;
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
+  }
+  .clip-select:active { cursor: grabbing; }
+
+  .clip-ghost {
+    position: absolute;
+    z-index: 3;
+    top: 6px;
+    height: 27px;
+    border: 1px dashed #7cf7c5;
+    border-radius: 3px;
+    background: rgba(124, 247, 197, 0.14);
+    pointer-events: none;
+  }
+  .clip-ghost.invalid {
+    border-color: #ff6b74;
+    background: rgba(255, 107, 116, 0.14);
   }
 
   .trim-handle {
@@ -4908,12 +5222,13 @@
     z-index: 2;
     top: -2px;
     bottom: -2px;
-    width: 8px;
+    width: min(8px, 30%);
     padding: 0;
     border: 0;
     border-radius: 2px;
     background: #c7d0d9;
     opacity: 0;
+    pointer-events: none;
     cursor: ew-resize;
   }
 
@@ -4929,6 +5244,7 @@
   .timeline-row.selected .trim-handle,
   .trim-handle:focus-visible {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .element-clip.selected-clip {
@@ -4968,6 +5284,7 @@
     box-shadow: 0 0 0 1px rgba(244, 184, 96, 0.22);
     transform: translate(-50%, -50%) rotate(45deg);
     cursor: ew-resize;
+    touch-action: none;
   }
 
   .keyframe-marker:hover,
@@ -4975,6 +5292,33 @@
     background: #fff1c9;
     box-shadow: 0 0 0 2px #f4b860;
   }
+
+  .drag-keyframe { pointer-events: none; }
+
+  .keyframe-add {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid #2f6d59;
+    border-radius: 50%;
+    background: #17362d;
+    color: #b8ffe4;
+    font-size: 12px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    opacity: 0;
+  }
+  .timeline-row:hover .keyframe-add,
+  .timeline-row.selected .keyframe-add {
+    opacity: 1;
+  }
+  .keyframe-add:hover { background: #1d4538; }
 
   .keyframe-controls {
     display: flex;

@@ -5,13 +5,23 @@ description: Install and run Motionly locally.
 
 # Installation
 
+## Quickest Start (no clone)
+
+Run the built editor instantly with npx:
+
+```bash
+npx motionly
+```
+
+This serves the editor at `http://localhost:4173` and opens your browser. Use `--port <n>` to pick a port or `--no-open` to skip launching the browser.
+
 ## Requirements
 
 - Node.js `20.19.0` or newer
 - npm
 - A modern Chromium-based browser for best MP4 export support
 
-## Install
+## Install From Source
 
 ```bash
 git clone https://github.com/COPPSARY/Motionly.git
@@ -32,6 +42,14 @@ Open the local Vite URL in your browser.
 ```bash
 npm run build
 ```
+
+## Serve The Production Build
+
+```bash
+npm run serve
+```
+
+This runs the same launcher `npx motionly` uses against your local `dist/`.
 
 ## Test
 

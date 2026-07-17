@@ -31,7 +31,7 @@ export function moveClip(
   timelineDuration = Number.POSITIVE_INFINITY
 ): ClipTiming {
   const clip = normalized(input);
-  const latest = Math.max(0, finite(timelineDuration, Number.POSITIVE_INFINITY) - clip.duration);
+  const latest = Math.max(0, finite(timelineDuration, Number.POSITIVE_INFINITY));
   const start = Math.min(latest, Math.max(0, finite(requestedStart, clip.start)));
   return { ...clip, start };
 }

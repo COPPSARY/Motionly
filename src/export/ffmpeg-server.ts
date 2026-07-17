@@ -14,8 +14,9 @@ interface ExportJob {
   fps: number;
   duration: number;
   totalFrames: number;
-  nextFrame: number;
+  receivedFrames: Set<number>;
   hasAudio: boolean;
+  audioStart: number;
   audioReceived: boolean;
 }
 
@@ -59,7 +60,6 @@ async function handleExportRequest(
     await createJob(request, response);
     return;
   }
-
   const match = /^\/api\/exports\/([a-z0-9-]+)(?:\/(frames\/(\d+)|audio|finish))?$/.exec(
     url.pathname
   );
@@ -79,18 +79,19 @@ async function handleExportRequest(
 
   if (request.method === 'PUT' && action?.startsWith('frames/')) {
     const index = Number(match[3]);
-    if (index !== job.nextFrame || index >= job.totalFrames) {
-      return respond(response, 409, `Expected frame ${job.nextFrame}, received ${index}`);
+    if (!Number.isInteger(index) || index < 0 || index >= job.totalFrames) {
+      return respond(response, 409, `Invalid frame ${index}`);
     }
-    if (request.headers['content-type'] !== 'image/png') {
-      return respond(response, 415, 'Export frames must be PNG images');
+    if (job.receivedFrames.has(index)) return respond(response, 409, `Duplicate frame ${index}`);
+    if (request.headers['content-type'] !== 'image/jpeg') {
+      return respond(response, 415, 'Export frames must be JPEG images');
     }
     await writeRequest(
       request,
-      join(job.directory, `frame-${String(index).padStart(8, '0')}.png`),
+      join(job.directory, `frame-${String(index).padStart(8, '0')}.jpg`),
       MAX_FRAME_BYTES
     );
-    job.nextFrame += 1;
+    job.receivedFrames.add(index);
     respond(response, 204);
     return;
   }
@@ -104,8 +105,12 @@ async function handleExportRequest(
   }
 
   if (request.method === 'POST' && action === 'finish') {
-    if (job.nextFrame !== job.totalFrames) {
-      return respond(response, 409, `Missing export frame ${job.nextFrame}`);
+    if (job.receivedFrames.size !== job.totalFrames) {
+      return respond(
+        response,
+        409,
+        `Missing ${job.totalFrames - job.receivedFrames.size} export frames`
+      );
     }
     if (job.hasAudio && !job.audioReceived) {
       return respond(response, 409, 'The attached audio file was not uploaded');
@@ -125,12 +130,14 @@ async function createJob(request: IncomingMessage, response: ServerResponse): Pr
     duration?: unknown;
     totalFrames?: unknown;
     hasAudio?: unknown;
+    audioStart?: unknown;
   };
   positiveInteger(input.width, 'width', 8192);
   positiveInteger(input.height, 'height', 8192);
   const fps = positiveNumber(input.fps, 'fps', 240);
   const duration = positiveNumber(input.duration, 'duration', 24 * 60 * 60);
   const totalFrames = positiveInteger(input.totalFrames, 'totalFrames', 24 * 60 * 60 * 240);
+  const audioStart = nonNegativeNumber(input.audioStart ?? 0, 'audioStart', duration);
   const expectedFrames = Math.max(1, Math.ceil(duration * fps));
   if (totalFrames !== expectedFrames) throw new Error(`Expected ${expectedFrames} frames`);
   const id = randomUUID();
@@ -140,8 +147,9 @@ async function createJob(request: IncomingMessage, response: ServerResponse): Pr
     fps,
     duration,
     totalFrames,
-    nextFrame: 0,
+    receivedFrames: new Set(),
     hasAudio: input.hasAudio === true,
+    audioStart,
     audioReceived: false,
   });
   response.statusCode = 201;
@@ -151,7 +159,7 @@ async function createJob(request: IncomingMessage, response: ServerResponse): Pr
 
 async function finishJob(id: string, job: ExportJob, response: ServerResponse): Promise<void> {
   const outputPath = join(job.directory, 'motionly.mp4');
-  const framePattern = join(job.directory, 'frame-%08d.png');
+  const framePattern = join(job.directory, 'frame-%08d.jpg');
   const args = [
     '-hide_banner',
     '-loglevel',
@@ -164,7 +172,9 @@ async function finishJob(id: string, job: ExportJob, response: ServerResponse): 
     '-i',
     framePattern,
   ];
-  if (job.hasAudio) args.push('-i', join(job.directory, 'audio-input'));
+  if (job.hasAudio) {
+    args.push('-itsoffset', String(job.audioStart), '-i', join(job.directory, 'audio-input'));
+  }
   args.push('-map', '0:v:0');
   if (job.hasAudio) args.push('-map', '1:a:0', '-c:a', 'aac', '-b:a', '192k');
   args.push(
@@ -261,6 +271,13 @@ function positiveInteger(value: unknown, name: string, max: number): number {
 
 function positiveNumber(value: unknown, name: string, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > max) {
+    throw new Error(`Invalid export ${name}`);
+  }
+  return value;
+}
+
+function nonNegativeNumber(value: unknown, name: string, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) {
     throw new Error(`Invalid export ${name}`);
   }
   return value;

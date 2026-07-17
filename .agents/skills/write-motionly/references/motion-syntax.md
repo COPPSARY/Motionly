@@ -71,14 +71,16 @@ Layer order: `background`, `hero`, `supporting`, `content`, `details`, `text`, `
 ## Audio
 
 ```motion
-audio "/assets/my-project/background.mp3"
+audio "/assets/my-project/background.mp3" {
+  start 0s
+}
 ```
 
-Audio files persist in `.motion` format and play during preview. Audio is not yet included in MP4 export.
+Audio persists in `.motion`, plays during preview, and is included in MP4 export. It remains on the bottom audio track. Dragging it horizontally updates `start`; it does not move onto visual layers.
 
 ## Timeline Clips
 
-Tracks are stable, persisted timeline rows. Use one `main` track for the gap-free primary sequence, compatible `overlay` tracks above it, and separate `audio` tracks:
+Tracks are stable, persisted timeline rows. Visual tracks behave as simple layers: clips move freely in time, can overlap, and can be placed on any visual track without content compatibility rules. `role` and `content` remain serialized metadata for existing projects; they do not enable magnetic packing, ripple editing, or automatic allocation. Audio remains a bottom-only track.
 
 ```motion
 track main {
@@ -105,7 +107,7 @@ track music {
 }
 ```
 
-`hidden` suppresses a visual track without deleting it. `muted` disables track audio while retaining clip-level volume/mute. Higher overlay order renders above lower visual tracks. Existing projects with numeric clip tracks remain compatible and receive synthesized runtime roles until edited.
+`hidden` suppresses a visual track without deleting it. `muted` disables track audio while retaining clip-level volume/mute. `order` persists layer order. Existing projects with numeric or synthesized tracks remain compatible and receive explicit stable assignments when edited.
 
 ```motion
 import "/assets/my-project/video.mp4" as bgVideo
@@ -126,7 +128,7 @@ Timeline clips reference imported assets (images, SVGs, MP4, and WebM). They app
 Video limitations:
 
 - Codec support follows the current browser (typically H.264/AAC MP4 and VP8/VP9 WebM where available).
-- Video clip audio is currently muted; use the project `audio` track for exported sound.
+- Video clip audio is currently muted; use the project `audio` track for preview and exported sound.
 - Two simultaneous clips referencing the same imported video cannot display different source times yet; import the file under two aliases as a workaround.
 - Embedded video uploads increase `.motion` file size and are limited to 100 MB in the editor.
 

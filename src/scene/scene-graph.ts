@@ -141,6 +141,9 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     tracks,
     clips,
     audio: audioNode && 'path' in audioNode ? audioNode.path : undefined,
+    audioStart: audioNode
+      ? (normalizeProperty('start', audioNode.properties['start'] ?? 0) as number)
+      : 0,
   });
 
   validateElementMasks(scene.elements);
@@ -300,6 +303,7 @@ function normalizeAnimation(node: AnimationNode, sequences: Map<string, Sequence
     keyframes: (node.keyframes ?? []).map((frame): Keyframe => ({
       offset: frame.offset,
       properties: normalizeProperties(frame.properties),
+      ...(frame.easing ? { easing: String(frame.easing) } : {}),
     })),
     delay: (normalizeProperty('delay', node.delay ?? 0) as number) + sequenceDelay,
     duration: normalizeProperty('duration', node.duration ?? 1) as number,

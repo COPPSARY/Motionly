@@ -148,6 +148,31 @@ describe('AI chat helpers', () => {
     ).rejects.toThrow('The requested model is not available.');
   });
 
+  it('appends optional AI Config knowledge to the system context', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await requestAssistant(
+      { apiKey: 'sk-proj-test', provider: 'openai', baseUrl: '', model: '' },
+      [{ id: 'one', role: 'user', content: 'Draft it' }],
+      'canvas { duration 2s }',
+      [],
+      'Brand profile (BRAND.md):\nBrand:\nMotionly'
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(body.messages[0].content).toContain('Brand profile (BRAND.md):');
+    expect(body.messages[0].content).toContain('Motionly');
+  });
+
   it('routes Hugging Face tokens with an exact model override', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ choices: [{ message: { content: 'HF draft' } }] }), {

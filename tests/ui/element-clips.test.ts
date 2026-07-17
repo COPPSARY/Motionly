@@ -6,6 +6,7 @@ import { buildSceneGraph } from '../../src/scene/scene-graph';
 import {
   elementClipWindow,
   elementWindowProperties,
+  moveElementClip,
   splitElementClip,
 } from '../../src/ui/element-clips';
 
@@ -48,6 +49,25 @@ describe('regular element clip timing', () => {
     expect(
       reparsed.body.filter((node) => node.type === 'Animation').map((node) => node.target)
     ).toEqual(['title', 'title_split']);
+  });
+
+  it('moves an element window and its keyframes together', () => {
+    const program = parseMotion(`
+      text title { value "Hello" start 1s duration 3s }
+      animate title {
+        keyframes {
+          0% { opacity 0 }
+          100% { opacity 1 }
+        }
+        delay 1.5s
+        duration 2s
+      }
+    `);
+    expect(moveElementClip(program, 'title', 4, 7, 1)).toBe(true);
+    const scene = buildSceneGraph(parseMotion(serializeProgram(program)));
+    expect(scene.elements[0]?.properties).toMatchObject({ start: 4, duration: 3 });
+    expect(scene.animations[0]).toMatchObject({ delay: 4.5, duration: 2 });
+    expect(scene.animations[0]?.keyframes.map((frame) => frame.offset)).toEqual([0, 1]);
   });
 
   it('creates a second import alias and evaluator respects both visibility windows', () => {

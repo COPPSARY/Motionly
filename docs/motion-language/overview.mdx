@@ -85,10 +85,12 @@ Use `easing`, not `ease`.
 ## Audio
 
 ```motion
-audio "/assets/my-project/background.mp3"
+audio "/assets/my-project/background.mp3" {
+  start 0s
+}
 ```
 
-Audio files persist in `.motion` format and play during preview.
+Audio files persist in `.motion`, play during preview, remain on the bottom track, and export with MP4. Dragging audio horizontally updates `start`.
 
 ## Timeline Tracks and Clips
 
@@ -126,7 +128,7 @@ text title {
 }
 ```
 
-Track roles are `main`, `overlay`, and `audio`. Track content records its purpose (`primary`, `video`, `image`, `text`, `effect`, or `audio`). `hidden` suppresses visual tracks and `muted` disables track audio. `order` persists overlay stacking.
+Track roles are `main`, `overlay`, and `audio`. Track content records legacy/purpose metadata (`primary`, `video`, `image`, `text`, `effect`, or `audio`). Visual roles and content do not restrict editing: every visual track behaves as a simple layer, accepts any visual content, and allows gaps or overlaps. `hidden` suppresses a visual track, `muted` disables track audio, and `order` persists layer stacking. Audio remains bottom-only.
 
 Media clips use `start`, `duration`, `trimIn`, and `trimOut`. Regular text/image/overlay/effect elements use `start` and `duration` as a non-destructive visibility window, so trimming and splitting do not rewrite authored animations. Existing numeric clip tracks remain backward compatible.
 

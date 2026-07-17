@@ -11,8 +11,8 @@ const clip: ClipTiming = { start: 2, duration: 4, trimIn: 1, trimOut: 2 };
 const sourceSpan = (value: ClipTiming) => value.trimIn + value.duration + value.trimOut;
 
 describe('clip timing edits', () => {
-  it('moves only the project range and clamps to the timeline', () => {
-    expect(moveClip(clip, 8, 10)).toEqual({ ...clip, start: 6 });
+  it('moves only the project range and allows the source to extend past the timeline', () => {
+    expect(moveClip(clip, 8, 10)).toEqual({ ...clip, start: 8 });
     expect(moveClip(clip, -2, 10)).toEqual({ ...clip, start: 0 });
   });
 

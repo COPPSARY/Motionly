@@ -250,6 +250,7 @@ export interface Scene {
   tracks: Track[];
   clips: Clip[];
   audio?: string; // Path to audio file
+  audioStart: number;
 }
 
 /**
@@ -277,6 +278,7 @@ export type PropertyMap = Record<string, AnimatableValue>;
 export interface Keyframe {
   offset: number;
   properties: PropertyMap;
+  easing?: string;
 }
 
 /**

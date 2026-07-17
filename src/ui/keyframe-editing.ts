@@ -34,12 +34,26 @@ export function upsertKeyframe(
     return sorted(
       frames.map((frame) =>
         frame === existing
-          ? { offset: nextOffset, properties: { ...frame.properties, ...properties } }
+          ? { ...frame, offset: nextOffset, properties: { ...frame.properties, ...properties } }
           : { ...frame, properties: { ...frame.properties } }
       )
     );
   }
   return sorted([...frames, { offset: nextOffset, properties: { ...properties } }]);
+}
+
+/** Set the easing that governs the transition into the keyframe at `offset`. */
+export function setKeyframeEasing(
+  frames: KeyframeNode[],
+  offset: number,
+  easing: string,
+  tolerance = 1e-6
+): KeyframeNode[] {
+  return frames.map((frame) =>
+    Math.abs(frame.offset - offset) <= tolerance
+      ? { ...frame, properties: { ...frame.properties }, easing: easing || undefined }
+      : { ...frame, properties: { ...frame.properties } }
+  );
 }
 
 export function moveKeyframe(

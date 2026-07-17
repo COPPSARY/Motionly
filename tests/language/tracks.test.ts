@@ -33,6 +33,24 @@ describe('persistent timeline tracks', () => {
     ]);
   });
 
+  it('round-trips an element layer assignment and edited timeline window', () => {
+    const source = `
+      track titles { role overlay content text }
+      text title {
+        value "Saved title"
+        track titles
+        start 1.25s
+        duration 3.5s
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(serializeProgram(parseMotion(source))));
+    expect(scene.elements[0]?.properties).toMatchObject({
+      track: 'titles',
+      start: 1.25,
+      duration: 3.5,
+    });
+  });
+
   it('preserves an asset alias named track and synthesizes legacy/default tracks', () => {
     const scene = buildSceneGraph(
       parseMotion(`
@@ -100,12 +118,18 @@ describe('project audio track binding', () => {
           content audio
           muted
         }
-        audio "/song.mp3"
+        audio "/song.mp3" {
+          start 1.5s
+        }
       `)
     );
     expect(scene.tracks.filter((track) => track.role === 'audio')).toMatchObject([
       { id: 'soundtrack', muted: true, declared: true },
     ]);
     expect(scene.tracks.some((track) => track.id === 'legacy-audio')).toBe(false);
+    expect(scene.audioStart).toBe(1.5);
+    expect(
+      buildSceneGraph(parseMotion(serializeProgram(parseMotion('audio "/legacy.mp3"')))).audioStart
+    ).toBe(0);
   });
 });

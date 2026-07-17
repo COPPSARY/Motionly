@@ -10,7 +10,7 @@
 import { evaluateScene } from '../animation/evaluator';
 import { GifEncoder } from './gif-encoder';
 import { CanvasRenderer } from '../render/canvas-renderer';
-import { synchronizeVideoAssets, type LoadedAsset } from '../assets/asset-loader';
+import { pauseVideoAssets, synchronizeVideoAssets, type LoadedAsset } from '../assets/asset-loader';
 import type { Scene, Animation, Element, Keyframe } from '../types/scene';
 import type { ExportFormat, ExportSupport } from '../types/export';
 
@@ -80,21 +80,35 @@ async function exportMp4Frames(options: {
       duration: scaledScene.canvas.duration,
       totalFrames,
       hasAudio: Boolean(audioUrl),
+      audioStart: scaledScene.audioStart,
     }),
   });
 
   try {
+    let uploads: Promise<void>[] = [];
+    let uploadedFrames = 0;
     for (let frame = 0; frame < totalFrames; frame += 1) {
-      renderer.render(evaluateScene(scaledScene, frame / fps), assets);
-      const image = await canvasToPng(canvas);
-      await request(`${EXPORT_API}/${job.id}/frames/${frame}`, {
-        method: 'PUT',
-        headers: { 'content-type': 'image/png' },
-        body: image,
-      });
-      onProgress?.(((frame + 1) / totalFrames) * 0.8);
+      const evaluated = evaluateScene(scaledScene, frame / fps);
+      await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
+      renderer.render(evaluated, assets);
+      const image = await canvasToJpeg(canvas);
+      uploads.push(
+        request(`${EXPORT_API}/${job.id}/frames/${frame}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'image/jpeg' },
+          body: image,
+        }).then(() => {
+          uploadedFrames += 1;
+          onProgress?.((uploadedFrames / totalFrames) * 0.8);
+        })
+      );
+      if (uploads.length === 4) {
+        await Promise.all(uploads);
+        uploads = [];
+      }
       if (frame % 4 === 0) await wait(0);
     }
+    await Promise.all(uploads);
 
     if (audioUrl) {
       const audioResponse = await fetch(audioUrl);
@@ -130,6 +144,7 @@ async function exportWebmRealtime(options: {
   onProgress?: (progress: number) => void;
 }): Promise<Blob> {
   const { scene, assets, height, fps, audioUrl, onProgress } = options;
+  const captureFps = Math.min(fps, 30);
   const mimeType = selectWebmMimeType();
   if (!mimeType) throw new Error('WEBM export is not supported by this browser');
 
@@ -139,11 +154,11 @@ async function exportWebmRealtime(options: {
   canvas.height = height;
   const renderer = new CanvasRenderer(canvas);
   const scaledScene = scaleScene(scene, width, height);
-  const stream = canvas.captureStream(fps);
-  const audio = audioUrl ? await attachAudio(stream, audioUrl) : null;
+  const stream = canvas.captureStream(captureFps);
+  const audio = audioUrl ? await attachAudio(stream, audioUrl, scaledScene.audioStart) : null;
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: bitrateFor(height, fps),
+    videoBitsPerSecond: bitrateFor(height, captureFps),
   });
   const chunks: Blob[] = [];
   recorder.ondataavailable = (event: BlobEvent) => {
@@ -155,20 +170,30 @@ async function exportWebmRealtime(options: {
       reject((event as ErrorEvent).error ?? new Error('WebM recording failed'));
   });
 
+  const firstFrame = evaluateScene(scaledScene, 0);
+  await synchronizeVideoAssets(firstFrame, assets, { playing: false, exact: true });
+  renderer.render(firstFrame, assets);
   recorder.start();
   audio?.start();
   try {
-    await renderTimelineRealtime({ renderer, scene: scaledScene, assets, fps, onProgress });
+    await renderTimelineRealtime({
+      renderer,
+      scene: scaledScene,
+      assets,
+      fps: captureFps,
+      onProgress,
+    });
     recorder.stop();
     return await finished;
   } finally {
     if (recorder.state !== 'inactive') recorder.stop();
     audio?.stop();
+    pauseVideoAssets(assets);
     stream.getTracks().forEach((track) => track.stop());
   }
 }
 
-async function attachAudio(stream: MediaStream, url: string) {
+async function attachAudio(stream: MediaStream, url: string, start: number) {
   const context = new AudioContext();
   try {
     await context.resume();
@@ -182,7 +207,7 @@ async function attachAudio(stream: MediaStream, url: string) {
     if (!track) throw new Error('Could not prepare the audio track');
     stream.addTrack(track);
     return {
-      start: () => source.start(),
+      start: () => source.start(context.currentTime + Math.max(0, start)),
       stop: () => {
         try {
           source.stop();
@@ -215,8 +240,8 @@ async function exportGif(options: {
   const encoder = new GifEncoder(width, height, 1000 / fps);
   const totalFrames = frameCount(scaledScene.canvas.duration, fps);
 
-  for (let frame = 0; frame <= totalFrames; frame += 1) {
-    const time = Math.min(scaledScene.canvas.duration, frame / fps);
+  for (let frame = 0; frame < totalFrames; frame += 1) {
+    const time = frame / fps;
     const evaluated = evaluateScene(scaledScene, time);
     await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
     renderer.render(evaluated, assets);
@@ -242,29 +267,39 @@ async function renderTimelineRealtime(options: {
   onProgress?: (progress: number) => void;
 }): Promise<void> {
   const { renderer, scene, assets, fps, onProgress } = options;
-  const totalFrames = frameCount(scene.canvas.duration, fps);
-  const frameDuration = 1000 / fps;
+  const startedAt = performance.now();
+  let previousFrame = -1;
 
-  for (let frame = 0; frame <= totalFrames; frame += 1) {
-    const time = Math.min(scene.canvas.duration, frame / fps);
+  while (true) {
+    await nextAnimationFrame();
+    const elapsed = Math.min(scene.canvas.duration, (performance.now() - startedAt) / 1000);
+    const frame = Math.min(frameCount(scene.canvas.duration, fps) - 1, Math.floor(elapsed * fps));
+    if (frame === previousFrame && elapsed < scene.canvas.duration) continue;
+    previousFrame = frame;
+    const time = Math.min(scene.canvas.duration, elapsed);
     const evaluated = evaluateScene(scene, time);
-    await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
+    await synchronizeVideoAssets(evaluated, assets, { playing: true });
     renderer.render(evaluated, assets);
-    onProgress?.((frame + 1) / totalFrames);
-    await wait(frameDuration);
+    onProgress?.(elapsed / scene.canvas.duration);
+    if (elapsed >= scene.canvas.duration) break;
   }
+  await nextAnimationFrame();
 }
 
 function frameCount(duration: number, fps: number): number {
   return Math.max(1, Math.ceil(duration * fps));
 }
 
-function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Could not capture an export frame'));
-    }, 'image/png');
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Could not capture an export frame'));
+      },
+      'image/jpeg',
+      0.95
+    );
   });
 }
 
@@ -343,4 +378,8 @@ function bitrateFor(height: number, fps: number): number {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }

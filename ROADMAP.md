@@ -41,11 +41,32 @@ Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap i
 - [x] Add and persist audio tracks in the project (audio blocks in .motion)
 - [x] Show media thumbnails on timeline clips
 - [x] Keep imported media references portable and explicit in `.motion` (clip blocks)
+- [x] Drag clips and layers to change start time and move between compatible tracks (ghost preview, snapping, invalid-drop rejection, mouse + touch)
+- [x] On-timeline keyframe markers with drag-to-retime, per-keyframe easing, add-at-playhead, and right-click delete
 - [ ] Show audio waveforms on timeline clips
-- [ ] Drag clips to change their start time
+- [ ] Retime preset-driven animations (delay/exit) when a preset element is dragged, instead of only its visibility window
 - [ ] Trim image, video, and audio duration from either edge
 - [ ] Set video in/out points and audio offsets
 - [ ] Add basic mute, volume, fit, fill, and crop controls for clips
+
+## Distribution: Run It Instantly
+
+- [x] Zero-config local launcher: `npx motionly` serves the built editor and opens the browser
+- [x] Ship the production build with the published package (`dist/` in `files`, build on publish)
+- [x] `--port` and `--no-open` flags with SPA fallback routing
+- [ ] Publish to npm under a stable package name and version scheme
+- [ ] Provide a one-line quickstart (`npx motionly`) in all docs and the site
+- [ ] Optional `npx motionly <project.motion>` to open a specific project on launch
+
+## UX And UI Polish
+
+- [ ] Continue accessibility (focus states, ARIA, keyboard) across timeline and panels
+- [ ] Responsive layout for smaller screens and narrow panels
+- [ ] Clearer drag/trim/keyframe affordances, cursors, and hover hints
+- [ ] Consistent empty states, loading states, and error banners
+- [ ] Onboarding hints for first-time users (assets, timeline, AI Config)
+- [ ] Streamline the left rail and panel information density
+- [ ] Reduce main bundle size via route/panel code-splitting
 
 ## Animation And Editing Quality
 
@@ -93,4 +114,4 @@ Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap i
 - Multi-user real-time collaboration
 - Training or hosting a proprietary Motionly model
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17

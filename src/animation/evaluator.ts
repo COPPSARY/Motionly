@@ -257,7 +257,8 @@ function applyKeyframes(
   }
 
   const span = right.offset - left.offset || 1;
-  const local = ease((progress - left.offset) / span, easing);
+  const segmentEasing = right.easing ?? easing;
+  const local = ease((progress - left.offset) / span, segmentEasing);
   const keys = new Set([...Object.keys(left.properties), ...Object.keys(right.properties)]);
 
   for (const key of keys) {

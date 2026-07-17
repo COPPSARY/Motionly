@@ -5,7 +5,7 @@
     </td>
     <td align="right">
       <h1>Motionly</h1>
-      <h3 style="margin-top: -10px;">AI-native motion graphics you can still direct.</h3>
+      <h3 style="margin-top: -10px;">AI-native motion graphics editor</h3>
     </td>
   </tr>
 </table>
@@ -60,8 +60,11 @@ The current focus is the core editing loop: reliable preview, direct manipulatio
 Current editor features:
 
 **Interface:**
-- Left navigation rail with icon-based navigation (Media, Audio, Text, Effects, Scenes, Adjustments, Settings)
+- Left navigation rail with icon-based navigation (Media, Audio, Text, Effects, Scenes, AI Config, Settings)
 - Organized Assets panel with folder structure showing audio and visual assets
+- Assets panel tabs: Assets and Presets
+- AI Config (rail): enabled skills and an AI context preview
+- Settings (rail): brand profile editor
 - Preset browser with animated GIF previews
 - Professional properties panel with custom sliders, styled inputs, and visual preset cards
 
@@ -79,9 +82,11 @@ Current editor features:
 
 **Timeline Editing:**
 - Persistent Main, Overlay, and Audio track roles saved through `.motion`
-- Gap-free magnetic Main Track with ripple reorder, delete, and trim behavior
-- Compatible overlay allocation: non-overlapping same-purpose clips reuse a track; overlaps stack on another track
-- Horizontal reordering and vertical drag between compatible tracks
+- Uniform visual layers with free gaps/overlaps and no ripple behavior
+- Horizontal timing changes stay on the current layer; vertical drag moves to any visual layer
+- Optional clip-edge/playhead snapping is off by default
+- Grab a clip's center to move it in time or across layers; a dashed ghost previews the persisted landing position (mouse and touch)
+- On-timeline GSAP keyframes: selecting an animated element shows draggable keyframe diamonds on its row with per-keyframe easing controls, add-at-playhead, and right-click delete; edits persist into `.motion`
 - Playhead-based Split for media, text, images, overlays, and effects
 - Timeline zoom controls plus `Ctrl/Cmd` wheel or trackpad pinch
 - Undo/Redo history and persistent track hide/mute controls
@@ -101,6 +106,7 @@ Current editor features:
 - BYOK Motionly Assistant that generates and loads editable `.motion` projects
 - OpenAI, Anthropic, OpenRouter, Google Gemini, Hugging Face, and custom OpenAI-compatible endpoints
 - Locally stored keys and model overrides
+- AI Config (rail) manages enabled skills fed to the assistant; Settings (rail) holds a brand profile (BRAND.md). Both become assistant knowledge.
 
 **Export:**
 - Browser-supported MP4 export with progress
@@ -204,7 +210,7 @@ Motionly includes a built-in AI Chat panel and repository guidance for external 
 
 Open Motionly Assistant beside Assets, enter your own provider key, and describe the animation you want. Motionly detects OpenAI, Anthropic, OpenRouter, Google Gemini, and Hugging Face keys, or accepts a custom OpenAI-compatible endpoint. You can leave the model blank for Motionly's default or enter an exact model ID. The key and chat history stay in browser storage; requests go directly from the browser to that provider, never through a Motionly server. The assistant receives the current project and imported asset list, returns a `.motion` draft, and exposes a **Load into Editor** action that validates the source through the normal parser and scene-graph pipeline.
 
-**Model quality matters.** The AI model you choose directly affects the quality of generated `.motion` projects. More capable models (like Claude 3.5 Sonnet, GPT-4, or equivalent) produce better composition, timing, and use of animation presets. Smaller or older models may generate valid syntax but produce less polished results. For best results, use a frontier model with strong code generation capabilities.
+**Model quality matters.** The AI model you choose directly affects composition, timing, and correct preset use. Smaller models may generate valid syntax but weaker visual decisions. Prefer a current, high-capability model with strong code-generation and instruction-following performance.
 
 For agents working inside the repository, use these files:
 
@@ -315,6 +321,16 @@ Known limitations:
 
 ## Run
 
+Quickest way to try the editor (no clone, serves the built app):
+
+```bash
+npx motionly
+```
+
+This opens the editor at `http://localhost:4173`. Use `--port <n>` to change the port or `--no-open` to skip launching the browser.
+
+For local development from source:
+
 ```bash
 npm install
 npm run dev
@@ -324,6 +340,13 @@ Open:
 
 ```text
 http://localhost:5173
+```
+
+To serve your own production build locally:
+
+```bash
+npm run build
+npm run serve
 ```
 
 ---

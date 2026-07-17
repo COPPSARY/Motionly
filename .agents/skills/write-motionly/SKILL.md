@@ -5,89 +5,141 @@ description: Create, edit, retime, review, and repair Motionly `.motion` project
 
 # Write Motionly
 
-Create a readable `.motion` project that previews correctly in Motionly and tells one coherent visual story.
+Create a readable `.motion` project that previews, edits, saves, reloads, and exports correctly in Motionly. The result is an editable project, not a black-box rendered video.
 
-Read [references/motion-syntax.md](references/motion-syntax.md) before writing syntax or choosing presets. Treat the repository's `AGENTS.md` and current parser/preset implementation as authoritative if they differ from this skill.
+Read [references/motion-syntax.md](references/motion-syntax.md) completely before writing syntax or choosing presets. Treat the repository's `AGENTS.md`, parser, evaluator, preset implementation, and serializer as authoritative when examples disagree.
+
+## Establish The Contract
+
+Before editing, determine:
+
+- whether this is a new project, a repair, or a refinement of existing user work
+- output path, canvas size/aspect ratio, FPS, and exact duration
+- audience, communication goal, and required call to action
+- exact copy that must remain verbatim
+- script, narration/audio path, timestamps, and required silent holds
+- brand colors, typography, logo rules, motion character, and prohibited treatments
+- required, optional, and missing assets
+
+Make reasonable defaults only when they do not change the story or destroy user work. Preserve unrelated existing source and assets.
 
 ## Workflow
 
-1. Inspect the request, existing `.motion` project, `AGENTS.md`, script, audio, and every relevant asset.
-2. Determine canvas size, frame rate, exact duration, output path, and whether spoken copy must appear verbatim.
-3. Storyboard distinct shots before editing. For each shot define its purpose, focal subject, supporting elements, entrance, exit, and time range.
-4. Write or edit the smallest valid `.motion` project that realizes the storyboard.
-5. Run the headless inspection command, inspect its duration, empty-frame ranges, invalid frames, round-trip result, and representative frame signatures.
-6. Fix the `.motion` source when inspection finds a problem, then repeat write -> inspect -> fix until it is clean.
-7. For visual changes, preview the project and inspect representative frames at scene starts, holds, transitions, and exits before running the relevant tests.
+1. Read the request, existing `.motion`, `AGENTS.md`, `BRAND.md`, script, timestamps, and relevant asset files.
+2. Inventory assets. Inspect dimensions, aspect ratios, file types, and media durations before placement.
+3. Build a timing map from narration, supplied timestamps, or the exact duration. Do not estimate media duration when it can be probed.
+4. Storyboard distinct shots. For each shot define purpose, time range, focal subject, supporting elements, entrance, readable hold, exit, and transition.
+5. Write or edit the smallest valid `.motion` source that realizes that storyboard.
+6. Run `inspect:motion` with the expected duration. Review invalid state, round-trip stability, signatures, and every empty-frame range.
+7. Preview representative frames at shot starts, completed holds, transitions, exits, and the final frame. Fix overlap, clipping, distortion, missing assets, and stale layers.
+8. Repeat write → inspect → preview → fix until the project is clean, then run relevant repository tests/build checks.
 
-Do not introduce new engine features while authoring a project. Use the syntax and presets Motionly already supports.
+Do not introduce new engine features while authoring. If the brief needs an unsupported capability, use the nearest supported treatment and state the limitation.
 
-## Asset Decision
+## Storyboard Standard
 
-Inventory asset paths and inspect dimensions/aspect ratios before placing anything. Never stretch an asset.
+Use one focal subject per shot. A useful shot plan contains:
 
-Before generating or converting visual assets, ask one concise question such as:
+| Time | Purpose | Focal subject | Support | Entrance | Hold | Exit/transition |
+| --- | --- | --- | --- | --- | --- | --- |
+| `0–3s` | Establish promise | Headline | Brand mark | Rise/blur reveal | Readable for at least 1s | Shape wipe |
 
-> Do you want me to create or convert any missing/simple visual assets to SVG before I build the animation?
+Vary composition when the story changes: full-frame typography, editorial left/right layouts, centered hero media, or restrained grouped assets. Do not vary motion randomly.
 
-Ask only when SVGs or new supporting artwork would materially improve the requested animation. Continue with existing assets when the user declines. Do not convert photos, screenshots, textured artwork, or complex logos to SVG. Keep original files as fallbacks.
+## Assets
 
-Use `drawSVG` only for simple stroked artwork and only when the user wants a path-draw reveal. Use `maskReveal`, `dynamicSlide`, or a normal image reveal for detailed logos and illustrations.
-
-## Script And Audio
-
-- Preserve the script exactly when the user requests matching on-screen copy.
-- Split long sentences into aligned text layers only for layout; keep their words and punctuation unchanged and in order.
-- Probe audio duration instead of guessing. Set canvas duration to cover the full track and closing fade.
-- Detect pauses or use supplied timestamps to place scene changes and line entrances.
-- Let text enter at the spoken phrase, remain readable, and exit before the next conflicting focal point.
-- When labels correspond to logos, reveal each logo and its label together.
-
-## Story And Composition
-
-- Give every shot one clear focal subject.
-- Keep supporting elements subordinate and spatially separated.
-- Use a repeatable spacing system and verify bounding boxes; accidental overlap is a bug.
-- Change background or transition language when the story changes subject.
-- Vary shot composition, not motion randomly. Alternate full-frame type, left/right editorial layouts, centered hero media, and restrained groups.
-- Keep long copy away from media bounds. Reduce type size or split lines before allowing overlap or clipping.
+- Preserve aspect ratio by setting one of `width` or `height`, not both, unless distortion is intentional.
 - Do not place every available asset on screen.
+- Keep photos, screenshots, textured art, and detailed logos in their original format.
+- Use `drawSVG` only for simple stroked SVG artwork intended to draw on.
+- Prefer `maskReveal`, `dynamicSlide`, or a normal reveal for detailed media.
+- Keep original asset paths stable so save/reload and export use the same files.
+
+Before generating or converting missing supporting artwork, ask one concise question only when it would materially improve the result. Continue with existing assets if declined.
+
+## Script, Audio, And Timing
+
+- Preserve requested narration/on-screen copy exactly, including punctuation and order.
+- Split long copy only for layout; do not paraphrase unless asked.
+- Probe audio duration and set canvas duration to include the complete track and closing hold/fade.
+- Place entrances on the spoken phrase when timestamps exist.
+- Keep text readable long enough for the audience; an entrance immediately followed by an exit is a timing bug.
+- Reveal a logo and its matching label together.
+- Project audio stays on the bottom audio track. Its `start` offset must match the intended timeline position and survives save/export.
+- Moving a whole layer should move its animation/keyframes with it; trimming changes the visibility window without silently retiming keyframes.
+
+## Layers And Clips
+
+Treat visual timeline tracks as simple layers:
+
+- horizontal movement changes time and keeps the current layer
+- vertical movement changes to the explicitly targeted layer
+- overlaps are allowed and resolved by deliberate visual ordering
+- visual content type does not restrict placement
+- do not rely on magnetic packing, ripple editing, or automatic content allocation
+- keep audio on the bottom audio track
+
+Persist explicit track assignments, `start`, and `duration` when timing matters. Verify them after parse/serialize/parse.
+
+## Composition
+
+- Use a repeatable spacing system and verify actual bounds.
+- Keep supporting elements subordinate and spatially separated.
+- Keep long copy away from media edges; reduce size or split lines before allowing clipping.
+- Use background/color changes and purposeful movement to mark story progression.
+- Remove stale elements after their shot instead of leaving unrelated layers stacked.
+- Treat accidental overlap, stretched media, unreadable type, and unexplained blank frames as bugs.
 
 ## Motion Direction
 
-- Default to `power3.out` and entrances around `650ms` to `1s`.
-- Use staggered word reveals for important copy, not every label.
-- Use `shapeWipe` or `irisWipe` for real scene changes.
-- Use `maskReveal` for hero media.
-- Use `dynamicSlide` for supporting assets and sequential logo groups.
+- Default to `power3.out`.
+- Use entrances around `650ms–1s` unless timestamps require otherwise.
+- Use staggered word/character reveals only for important copy.
+- Use `maskReveal` for hero media and `dynamicSlide` for supporting assets.
+- Use `shapeWipe` or `irisWipe` for genuine scene changes.
 - Use `speedZoom` once at a meaningful transition, not as continuous camera drift.
-- Include deliberate exits with `exitAt` and `exitDuration`; do not leave unrelated layers stacked indefinitely.
-- Avoid repeated fade-only scenes, random rotation, large bounce, and constant camera motion.
+- Include deliberate exits with `exitAt` and `exitDuration`.
+- Prefer one strong transition per scene change over stacked effects.
+
+Avoid repeated fade-only scenes, random rotation, large bounce, constant camera motion, and applying the same entrance to every object.
+
+## Source Rules
+
+- Use only syntax supported by the current parser and renderer.
+- Use `size`, not `fontSize`.
+- Explicit `animate` blocks use `easing`; preset calls use `ease`.
+- Keep names/aliases single words and imports quoted.
+- Keep source readable and minimize unnecessary layers.
+- Never hand back only a fragment when the user requested a complete project.
+- Never replace existing user work wholesale unless the request authorizes it.
 
 ## Validation
 
-### Write -> Render -> Inspect -> Fix
-
-After every substantial `.motion` authoring pass, run:
+Run after every substantial authoring pass:
 
 ```powershell
 npm run inspect:motion -- path\to\project.motion --expect-duration=<seconds>
 ```
 
-The command parses and builds the scene, evaluates every frame at the project's declared FPS using Motionly's production evaluator, checks for non-finite render state, detects ranges with no visible elements, verifies parse/serialize/parse stability, and prints deterministic signatures for the first, middle, and final frames. It exits non-zero for parse errors, invalid frame state, round-trip loss, or an expected-duration mismatch.
+This command parses and builds the scene, evaluates every declared frame, detects non-finite state and empty ranges, checks parse/serialize/parse stability, and prints representative signatures. Empty ranges are evidence, not automatic failures; compare each one with the storyboard.
 
-Empty-frame ranges are reported as inspection evidence rather than an automatic failure because an intentional blank hold can be valid. Review each reported range against the storyboard. For any unexpected empty range, broken timing, invalid frame, or duration mismatch, revise the `.motion` file and rerun the command. A changed render signature after an edit is expected; an unchanged signature when a visible change was intended is a reason to inspect the animation target and timing.
+The inspector cannot prove pixel layout, font availability, or browser media decoding. After it passes, inspect the rendered canvas at:
 
-The command is a semantic headless render and cannot prove pixel-level layout or asset decoding. After it passes, open the project in Motionly and inspect the actual canvas at representative timestamps when composition, clipping, fonts, images, SVG paths, or overlays changed.
+- the first visible frame
+- each shot entrance and completed hold
+- one frame before, during, and after every transition
+- every exit boundary
+- the final intended visible frame
 
-Before finishing:
+Before finishing, confirm:
 
-1. Parse the final `.motion` file and build its scene graph.
-2. Run `inspect:motion` and confirm duration, FPS, imports, expected scene elements, valid frames, and round-trip stability.
-3. Verify any exact script against the ordered text layer values.
-4. Review every reported empty-frame range against the storyboard.
-5. Inspect rendered canvas frames around each timestamp for overlap, clipping, distortion, missing assets, and stale layers.
-6. Confirm the project survives parse/serialize/parse without losing keyframes or overlay relationships.
-7. Revise and repeat inspection until no unexplained issue remains.
-8. Run the repository test and build commands that cover the changed project.
+1. Canvas size, FPS, and duration match the request.
+2. Required imports resolve and required assets appear.
+3. Exact copy matches the supplied script.
+4. Audio, visual clips, and narration cues align.
+5. No unexplained blank frames, clipping, distortion, overlap, or stale layers remain.
+6. Tracks, masks, timing windows, animation delays, and keyframes survive round-trip serialization.
+7. Preview and deterministic MP4 export evaluate the same project timing.
+8. Relevant tests/build checks pass.
 
-Return the completed `.motion` file, not only a storyboard or code sample.
+Return the completed `.motion` file and a brief validation summary.

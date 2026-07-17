@@ -9,7 +9,7 @@ import type { Element } from '../../src/types/scene';
 const element = (id: string, kind: Element['kind']): Element => ({ id, kind }) as Element;
 
 describe('timeline lane packing', () => {
-  it('reuses same-content tracks for adjacent items and separates actual overlaps', () => {
+  it('keeps source-stable element layers regardless of timing', () => {
     const ranges = new Map([
       ['textOne', { start: 0, end: 2 }],
       ['textTwo', { start: 2, end: 4 }],
@@ -29,14 +29,18 @@ describe('timeline lane packing', () => {
     );
 
     expect(lanes.map((lane) => [lane.kind, lane.trackId])).toEqual([
-      ['text', 'legacy-text-1'],
-      ['asset', 'legacy-asset-1'],
-      ['text', 'legacy-text-2'],
+      ['text', 'legacy-textOne'],
+      ['text', 'legacy-textTwo'],
+      ['text', 'legacy-textOverlap'],
+      ['asset', 'legacy-imageOne'],
+      ['asset', 'legacy-imageTwo'],
     ]);
     expect(lanes.map((lane) => lane.items.map((item) => item.element.id))).toEqual([
-      ['textOne', 'textTwo'],
-      ['imageOne', 'imageTwo'],
+      ['textOne'],
+      ['textTwo'],
       ['textOverlap'],
+      ['imageOne'],
+      ['imageTwo'],
     ]);
     expect(lanes.every((lane) => lane.laneCount === 1)).toBe(true);
   });
@@ -64,7 +68,7 @@ describe('clip track lane packing', () => {
 });
 
 describe('persistent clip track rows', () => {
-  it('includes empty persistent tracks with overlays above main and audio below', () => {
+  it('includes empty persistent tracks in authored order', () => {
     const persistent = [
       {
         id: 'main',
@@ -108,7 +112,7 @@ describe('persistent clip track rows', () => {
       },
     ] as import('../../src/types/scene').Track[];
     const tracks = packClipTrackLanes([], persistent);
-    expect(tracks.map((track) => track.track)).toEqual(['top', 'text', 'main', 'audio']);
+    expect(tracks.map((track) => track.track)).toEqual(['main', 'text', 'top', 'audio']);
     expect(tracks.every((track) => track.clips.length === 0)).toBe(true);
   });
 });
