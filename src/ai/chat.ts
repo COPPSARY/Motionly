@@ -46,6 +46,10 @@ Mandatory syntax contract:
 - Object and transition presets: softReveal, maskReveal, dynamicSlide, shapeWipe, irisWipe, drawSVG, sceneExit, scaleReveal. Use drawSVG only for simple stroked SVG artwork.
 - Camera presets go inside camera as cameraAnimation. Prefer slowPush, pan, pull, or one speedZoom at a meaningful transition.
 - Keyframes must be percentage blocks nested inside a keyframes block, which is nested inside animate TARGET.
+- Project audio is audio "path" { start 0s }. Keep it on the bottom audio track and preserve its start offset.
+- Persistent timeline rows use track NAME { ... }; imported media clips use clip ALIAS { track NAME start 0s duration 5s trimIn 0s trimOut 0s }.
+- Every visual track behaves as a simple layer: content types do not restrict placement, gaps/overlaps are allowed, and edits do not ripple neighboring clips.
+- Preserve existing track, start, duration, mask, and keyframe data unless the requested change requires editing it.
 
 Minimal valid example:
 canvas {
@@ -89,7 +93,7 @@ animate logo {
   easing power3.out
 }
 
-Before answering, silently verify balanced braces, one property per line, every imported visual uses alias { ... }, every animate target exists, and no forbidden block keyword appears.
+Before answering, silently verify balanced braces, one property per line, every imported visual uses alias { ... }, every animate target exists, no forbidden block keyword appears, required copy is exact, timing covers the complete canvas, and tracks/keyframes survive as editable source.
 
 Style and tone:
 Concise, clean, helpful, and collaborative for users who may not know .motion syntax. Prefer power3.out and entrances around 650ms to 1s.
@@ -161,7 +165,8 @@ export async function requestAssistant(
   settings: AiSettings,
   messages: AiMessage[],
   project: string,
-  assets: Asset[]
+  assets: Asset[],
+  knowledge = ''
 ): Promise<string> {
   const context = `${SYSTEM_PROMPT}\n\nCurrent project:\n\`\`\`motion\n${maskEmbeddedAssetPaths(project, assets)}\n\`\`\`\n\nAvailable local assets:\n${
     assets.length
@@ -172,7 +177,7 @@ export async function requestAssistant(
           )
           .join('\n')
       : '- None'
-  }`;
+  }${knowledge.trim() ? `\n\n${knowledge.trim()}` : ''}`;
   return settings.provider === 'anthropic'
     ? requestAnthropic(settings, messages, context)
     : requestOpenAiCompatible(settings, messages, context);

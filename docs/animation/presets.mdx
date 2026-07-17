@@ -9,14 +9,18 @@ Motionly should offer a small set of polished presets before a large library.
 - Scale in: gentle scale entrance
 - Blur reveal: blur, opacity, and slight vertical movement
 - Soft drift: subtle horizontal movement
+- Count up: animated numeric text with direction and grouping controls
 
-These five presets are available from the Properties panel.
+These six presets are available from the Properties panel. Count up is shown only for text layers.
 
 ## Language-Level Presets
 
 The `.motion` engine also supports presets used by authored and agent-generated projects. They are not all exposed as visual editor controls yet.
 
 - `drawSVG`: path-first reveal for simple stroked SVG logos
+- `countUp(from 0 separator comma direction up duration 2s)`: deterministic numeric text
+  animation. The text layer's `value` is the target number; `direction down` reverses the
+  endpoints, and `separator` accepts `comma`, `space`, or `none`.
 
 ## Transitions
 

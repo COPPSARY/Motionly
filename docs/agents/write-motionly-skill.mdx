@@ -7,14 +7,18 @@ description: How the write-motionly skill guides agents when creating, editing, 
 
 The `write-motionly` skill is the repository workflow for agents that create, edit, retime, review, or repair `.motion` projects.
 
-It is designed for turning a script, audio track, storyboard, or asset folder into a polished Motionly animation that still opens cleanly in the visual editor.
+It turns a script, audio track, storyboard, existing project, or asset folder into a polished animation that still previews, edits, saves, reloads, and exports through Motionly's normal pipeline.
+
+<Info>
+  The skill produces an editable project, not a black-box video. Motionly's parser, evaluator, renderer, and serializer remain the source of truth.
+</Info>
 
 ## When To Use It
 
 Use `write-motionly` when an agent needs to:
 
 - Create a complete `.motion` project
-- Retiming animation to narration or audio
+- Retime animation to narration or audio
 - Choose supported transitions and presets
 - Fix visual overlap, clipping, stale layers, or weak composition
 - Explain valid `.motion` syntax
@@ -30,6 +34,10 @@ Agents should read:
 
 The repository parser and preset implementation are authoritative if they differ from older generated examples.
 
+## The Authoring Contract
+
+Before editing, an agent identifies the project type, output path, canvas/FPS/duration, audience, exact copy, narration timing, brand constraints, required assets, and prohibited treatments. It should preserve unrelated user work and avoid guessing media dimensions or duration.
+
 ## Workflow
 
 1. Inspect the request, existing `.motion` project, script, audio, and every relevant asset.
@@ -37,7 +45,9 @@ The repository parser and preset implementation are authoritative if they differ
 3. Storyboard distinct shots before editing.
 4. Give each shot a purpose, focal subject, supporting elements, entrance, exit, and time range.
 5. Write or edit the smallest valid `.motion` project that realizes the storyboard.
-6. Parse the project, run relevant tests, and inspect representative frames.
+6. Run `inspect:motion` with the expected duration and review every reported empty-frame range.
+7. Preview representative frames at entrances, completed holds, transitions, exits, and the final frame.
+8. Fix and repeat until semantic inspection, visual review, round-trip serialization, and relevant tests pass.
 
 Agents should not invent new engine features while authoring a project. Missing editor or renderer capabilities should be handled as separate engineering work.
 
@@ -51,7 +61,7 @@ Agents should not invent new engine features while authoring a project. Missing 
 - Use `drawSVG` only for simple stroked artwork.
 - Use `maskReveal`, `dynamicSlide`, or normal image reveals for detailed logos, screenshots, and illustrations.
 
-## Script And Audio Rules
+## Script, Audio, And Timeline Rules
 
 - Preserve exact script text when requested.
 - Split long sentences only for layout, keeping words and punctuation unchanged and in order.
@@ -60,7 +70,11 @@ Agents should not invent new engine features while authoring a project. Missing 
 - Place text entrances at the spoken phrase when timestamps are available.
 - Keep labels and matching logos revealed together.
 
-Audio can be attached in the editor for preview, but it is currently session-based and is not included in MP4 export.
+- Keep project audio on the bottom audio track.
+- Preserve its timeline `start` offset through save/reload and MP4 export.
+- Treat visual tracks as simple layers: horizontal movement changes time, vertical movement targets a layer, overlaps are allowed, and content type does not restrict placement.
+- Do not rely on magnetic packing, ripple editing, or automatic content allocation.
+- Moving a whole animated layer moves its keyframes; trimming changes its visibility window without silently retiming them.
 
 ## Motion Direction
 
@@ -85,8 +99,8 @@ Before finishing, an agent should:
 - Verify exact script text against ordered text layer values.
 - Inspect frames around scene starts, holds, transitions, and exits.
 - Check for blank frames, overlap, clipping, distortion, and stale layers.
-- Confirm parse/serialize/parse does not lose keyframes.
+- Confirm parse/serialize/parse does not lose tracks, timing windows, masks, animation delays, or keyframes.
+- Confirm preview and deterministic MP4 export evaluate the same project timing.
 - Run the repository tests and build commands that cover the changed project.
 
 The final output should be a completed `.motion` file that users can refine visually in Motionly.
-

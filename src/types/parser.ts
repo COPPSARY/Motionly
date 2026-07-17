@@ -103,6 +103,7 @@ export interface AnimationNode extends BaseNode {
 export interface KeyframeNode {
   offset: number;
   properties: Record<string, unknown>;
+  easing?: string;
 }
 
 /**
@@ -126,6 +127,7 @@ export interface TrackNode extends BaseNode {
 export interface AudioNode extends BaseNode {
   type: 'Audio';
   path: string;
+  properties: Record<string, unknown>;
 }
 
 /**

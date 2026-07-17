@@ -15,45 +15,29 @@ export interface TimelineLane {
   laneCount: number;
 }
 
-/** Reuse a same-content track only for non-overlapping items; overlaps get a new track. */
+/** Keep one stable layer per element unless the source explicitly assigns a shared track. */
 export function packTimelineLanes(
   elements: Element[],
   rangeOf: (id: string) => TimelineItem['range']
 ): TimelineLane[] {
   const lanes: TimelineLane[] = [];
-  const counters = new Map<ElementKind, number>();
-  const items = elements
-    .map((element, sourceOrder) => ({ element, range: rangeOf(element.id), sourceOrder }))
-    .sort(
-      (left, right) =>
-        left.range.start - right.range.start ||
-        left.range.end - right.range.end ||
-        left.sourceOrder - right.sourceOrder
-    );
-
-  for (const { sourceOrder: _sourceOrder, ...item } of items) {
+  for (const element of elements) {
+    const item = { element, range: rangeOf(element.id) };
     const authoredTrack = String(
       ((item.element.properties ?? {}) as unknown as Record<string, unknown>)['track'] ?? ''
     );
     const lane = authoredTrack
       ? lanes.find((candidate) => candidate.trackId === authoredTrack)
-      : lanes.find(
-          (candidate) =>
-            candidate.kind === item.element.kind &&
-            candidate.trackId.startsWith('legacy-') &&
-            candidate.end <= item.range.start
-        );
+      : undefined;
     if (lane) {
       lane.items.push({ ...item, lane: 0 });
       lane.start = Math.min(lane.start, item.range.start);
       lane.end = Math.max(lane.end, item.range.end);
       continue;
     }
-    const next = (counters.get(item.element.kind) ?? 0) + 1;
-    counters.set(item.element.kind, next);
     lanes.push({
       kind: item.element.kind,
-      trackId: authoredTrack || `legacy-${item.element.kind}-${next}`,
+      trackId: authoredTrack || `legacy-${item.element.id}`,
       items: [{ ...item, lane: 0 }],
       start: item.range.start,
       end: item.range.end,
@@ -176,7 +160,6 @@ export function combinePersistentTrackRows(
 
 function trackVisualOrder(track: import('../types/scene').Track | null): number {
   if (!track) return 9000;
-  if (track.role === 'overlay') return 1000 - track.order;
-  if (track.role === 'main') return 10_000;
-  return 20_000 + track.order;
+  if (track.role === 'audio') return 1_000_000;
+  return track.order;
 }

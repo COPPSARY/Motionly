@@ -24,8 +24,8 @@ Icon-based tabs for quick access to tools and content:
 - **Text** - Text tools
 - **Effects** - Animation presets library (text, object, transition, camera)
 - **Scenes** - Scene backgrounds and overlays
-- **Adjustments** - Color and timing adjustments
-- **Settings** - Project settings
+- **AI Config** - Enabled skills and AI context preview
+- **Settings** - Brand profile editor
 
 ## Assets Panel
 
@@ -35,6 +35,39 @@ Browse and manage project assets:
 - Organized folder structure showing audio and visual assets
 - Drag assets directly onto timeline to create clips
 - Green drop indicator shows where clips will be placed
+
+The Media panel has two tabs: **Assets** and **Presets**.
+
+## AI Config
+
+The **AI Config** rail item (AI/Bot icon) manages the knowledge the in-app assistant uses. It has two sections:
+
+- **Skills** — Lists the built-in skills (`write-motionly`, `motion-graphics`, `motionly-rules`), shows their descriptions, and lets you enable/disable each and read its instructions. Enabled skills load their instructions into the assistant context, which replaces the need for a per-project AGENTS.md.
+- **Context** — Previews exactly what the assistant currently knows: how many skills are enabled, whether a brand profile is loaded, how many assets are available, and the current project resolution, FPS, duration, and element count.
+
+## Settings
+
+The **Settings** rail item (gear icon) holds the **Brand Profile** — a visual editor for `BRAND.md`: brand name, logo (chosen from imported assets), brand colors (color picker), typography, visual style, motion style, and things to avoid. The editor generates `BRAND.md` automatically and shows a live preview. An optional **Edit Markdown** mode lets advanced users hand-edit the file.
+
+Enabled skills and the brand profile are stored in the browser (like your API key) and automatically added to the assistant's context when you generate `.motion`.
+
+## Timeline Editing
+
+Clips and element layers can be dragged directly on the timeline:
+
+- Drag the middle of a clip to move it in time; a dashed ghost previews where it will land (position and track) and only commits on release. Short clips keep a grabbable center while their edges expose trim handles.
+- Drag a clip or layer up or down onto any visual track. There are no content compatibility or overlap restrictions.
+- Optional edge/playhead snapping is off by default. Horizontal movement stays on the current layer; the layer changes only when the pointer crosses another row.
+- Mouse and touch drag are both supported. Changes write straight into the `.motion` project so they persist on save.
+
+## Timeline Keyframes
+
+When an element with animation is selected, its keyframes appear as amber diamonds on that element's timeline row (animations authored with `from`/`to` show implicit start and end keyframes):
+
+- Drag a keyframe diamond horizontally to change its timing. Dragging the clip body still moves the whole clip — keyframes never interfere with the move/retrack behavior.
+- Select a keyframe to open its easing control in the Properties panel and set the easing for the transition into that keyframe (Linear, Ease In/Out/In-Out, Smooth, Back, Elastic — the GSAP eases Motionly supports).
+- Add a keyframe with the green “+” affordance at the playhead on the selected row (or “Add at playhead” in Properties), and delete one by right-clicking its diamond.
+- Keyframe timing and easing edits update the animation immediately and persist into the `.motion` file, so reopening the project preserves them.
 
 ## Presets
 
@@ -68,14 +101,15 @@ The right panel edits the selected layer without requiring source changes.
 
 ## Timeline
 
-The lower panel contains playback and role-based clip editing.
+The lower panel contains playback and layer-based clip editing.
 
-- Persistent overlay tracks appear above the gap-free Main Track; audio tracks appear below it.
-- Compatible non-overlapping clips reuse a purpose track, while real overlaps create another overlay.
+- Every visual track behaves as a simple layer. Existing role/content metadata remains compatible but does not change drag behavior.
+- Overlaps are allowed and remain visible for the user to arrange.
+- Audio stays on the bottom track and drags horizontally to change its persisted start time.
 - Scrubbable ruler and frame-accurate playhead anchor Split and trim operations.
-- Drag clips horizontally to reorder/time them and vertically between compatible tracks.
+- Drag clips horizontally to change time and vertically to move between visual layers.
 - Trim handles work for media, text, images, overlays, and effects.
-- Magnet toggles clip-edge/playhead snapping and Main Track ripple behavior.
+- Magnet toggles optional clip-edge/playhead snapping only; trim, delete, and move never ripple other clips.
 - Undo/Redo buttons and standard keyboard shortcuts restore serialized `.motion` snapshots.
 - Timeline `−`/`+` controls and `Ctrl/Cmd` + wheel/pinch zoom around the pointer.
 - Eye and speaker controls persist track visibility and mute state.

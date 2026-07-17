@@ -29,3 +29,31 @@ animate logo {
 
 Animate only the properties that need to change. Keep keyframes readable so the editor and serializer can preserve intent.
 
+## Multi-Stage Keyframes
+
+For more than two stages, use a `keyframes` block with percentage offsets. Each percentage stage may carry its own `ease`, which controls the easing of the transition **into** that stage (falling back to the animation's `easing` when omitted):
+
+```motion
+animate logo {
+  keyframes {
+    0% { opacity 0 y 40 }
+    60% { opacity 1 y 0 ease power1.out }
+    100% { opacity 1 y -10 ease linear }
+  }
+
+  duration 1.4s
+  easing power3.out
+}
+```
+
+## Editing Keyframes On The Timeline
+
+Select an animated element to see its keyframes as amber diamonds on its timeline row. A `from`/`to` animation shows implicit start and end keyframes.
+
+- Drag a diamond horizontally to retime that stage.
+- Select a diamond and pick an easing in the Properties panel to set the ease into that keyframe (Linear, Ease In/Out/In-Out, Smooth, Back, Elastic).
+- Use the green “+” at the playhead (or “Add at playhead”) to add a keyframe, and right-click a diamond to delete it.
+
+Edits update the animation immediately and are written back into the `.motion` source, so keyframe positions and easing survive save and reload.
+
+

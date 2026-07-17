@@ -40,7 +40,13 @@ export type AssetType = 'svg' | 'image' | 'video' | 'lottie';
 /**
  * Element kinds that can be rendered
  */
-export type ElementKind = 'asset' | 'text' | 'overlay' | 'effect';
+export type ElementKind = 'asset' | 'image' | 'text' | 'overlay' | 'effect';
+
+/**
+ * SVG-compatible primitives available to image overlay sublayers.
+ */
+export type OverlayShape =
+  'circle' | 'ellipse' | 'rect' | 'line' | 'arrow' | 'path' | 'text' | 'spotlight';
 
 /**
  * Effect types for background and atmosphere
@@ -112,13 +118,38 @@ export interface TextProperties extends BaseElementProperties {
   weight: number;
   color: string;
   tracking: number;
+  countSeparator?: string;
+  countDecimals?: number;
+  countTo?: number;
+}
+
+/**
+ * A named imported bitmap used as the coordinate parent for vector overlays.
+ */
+export interface ImageProperties extends BaseElementProperties {
+  source: string;
 }
 
 /**
  * Overlay-specific properties
  */
 export interface OverlayProperties extends BaseElementProperties {
+  parent: string;
+  shape: OverlayShape;
   fill: string;
+  stroke: string;
+  strokeWidth: number;
+  radius: number;
+  radiusX: number;
+  radiusY: number;
+  x2: number;
+  y2: number;
+  path: string;
+  value: string;
+  font: string;
+  size: number;
+  weight: number;
+  clip: boolean;
 }
 
 /**
@@ -136,7 +167,7 @@ export interface EffectProperties extends BaseElementProperties {
  * Union of all possible element properties
  */
 export type ElementProperties =
-  BaseElementProperties | TextProperties | OverlayProperties | EffectProperties;
+  BaseElementProperties | ImageProperties | TextProperties | OverlayProperties | EffectProperties;
 
 /**
  * Scene element before animation evaluation
@@ -219,6 +250,7 @@ export interface Scene {
   tracks: Track[];
   clips: Clip[];
   audio?: string; // Path to audio file
+  audioStart: number;
 }
 
 /**
@@ -246,6 +278,7 @@ export type PropertyMap = Record<string, AnimatableValue>;
 export interface Keyframe {
   offset: number;
   properties: PropertyMap;
+  easing?: string;
 }
 
 /**

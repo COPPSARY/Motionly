@@ -3,13 +3,25 @@
   "version": "1.0.0",
   "license": "Apache-2.0",
   "type": "module",
+  "bin": {
+    "motionly": "bin/motionly.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "serve": "node bin/motionly.js",
     "preview": "vite preview",
+    "prepublishOnly": "npm run build",
+    "inspect:motion": "vite-node scripts/inspect-motion.ts",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",

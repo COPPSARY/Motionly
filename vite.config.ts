@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { createFfmpegExportMiddleware } from './src/export/ffmpeg-server';
 
 const motionProjectPath = resolve('video-motion/motionly.motion');
 
@@ -44,8 +45,18 @@ const motionProject = {
   },
 };
 
+const ffmpegExport = {
+  name: 'ffmpeg-export',
+  configureServer(server: import('vite').ViteDevServer) {
+    server.middlewares.use(createFfmpegExportMiddleware());
+  },
+  configurePreviewServer(server: import('vite').PreviewServer) {
+    server.middlewares.use(createFfmpegExportMiddleware());
+  },
+};
+
 export default defineConfig({
-  plugins: [svelte(), motionProject],
+  plugins: [svelte(), motionProject, ffmpegExport],
   base: process.env.BASE_PATH ?? '/',
   root: '.',
   server: {

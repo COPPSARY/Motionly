@@ -6,6 +6,7 @@
 import type { EvaluatedScene, EvaluatedElement, Canvas, ElementProperties } from '../types/scene';
 import type { BoundingBox } from '../types/export';
 import { isLoadedVideo, type LoadedAsset } from '../assets/asset-loader';
+import { formatCountValue } from '../animation-library/count-up';
 
 /**
  * Canvas renderer class
@@ -55,6 +56,7 @@ export class CanvasRenderer {
 
     const laidOut = layoutGeneratedText(elements);
     const hiddenMaskSources = hiddenMaskSourceIds(laidOut);
+    const elementsById = new Map(laidOut.map((element) => [element.id, element]));
 
     ctx.save();
     applyCamera(ctx, canvas, camera);
@@ -67,6 +69,7 @@ export class CanvasRenderer {
           element,
           laidOut,
           assets,
+          elementsById,
           this.maskCanvas,
           this.maskContext
         );
@@ -83,6 +86,7 @@ export class CanvasRenderer {
           element,
           laidOut,
           assets,
+          elementsById,
           this.maskCanvas,
           this.maskContext
         );
@@ -233,6 +237,7 @@ function drawElementWithMask(
   element: EvaluatedElement,
   elements: EvaluatedElement[],
   assets: Map<string, LoadedAsset>,
+  elementsById: Map<string, EvaluatedElement>,
   maskCanvas: HTMLCanvasElement,
   maskContext: CanvasRenderingContext2D
 ): void {
@@ -241,7 +246,7 @@ function drawElementWithMask(
   const maskElement =
     maskId && maskId !== 'none' ? elements.find((candidate) => candidate.id === maskId) : undefined;
   if (!maskElement) {
-    drawElement(ctx, canvas, element, assets);
+    drawElement(ctx, canvas, element, assets, elementsById);
     return;
   }
 
@@ -255,10 +260,10 @@ function drawElementWithMask(
   maskContext.globalAlpha = 1;
   maskContext.filter = 'none';
   maskContext.globalCompositeOperation = 'source-over';
-  drawElement(maskContext, canvas, element, assets);
+  drawElement(maskContext, canvas, element, assets, elementsById);
   maskContext.globalCompositeOperation =
     props['maskInvert'] === true ? 'destination-out' : 'destination-in';
-  drawElement(maskContext, canvas, maskElement, assets);
+  drawElement(maskContext, canvas, maskElement, assets, elementsById);
   maskContext.restore();
 
   ctx.save();
@@ -276,7 +281,8 @@ function drawElement(
   ctx: CanvasRenderingContext2D,
   canvas: Canvas,
   element: EvaluatedElement,
-  assets: Map<string, LoadedAsset>
+  assets: Map<string, LoadedAsset>,
+  elementsById: Map<string, EvaluatedElement>
 ): void {
   const props = element.render as unknown as Record<string, unknown>;
   const opacity = props['opacity'] as number;
@@ -294,7 +300,7 @@ function drawElement(
   if (element.kind === 'text') {
     drawText(ctx, canvas, props);
   } else if (element.kind === 'overlay') {
-    drawOverlay(ctx, canvas, props);
+    drawOverlay(ctx, canvas, props, assets, elementsById);
   } else if (element.kind === 'effect') {
     drawEffect(ctx, canvas, props);
   } else {
@@ -399,7 +405,14 @@ function drawText(
     : ((props['y'] as number) ?? 0);
   const rotation = (props['rotation'] as number) ?? 0;
   const scale = (props['scale'] as number) ?? 1;
-  const value = String(props['value'] ?? '');
+  const value =
+    typeof props['countDecimals'] === 'number'
+      ? formatCountValue(
+          props['value'],
+          String(props['countSeparator'] ?? ''),
+          props['countDecimals']
+        )
+      : String(props['value'] ?? '');
   const tracking = (props['tracking'] as number) ?? 0;
 
   ctx.translate(x, y);
@@ -446,8 +459,16 @@ function drawTrackedText(
 function drawOverlay(
   ctx: CanvasRenderingContext2D,
   canvas: Canvas,
-  props: Record<string, unknown>
+  props: Record<string, unknown>,
+  assets: Map<string, LoadedAsset>,
+  elementsById: Map<string, EvaluatedElement>
 ): void {
+  const parentId = String(props['parent'] ?? '');
+  if (parentId) {
+    drawImageOverlay(ctx, canvas, props, parentId, assets, elementsById);
+    return;
+  }
+
   ctx.fillStyle = (props['fill'] as string) ?? '#000';
   const progress = props['revealProgress'];
   if (typeof progress === 'number') {
@@ -474,6 +495,163 @@ function drawOverlay(
     return;
   }
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+/**
+ * Draw SVG-compatible primitives in the source image's pixel coordinate system.
+ * The evaluator drives these properties, so preview and frame export share the
+ * exact same timing instead of relying on browser-only SMIL/CSS animation.
+ */
+function drawImageOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvas: Canvas,
+  props: Record<string, unknown>,
+  parentId: string,
+  assets: Map<string, LoadedAsset>,
+  elementsById: Map<string, EvaluatedElement>
+): void {
+  const parent = elementsById.get(parentId);
+  if (!parent || (parent.kind !== 'image' && parent.kind !== 'asset')) return;
+  const parentProps = parent.render as unknown as Record<string, unknown>;
+  const parentOpacity = Number(parentProps['opacity'] ?? 1);
+  if (parentOpacity <= 0) return;
+  const assetName = parent.assetName;
+  const asset = assetName ? assets.get(assetName) : undefined;
+  if (!asset) return;
+
+  const box = resolveBox(canvas, asset, parentProps);
+  const referenceWidth = asset.width || box.width;
+  const referenceHeight = asset.height || box.height;
+  const parentRotation = Number(parentProps['rotation'] ?? 0);
+  const parentScale = Number(parentProps['scale'] ?? 1);
+
+  ctx.save();
+  ctx.globalAlpha *= parentOpacity;
+  ctx.translate(box.x + box.width / 2, box.y + box.height / 2);
+  ctx.rotate((parentRotation * Math.PI) / 180);
+  applySkew(ctx, parentProps);
+  ctx.scale(parentScale, parentScale);
+  ctx.translate(-box.width / 2, -box.height / 2);
+  ctx.scale(box.width / referenceWidth, box.height / referenceHeight);
+
+  if (props['clip']) {
+    ctx.beginPath();
+    ctx.rect(0, 0, referenceWidth, referenceHeight);
+    ctx.clip();
+  }
+
+  const x = Number(props['x'] ?? 0);
+  const y = Number(props['y'] ?? 0);
+  const scale = Number(props['scale'] ?? 1);
+  const rotation = Number(props['rotation'] ?? 0);
+  const shape = String(props['shape'] ?? 'rect');
+  ctx.translate(x, y);
+  ctx.rotate((rotation * Math.PI) / 180);
+  applySkew(ctx, props);
+  ctx.scale(scale, scale);
+  drawVectorPrimitive(ctx, shape, props, referenceWidth, referenceHeight, x, y);
+  ctx.restore();
+}
+
+function drawVectorPrimitive(
+  ctx: CanvasRenderingContext2D,
+  shape: string,
+  props: Record<string, unknown>,
+  referenceWidth: number,
+  referenceHeight: number,
+  originX: number,
+  originY: number
+): void {
+  const fill = String(props['fill'] ?? 'none');
+  const stroke = String(props['stroke'] ?? 'none');
+  const strokeWidth = Number(props['strokeWidth'] ?? 4);
+  const width = Number(props['width'] ?? 120);
+  const height = Number(props['height'] ?? 80);
+  const radius = Number(props['radius'] ?? 48);
+  const radiusX = Number(props['radiusX'] ?? radius);
+  const radiusY = Number(props['radiusY'] ?? radius);
+  const progress = Math.max(0, Math.min(1, Number(props['pathProgress'] ?? 1)));
+
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (fill !== 'none') ctx.fillStyle = fill;
+  if (stroke !== 'none') ctx.strokeStyle = stroke;
+
+  if (shape === 'text') {
+    ctx.fillStyle = fill === 'none' ? String(props['color'] ?? '#fff') : fill;
+    ctx.font = `${Number(props['weight'] ?? 700)} ${Number(props['size'] ?? 48)}px ${String(props['font'] ?? 'sans-serif')}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(props['value'] ?? ''), 0, 0);
+    return;
+  }
+
+  if (shape === 'arrow' || shape === 'line') {
+    drawOverlayLine(ctx, props, progress, shape === 'arrow');
+    return;
+  }
+
+  if (shape === 'spotlight') {
+    const reveal = Math.max(0, Math.min(1, Number(props['revealProgress'] ?? 1)));
+    const mask = new Path2D();
+    mask.rect(-originX, -originY, referenceWidth, referenceHeight);
+    mask.ellipse(0, 0, radiusX * reveal, radiusY * reveal, 0, 0, Math.PI * 2);
+    ctx.fillStyle = fill === 'none' ? 'rgba(0, 0, 0, 0.58)' : fill;
+    ctx.fill(mask, 'evenodd');
+    return;
+  }
+
+  const path = new Path2D();
+  if (shape === 'circle') {
+    path.arc(0, 0, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  } else if (shape === 'ellipse') {
+    path.ellipse(0, 0, radiusX, radiusY, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  } else if (shape === 'path') {
+    const d = String(props['path'] ?? '');
+    if (!d) return;
+    const svgPath = new Path2D(d);
+    if (fill !== 'none') ctx.fill(svgPath);
+    if (stroke !== 'none') ctx.stroke(svgPath);
+    return;
+  } else {
+    path.rect(-width / 2, -height / 2, width, height);
+  }
+
+  if (fill !== 'none' && progress >= 1) ctx.fill(path);
+  if (stroke !== 'none') ctx.stroke(path);
+}
+
+function drawOverlayLine(
+  ctx: CanvasRenderingContext2D,
+  props: Record<string, unknown>,
+  progress: number,
+  arrow: boolean
+): void {
+  const x2 = Number(props['x2'] ?? 0);
+  const y2 = Number(props['y2'] ?? 0);
+  const endX = x2 * progress;
+  const endY = y2 * progress;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  if (!arrow || progress < 0.92) return;
+
+  const angle = Math.atan2(y2, x2);
+  const head = Math.max(10, Number(props['strokeWidth'] ?? 4) * 3.5);
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(
+    endX - head * Math.cos(angle - Math.PI / 6),
+    endY - head * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(
+    endX - head * Math.cos(angle + Math.PI / 6),
+    endY - head * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.stroke();
 }
 
 function applySkew(ctx: CanvasRenderingContext2D, props: Record<string, unknown>): void {

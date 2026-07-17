@@ -14,6 +14,7 @@
     type AiSettings,
   } from '../../ai/chat';
   import type { Asset } from '../../types/scene';
+  import { buildAiKnowledge, loadBrand, loadSkillState, MOTIONLY_PROMPT_TEMPLATE } from '../../ai/config';
 
   export let project = '';
   export let assetList: Asset[] = [];
@@ -35,6 +36,7 @@
   let invalidMessageId = '';
   let invalidMotionError = '';
   let hasSavedSettings = false;
+  let promptCopied = false;
   let composerInput: HTMLTextAreaElement;
   let messageList: HTMLDivElement;
 
@@ -86,6 +88,16 @@
   function toggleCustom(event: Event) {
     customEnabled = (event.currentTarget as HTMLInputElement).checked;
     provider = customEnabled ? 'custom' : detectedProvider ?? 'openai';
+  }
+
+  async function copyPromptTemplate() {
+    try {
+      await navigator.clipboard.writeText(MOTIONLY_PROMPT_TEMPLATE);
+      promptCopied = true;
+      setTimeout(() => (promptCopied = false), 1800);
+    } catch {
+      error = 'Your browser blocked clipboard access. Open the prompt guide and copy the template there.';
+    }
   }
 
   function saveSettings() {
@@ -151,7 +163,12 @@
     persistHistory();
     sending = true;
     try {
-      const response = await requestAssistant(currentSettings(), messages, project, assetList);
+      const knowledge = buildAiKnowledge({
+        brand: loadBrand(),
+        skillState: loadSkillState(),
+        assets: assetList,
+      });
+      const response = await requestAssistant(currentSettings(), messages, project, assetList, knowledge);
       messages = [...messages, {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -291,6 +308,9 @@
         See the <a href="https://motionly.mintlify.app/agents/ai-authoring" target="_blank" rel="noreferrer">prompt guide</a>
         for templates and an introduction to the <code>write-motionly</code> skill.
       </p>
+      <button type="button" class="copy-prompt-button" on:click={copyPromptTemplate}>
+        {promptCopied ? 'Prompt Template Copied' : 'Copy Prompt Template'}
+      </button>
       {#if error}<p class="error-message">{error}</p>{/if}
       <div class="settings-actions">
         {#if hasSavedSettings}
@@ -308,6 +328,9 @@
             See the <a href="https://motionly.mintlify.app/agents/ai-authoring" target="_blank" rel="noreferrer">prompt guide</a>
             for templates and an introduction to the <code>write-motionly</code> skill.
           </span>
+          <button type="button" class="copy-prompt-button" on:click={copyPromptTemplate}>
+            {promptCopied ? 'Prompt Template Copied' : 'Copy Prompt Template'}
+          </button>
         </div>
       {:else}
         {#each messages as message (message.id)}
@@ -372,6 +395,9 @@
   .guide-note a { color: #7cf7c5; text-decoration: none; }
   .guide-note a:hover { text-decoration: underline; }
   .guide-note code { color: #a9b0b9; font-size: 10px; }
+  .copy-prompt-button { align-self: flex-start; padding: 7px 10px; border: 1px solid #355e4f; border-radius: 6px; background: #17231f; color: #9af8d1; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .copy-prompt-button:hover { border-color: #4d8c75; background: #1a3028; }
+  .empty-state .copy-prompt-button { align-self: center; }
   .error-message { margin: 0; color: #f09b9b; font-size: 11px; line-height: 1.4; }
   .settings-actions { margin-top: auto; display: flex; justify-content: flex-end; gap: 8px; }
   .primary-button, .secondary-button, .load-button, .repair-button { padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; }

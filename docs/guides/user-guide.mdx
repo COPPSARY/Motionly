@@ -53,19 +53,19 @@ Motionly updates the `.motion` source after each visual edit.
 
 ## Timeline
 
-The timeline uses persistent purpose-based tracks instead of one row per element:
+The timeline uses persistent simple layers:
 
-- **Main Track** anchors the primary image/video sequence and packs clips end-to-end while Magnet is enabled.
-- **Overlay Tracks** hold one compatible content type (text, image, video, or effects). Non-overlapping items reuse a track; simultaneous items receive another overlay.
-- **Audio Tracks** remain separate from visual content.
+- Every visual layer accepts text, image, video, overlay, or effect content.
+- Clips move freely, gaps and overlaps are allowed, and no layer ripples neighboring clips.
+- **Audio Tracks** remain at the bottom and move horizontally only.
 
 Editing controls:
 
 - Scrub the ruler or drag the playhead to seek to an exact frame.
-- Drag clips horizontally to reorder/time them or vertically to a compatible track.
-- Drag either edge to trim; Main Track trims ripple following clips when Magnet is enabled.
+- Drag clips horizontally to change time or vertically to any visual layer.
+- Drag either edge to trim without moving neighboring clips.
 - Select a clip and use Split to cut it at the playhead. This works for media, text, image, overlay, and effect clips.
-- Toggle Magnet for edge/playhead snapping and gap-free Main Track editing.
+- Toggle Magnet for optional edge/playhead snapping.
 - Use Undo/Redo or `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z`.
 - Zoom with the timeline controls or `Ctrl/Cmd` + wheel/trackpad pinch.
 - Use the eye on visual tracks and speaker on audio-capable tracks to isolate work without deleting it.
@@ -77,12 +77,16 @@ Dragging media from Assets creates a persisted `clip`. Track declarations, clip 
 Audio is now persisted in `.motion` format using the `audio` syntax:
 
 ```motion
-audio "/assets/my-project/background.mp3"
+audio "/assets/my-project/background.mp3" {
+  start 0s
+}
 ```
 
 Audio files:
 - Show in the organized Audio panel
 - Play synchronized with preview playback
+- Stay on the bottom timeline track and persist horizontal start-time edits
+- Export with MP4 at the same timeline offset
 - Persist in saved `.motion` projects
 - Are **not yet included in MP4 export** (see AUDIO_EXPORT_LIMITATION.md)
 

@@ -7,7 +7,10 @@ export function serializeProgram(program: ProgramNode): string {
 function serializeNode(node: ASTNode): string {
   if (node.type === 'Canvas') return block('canvas', node.properties);
   if (node.type === 'Camera') return block('camera', node.properties);
-  if (node.type === 'Audio') return `audio "${escapeString(node.path)}"`;
+  if (node.type === 'Audio') {
+    const name = `audio "${escapeString(node.path)}"`;
+    return Object.keys(node.properties).length ? block(name, node.properties) : name;
+  }
   if (node.type === 'Clip') return block(`clip ${node.assetName}`, node.properties);
   if (node.type === 'Track') return block(`track ${node.name}`, node.properties);
   if (node.type === 'Import') return `import "${escapeString(node.path)}" as ${node.name}`;
@@ -26,7 +29,8 @@ function serializeNode(node: ASTNode): string {
     lines.push('  keyframes {');
     for (const frame of node.keyframes) {
       const offset = Number((frame.offset * 100).toFixed(3));
-      lines.push(indent(indent(block(`${offset}%`, frame.properties))));
+      const body = frame.easing ? { ...frame.properties, ease: frame.easing } : frame.properties;
+      lines.push(indent(indent(block(`${offset}%`, body))));
     }
     lines.push('  }');
   }

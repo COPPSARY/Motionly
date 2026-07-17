@@ -37,6 +37,28 @@ export function elementWindowProperties(
   };
 }
 
+/** Move an element window and every animation targeting it by the same timeline delta. */
+export function moveElementClip(
+  program: ProgramNode,
+  elementId: string,
+  start: number,
+  end: number,
+  previousStart: number,
+  minimum = 1 / 60
+): boolean {
+  const element = program.body.find(
+    (node): node is ElementNode => node.type === 'Element' && node.name === elementId
+  );
+  if (!element) return false;
+  const delta = start - previousStart;
+  element.properties = elementWindowProperties(element.properties, start, end, minimum);
+  for (const animation of program.body) {
+    if (animation.type !== 'Animation' || animation.target !== elementId) continue;
+    animation.delay = `${(parseTime(animation.delay ?? 0) + delta).toFixed(3)}s`;
+  }
+  return true;
+}
+
 export interface ElementSplitResult {
   program: ProgramNode;
   leftId: string;
