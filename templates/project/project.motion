@@ -1,0 +1,32 @@
+canvas {
+  size 1920x1080
+  fps 60
+  duration 5s
+  background #020308
+}
+
+text title {
+  value "{{name}}"
+  center
+  size 72
+  color #ffffff
+  opacity 1
+}
+
+animate title {
+  from {
+    opacity 0
+    y 80
+    blur 10
+  }
+
+  to {
+    opacity 1
+    y 0
+    blur 0
+  }
+
+  duration 1.2s
+  delay 0s
+  easing power3.out
+}

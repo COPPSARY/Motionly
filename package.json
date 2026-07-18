@@ -1,6 +1,6 @@
 {
-  "name": "motionly",
-  "version": "1.0.0",
+  "name": "@coppsary/motionly",
+  "version": "1.0.1",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "bin",
+    "templates",
     "README.md",
     "LICENSE"
   ],
@@ -70,5 +71,24 @@
     "*.{css,html}": [
       "prettier --write"
     ]
+  },
+  "description": "<div align=\"center\">   <img src=\"public/logo.svg\" alt=\"Motionly Logo\" width=\"100\">",
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/COPPSARY/Motionly.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/COPPSARY/Motionly/issues"
+  },
+  "homepage": "https://github.com/COPPSARY/Motionly#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,0 +1,5 @@
+{
+  "name": "{{name}}",
+  "created": "{{created}}",
+  "version": 1
+}

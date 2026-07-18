@@ -6,6 +6,8 @@
   import { evaluateScene } from '../../animation/evaluator';
   import { loadAssets, isLoadedVideo, pauseVideoAssets, synchronizeVideoAssets } from '../../assets/asset-loader';
   import type { LoadedAsset } from '../../assets/asset-loader';
+  import { assetFilename, significantlyDifferentAsset, tagEmbeddedAssetPath } from '../../assets/asset-resolution';
+  import type { AssetIdentity } from '../../assets/asset-resolution';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
   import { canExport, exportVideo } from '../../export/exporter';
   import type { AnimationNode, AudioNode, CameraNode, ClipNode, ElementNode, ProgramNode, TrackNode } from '../../types/parser';
@@ -93,7 +95,8 @@
   let pendingPresetPath = '';
   let previewAsset: { src: string; width: number; height: number; type: 'image' | 'video' } | null = null;
   let videoRenderId = 0;
-  let draggingAsset: Element | null = null;
+  let isDraggingUpload = false;
+  let draggingAsset: Asset | null = null;
   let draggingTransition: 'crossfade' | null = null;
   let selectedTransitionIds: { outgoingId: string; incomingId: string } | null = null;
   let dropTargetTime: number | null = null;
@@ -996,15 +999,14 @@
     else renderFrame(currentTime);
   }
 
-  function previewAssetOnly(element: Element) {
-    if (element.kind !== 'asset' || !element.assetName) return;
-    const asset = assets.get(element.assetName);
-    if (asset) {
+  function previewAssetOnly(asset: Asset) {
+    const loaded = assets.get(asset.name);
+    if (loaded) {
       previewAsset = {
-        src: asset.src,
-        width: asset.width,
-        height: asset.height,
-        type: isLoadedVideo(asset) ? 'video' : 'image',
+        src: loaded.src,
+        width: loaded.width,
+        height: loaded.height,
+        type: isLoadedVideo(loaded) ? 'video' : 'image',
       };
     }
   }
@@ -1013,12 +1015,11 @@
     previewAsset = null;
   }
 
-  function handleAssetDragStart(event: DragEvent, element: Element) {
-    if (!element.assetName) return;
-    draggingAsset = element;
+  function handleAssetDragStart(event: DragEvent, asset: Asset) {
+    draggingAsset = asset;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
-      event.dataTransfer.setData('text/plain', element.assetName);
+      event.dataTransfer.setData('text/plain', asset.name);
     }
   }
 
@@ -1029,10 +1030,32 @@
   }
 
   async function handleAssetUpload(event: Event) {
+    await importAssetFiles((event.currentTarget as HTMLInputElement).files);
+    assetInput.value = '';
+  }
+
+  async function handleAssetFileDrop(event: DragEvent) {
+    event.preventDefault();
+    isDraggingUpload = false;
+    await importAssetFiles(event.dataTransfer?.files);
+  }
+
+  function handleAssetFileDrag(event: DragEvent) {
+    if (event.dataTransfer?.types.includes('Files')) isDraggingUpload = true;
+  }
+
+  function handleAssetFileDragLeave(event: DragEvent) {
+    if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
+      isDraggingUpload = false;
+    }
+  }
+
+  async function importAssetFiles(fileList: FileList | null | undefined) {
     if (!ast) return;
     const program = ast;
     assetError = '';
-    const files = Array.from((event.currentTarget as HTMLInputElement).files ?? []);
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
     for (const file of files) {
       const lowerName = file.name.toLowerCase();
       const isImage = file.type.startsWith('image/') || lowerName.endsWith('.svg');
@@ -1048,9 +1071,40 @@
       }
       let path = '';
       try {
-        path = await readFileDataUrl(file);
+        path = tagEmbeddedAssetPath(await readFileDataUrl(file), file.name);
       } catch (cause) {
         assetError = cause instanceof Error ? cause.message : `Could not read ${file.name}.`;
+        continue;
+      }
+      const matchingImports = program.body.filter(
+        (node) => node.type === 'Import' && assetFilename(node.path) === file.name
+      );
+      if (matchingImports.length) {
+        const existing = matchingImports
+          .map((node) => assets.get(node.name))
+          .find((asset): asset is LoadedAsset => !!asset);
+        let replacement: AssetIdentity;
+        try {
+          replacement = await readMediaIdentity(file, isVideo);
+        } catch (cause) {
+          assetError = cause instanceof Error ? cause.message : `Could not inspect ${file.name}.`;
+          continue;
+        }
+        if (
+          existing &&
+          significantlyDifferentAsset(
+            { width: existing.width, height: existing.height, size: existing.motionlySize },
+            replacement
+          ) &&
+          !window.confirm(
+            `${file.name} has very different size or dimensions from the current asset. Replace it anyway?`
+          )
+        ) {
+          assetError = `Kept the current ${file.name}.`;
+          continue;
+        }
+        for (const node of matchingImports) node.path = path;
+        assetError = `Matched ${file.name} to its existing import by filename.`;
         continue;
       }
       const used = new Set(program.body.flatMap((node) => node.type === 'Import' ? [node.name] : node.type === 'Element' ? [node.name] : []));
@@ -1058,20 +1112,31 @@
       let name = base;
       let suffix = 2;
       while (used.has(name)) name = `${base}_${suffix++}`;
-      program.body.push(
-        { type: 'Import', path, name },
-        {
-          type: 'Element',
-          kind: 'asset',
-          name,
-          properties: isVideo
-            ? { center: true, layer: 'content' }
-            : { center: true, width: 480, layer: 'content' },
-        }
-      );
+      program.body.push({ type: 'Import', path, name });
     }
-    assetInput.value = '';
     code = serializeProgram(program);
+  }
+
+  async function readMediaIdentity(file: File, isVideo: boolean) {
+    const url = URL.createObjectURL(file);
+    try {
+      if (isVideo) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.src = url;
+        await new Promise<void>((resolve, reject) => {
+          video.onloadedmetadata = () => resolve();
+          video.onerror = () => reject(video.error ?? new Error(`Could not inspect ${file.name}.`));
+        });
+        return { width: video.videoWidth, height: video.videoHeight, size: file.size };
+      }
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight, size: file.size };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function readFileDataUrl(file: File): Promise<string> {
@@ -1102,8 +1167,7 @@
     event.preventDefault();
     if (!draggingAsset || !ast || dropTargetTime === null) return;
     
-    const assetName = draggingAsset.assetName;
-    if (!assetName) return;
+    const assetName = draggingAsset.name;
     const frame = 1 / (scene?.canvas.fps ?? 60);
     const loadedAsset = assets.get(assetName);
     const naturalDuration = isLoadedVideo(loadedAsset) && loadedAsset.motionlyDuration > 0
@@ -1130,7 +1194,7 @@
       const runtimeClip: Clip = {
         id: newId,
         assetName,
-        asset: draggingAsset.asset,
+        asset: draggingAsset,
         track: targetTrack.id,
         start,
         duration,
@@ -2299,15 +2363,30 @@
           {#if mediaSubTab === 'assets'}
             <div class="panel-header-actions">
               <input bind:this={assetInput} class="file-input" type="file" accept="image/*,video/mp4,video/webm,.svg,.mp4,.webm,.m4v" multiple on:change={handleAssetUpload} />
-              <button type="button" class="header-icon-btn" on:click={() => assetInput.click()} title="Upload assets" aria-label="Upload assets">
-                <Upload size={16} />
-              </button>
             </div>
           {/if}
         </div>
         <div class="panel-content">
           {#if mediaSubTab === 'assets'}
-            {#if assetError}<p class="asset-error">{assetError}</p>{/if}
+            <div
+              class="media-dropzone"
+              class:drag-active={isDraggingUpload}
+              role="region"
+              aria-label="Import media by dropping files"
+              on:dragenter={handleAssetFileDrag}
+              on:dragover|preventDefault={handleAssetFileDrag}
+              on:dragleave={handleAssetFileDragLeave}
+              on:drop={handleAssetFileDrop}
+            >
+              {#if assetError}<p class="asset-error">{assetError}</p>{/if}
+              <div class="media-drop-prompt">
+                <button type="button" class="import-media-button" on:click={() => assetInput.click()}>
+                  <Upload size={15} />
+                  Import media
+                </button>
+                <span>or drag & drop from your device</span>
+                <small>Images, SVG, MP4, and WebM</small>
+              </div>
             <!-- Audio Section -->
             {#if scene?.audio}
               <div class="asset-folder">
@@ -2330,34 +2409,34 @@
             {/if}
 
             <!-- Visual Assets Section -->
-            {#if sourceElements.filter(el => el.kind === 'asset').length > 0}
+            {#if scene && scene.imports.length > 0}
               <div class="asset-folder">
                 <div class="folder-header">
                   <FileImage size={14} />
-                  <span class="folder-title">Images & Graphics</span>
-                  <span class="folder-count">{sourceElements.filter(el => el.kind === 'asset').length}</span>
+                  <span class="folder-title">Media</span>
+                  <span class="folder-count">{scene.imports.length}</span>
                 </div>
                 <div class="asset-grid">
-                  {#each sourceElements.filter(el => el.kind === 'asset') as element}
+                  {#each scene.imports as asset}
                     <button
                       type="button"
                       class="asset-card"
                       draggable="true"
-                      on:click={() => previewAssetOnly(element)}
-                      on:dragstart={(e) => handleAssetDragStart(e, element)}
+                      on:click={() => previewAssetOnly(asset)}
+                      on:dragstart={(e) => handleAssetDragStart(e, asset)}
                       on:dragend={handleAssetDragEnd}
                     >
                       <div class="asset-thumbnail">
-                        {#if element.asset?.type === 'video' && element.asset.path}
-                          <video src={assets.get(element.assetName ?? '')?.src ?? element.asset.path} muted playsinline preload="metadata"></video>
-                        {:else if element.asset?.path}
-                          <img src={assets.get(element.assetName ?? '')?.src ?? element.asset.path} alt={element.id} />
+                        {#if asset.type === 'video'}
+                          <video src={assets.get(asset.name)?.src ?? asset.path} muted playsinline preload="metadata"></video>
+                        {:else if asset.path}
+                          <img src={assets.get(asset.name)?.src ?? asset.path} alt={asset.name} />
                         {:else}
                           <FileImage size={24} />
                         {/if}
                       </div>
                       <div class="asset-info">
-                        <div class="asset-name">{element.id}</div>
+                        <div class="asset-name">{asset.name}</div>
                       </div>
                     </button>
                   {/each}
@@ -2366,9 +2445,10 @@
             {/if}
 
             <!-- Empty State -->
-            {#if !scene?.audio && sourceElements.filter(el => el.kind === 'asset').length === 0}
-              <p class="empty-state">No assets in project</p>
+            {#if !scene?.audio && scene?.imports.length === 0}
+              <p class="empty-state">Imported media will stay here until you drag it onto the timeline.</p>
             {/if}
+            </div>
           {:else if mediaSubTab === 'presets'}
             <div class="preset-grid">
               {#each availablePresets as preset}
@@ -3569,6 +3649,77 @@
     color: #f09b9b;
     font-size: 11px;
     line-height: 1.4;
+  }
+
+  .media-dropzone {
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 18px 12px;
+    border: 1px dashed #4b5060;
+    border-radius: 8px;
+    color: #b9b8e8;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .media-drop-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 16px;
+  }
+
+  .media-dropzone.drag-active {
+    border-color: #79e4bb;
+    background: rgba(77, 140, 117, 0.16);
+    animation: upload-pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes upload-pulse {
+    to {
+      transform: scale(1.015);
+      box-shadow: 0 0 18px rgba(121, 228, 187, 0.2);
+    }
+  }
+
+  .media-dropzone:has(.import-media-button:hover) {
+    border-color: #4d8c75;
+  }
+
+  .media-drop-prompt span,
+  .media-drop-prompt small {
+    font-size: 11px;
+  }
+
+  .media-drop-prompt small {
+    color: #777b88;
+  }
+
+  .import-media-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #4d8c75;
+    border-radius: 6px;
+    background: #1a3b30;
+    color: #9af8d1;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .import-media-button:hover {
+    background: #1a3028;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .media-dropzone.drag-active {
+      animation: none;
+    }
   }
 
   .panel-description {
