@@ -1,6 +1,6 @@
 {
   "name": "@coppsary/motionly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -40,7 +40,6 @@
     "gsap": "^3.15.0",
     "lucide-svelte": "^1.0.1",
     "motion": "^12.42.2",
-    "motionly": "file:../../../../../tmp/motionly-1.0.0.tgz",
     "svelte": "^5.56.4",
     "svelvet": "^11.0.5"
   },
