@@ -15,6 +15,31 @@ npx motionly
 
 This serves the editor at `http://localhost:4173` and opens your browser. Use `--port <n>` to pick a port or `--no-open` to skip launching the browser.
 
+## Optional local project
+
+```bash
+npx motionly init my-video
+```
+
+The `init` wizard offers **Skip**, **Project**, and **Global** skill setup choices. If you install a
+skill, it then lets you choose all supported agents or one agent. After setup, Motionly starts the
+generated project automatically and tells you to open `http://localhost:4173/editor`.
+
+Press `Ctrl+C` to stop it. To reopen the project later:
+
+```bash
+cd my-video
+npx motionly dev
+```
+
+To install skills without creating a project, run `npx motionly skills add`. For a non-interactive
+install, use `--all --scope project` or `--provider codex --scope global`. Supported providers are
+`claude`, `codex`, `gemini`, and `kiro`.
+
+The local editor reads and saves `project.motion` and serves files from `assets/`. Asset imports are
+resolved by filename, so the same import works with local media or a browser upload. Motionly asks
+before replacing a filename match whose size or dimensions differ significantly.
+
 ## Requirements
 
 - Node.js `20.19.0` or newer
@@ -56,4 +81,3 @@ This runs the same launcher `npx motionly` uses against your local `dist/`.
 ```bash
 npm run test:run
 ```
-

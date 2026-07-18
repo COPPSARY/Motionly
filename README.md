@@ -315,15 +315,114 @@ Known limitations:
 
 ---
 
-## Run
+## Install from npm
 
-Quickest way to try the editor (no clone, serves the built app):
+Use the public `motionly` package from the npm registry. You do not need to clone this repository or download a tarball. Motionly requires Node.js `20.19.0` or newer.
+
+```bash
+npx motionly init demo
+```
+
+For the easiest project setup:
+
+1. Enter `2` to install the skills inside the new project.
+2. Enter `1` to install them for all supported agents.
+
+The complete terminal session looks like this:
+
+```text
+$ npx motionly init demo
+Created /path/to/workspace/demo
+
+Install Motionly agent skills?
+  1. Skip
+  2. Project — inside the new project
+  3. Global — every project for this user
+Select [1]: 2
+
+Which agents should receive the Motionly skill?
+  1. All supported agents
+  2. Claude Code
+  3. Codex
+  4. Gemini CLI
+  5. Kiro CLI
+Select [1]: 1
+
+Added claude: /path/to/workspace/demo/.claude/skills/motionly/SKILL.md
+Added codex: /path/to/workspace/demo/.agents/skills/motionly/SKILL.md
+Added gemini: /path/to/workspace/demo/.gemini/skills/motionly/SKILL.md
+Added kiro: /path/to/workspace/demo/.kiro/skills/motionly/SKILL.md
+
+  To reopen later: cd demo && npx motionly dev
+
+  Motionly is running.
+  Open this URL in your browser: http://localhost:4173/editor
+  Project: /path/to/workspace/demo
+  Press Ctrl+C to stop.
+```
+
+Open `http://localhost:4173/editor` in your browser. Keep the terminal running while you edit and
+press `Ctrl+C` when finished.
+
+Other wizard choices:
+
+- Choose **Skip** to create the project without agent skills.
+- Choose **Global** to make the selected skills available to every project for your user.
+- Choose one agent instead of **All supported agents** if you only use that agent.
+
+To install skills without creating a project:
+
+```bash
+motionly skills add
+```
+
+For scripts and CI, skip the wizard with flags:
+
+```bash
+motionly skills add --all --scope project
+motionly skills add --provider codex --scope global
+```
+
+Supported provider names are `claude`, `codex`, `gemini`, and `kiro`.
+
+### 3. Project layout
+
+The project contains:
+
+```text
+demo/
+├── AGENTS.md
+├── assets/
+├── project.motion
+├── meta.json
+└── README.md
+```
+
+### 4. Reopen the project later
+
+```bash
+cd demo
+motionly dev
+```
+
+Motionly opens `http://localhost:4173/editor`, loads `project.motion`, serves files from `assets/`, and saves editor changes back to the project. Use `--port <n>` to change the port or `--no-open` to skip opening the browser.
+
+### Run without a global installation
+
+You can use the public package directly through `npx` instead:
+
+```bash
+npx motionly --help
+npx motionly init my-video
+```
+
+For the no-setup browser editor:
 
 ```bash
 npx motionly
 ```
 
-This opens the editor at `http://localhost:4173`. Use `--port <n>` to change the port or `--no-open` to skip launching the browser.
+## Development from source
 
 For local development from source:
 
@@ -355,6 +454,7 @@ npm run build
 ```
 
 ---
+
 
 ## Contributing
 

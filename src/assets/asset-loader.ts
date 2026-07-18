@@ -3,6 +3,7 @@
  */
 
 import type { AssetType, EvaluatedScene, Scene } from '../types/scene';
+import { assetFilename } from './asset-resolution';
 
 export interface MotionlySvgData {
   width: number;
@@ -21,6 +22,7 @@ export interface MotionlySvgData {
 interface LoadedAssetMetadata {
   motionlySvg?: MotionlySvgData;
   motionlyDuration?: number;
+  motionlySize?: number;
 }
 
 export type LoadedImageAsset = HTMLImageElement &
@@ -43,10 +45,16 @@ export async function loadAssets(
   scene: Scene,
   baseUrl: string = document.baseURI
 ): Promise<Map<string, LoadedAsset>> {
+  const uploadedByFilename = new Map<string, string>();
+  for (const asset of scene.imports) {
+    const filename = assetFilename(asset.path);
+    if (asset.path.startsWith('data:') && filename) uploadedByFilename.set(filename, asset.path);
+  }
   const entries = await Promise.all(
     scene.imports.map(async (asset): Promise<[string, LoadedAsset] | null> => {
       try {
-        return [asset.name, await loadAsset(asset.path, baseUrl, asset.type)];
+        const path = uploadedByFilename.get(assetFilename(asset.path)) ?? asset.path;
+        return [asset.name, await loadAsset(path, baseUrl, asset.type)];
       } catch (error) {
         console.warn(`Could not load asset ${asset.path}:`, error);
         return null;
@@ -66,8 +74,23 @@ export async function loadAsset(
     path.startsWith('/') ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
     baseUrl
   ).href;
-  if (type === 'video') return loadVideo(url);
-  return loadImage(url, type === 'svg');
+  const [asset, size] = await Promise.all([
+    type === 'video' ? loadVideo(url) : loadImage(url, type === 'svg'),
+    loadAssetSize(url),
+  ]);
+  if (size) asset.motionlySize = size;
+  return asset;
+}
+
+async function loadAssetSize(url: string): Promise<number | undefined> {
+  if (!/^https?:/i.test(url)) return undefined;
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const size = Number(response.headers.get('content-length'));
+    return response.ok && Number.isFinite(size) && size > 0 ? size : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function loadImage(url: string, isSvg: boolean): Promise<LoadedAsset> {

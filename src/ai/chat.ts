@@ -1,4 +1,5 @@
 import type { Asset } from '../types/scene';
+import { assetFilename } from '../assets/asset-resolution';
 
 export const AI_SETTINGS_KEY = 'motionly.ai.settings.v1';
 export const AI_HISTORY_KEY = 'motionly.ai.history.v1';
@@ -127,12 +128,22 @@ export function extractMotion(source: string): string | undefined {
 }
 
 export function maskEmbeddedAssetPaths(source: string, assets: Asset[]): string {
-  return replaceEmbeddedAssetPaths(source, assets, (asset) => `motionly-local:${asset.name}`);
+  return replaceEmbeddedAssetPaths(
+    source,
+    assets,
+    (asset) => `motionly-local:${encodeURIComponent(assetFilename(asset.path) || asset.name)}`
+  );
 }
 
 export function restoreEmbeddedAssetPaths(source: string, assets: Asset[]): string {
   for (const asset of assets.filter((item) => item.path.startsWith('data:'))) {
-    source = source.replaceAll(`"motionly-local:${asset.name}"`, `"${asset.path}"`);
+    const references = new Set([
+      asset.name,
+      encodeURIComponent(assetFilename(asset.path) || asset.name),
+    ]);
+    for (const reference of references) {
+      source = source.replaceAll(`"motionly-local:${reference}"`, `"${asset.path}"`);
+    }
   }
   return replaceEmbeddedAssetPaths(source, assets, (asset) => asset.path);
 }

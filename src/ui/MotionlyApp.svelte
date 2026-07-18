@@ -78,12 +78,11 @@ animate title {
   $: if (fileHandle) scheduleAutoSave(motionCode);
 
   async function loadInitialProject() {
-    if (!import.meta.env.DEV) return;
     try {
       let response = await fetch('/api/motion-project', { cache: 'no-store' });
       if (response.ok && response.headers.get('content-type')?.startsWith('text/plain')) {
         motionCode = await response.text();
-        currentFile = 'motionly.motion';
+        currentFile = response.headers.get('x-motionly-project-name') || 'project.motion';
         serverBacked = true;
         return;
       }
@@ -128,7 +127,7 @@ animate title {
         headers: { 'content-type': 'text/plain;charset=utf-8' },
         body: motionCode,
       });
-      if (!response.ok) throw new Error(`Could not save motionly.motion (${response.status})`);
+      if (!response.ok) throw new Error(`Could not save ${currentFile} (${response.status})`);
       return;
     }
     const picker = (window as FilePickerWindow).showSaveFilePicker;
