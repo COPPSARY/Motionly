@@ -29,11 +29,11 @@ jobs:
         run: npm run format:check
         continue-on-error: true
       
-      - name: Run tests
-        run: npm run test:run
-      
       - name: Build
         run: npm run build
+
+      - name: Run tests
+        run: npm run test:run
       
       - name: Upload coverage
         uses: codecov/codecov-action@v4

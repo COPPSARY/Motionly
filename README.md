@@ -449,8 +449,8 @@ npm run serve
 ## Test
 
 ```bash
-npm test -- --run
 npm run build
+npm test -- --run
 ```
 
 ---
