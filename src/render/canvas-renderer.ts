@@ -5,7 +5,7 @@
 
 import type { EvaluatedScene, EvaluatedElement, Canvas, ElementProperties } from '../types/scene';
 import type { BoundingBox } from '../types/export';
-import { isLoadedVideo, type LoadedAsset } from '../assets/asset-loader';
+import { isLoadedVideo, type LoadedAsset, type MotionlySvgData } from '../assets/asset-loader';
 import { formatCountValue } from '../animation-library/count-up';
 
 /**
@@ -43,12 +43,23 @@ export class CanvasRenderer {
   /**
    * Render frame to canvas
    */
-  render(frame: EvaluatedScene, assets: Map<string, LoadedAsset> = new Map()): void {
+  render(
+    frame: EvaluatedScene,
+    assets: Map<string, LoadedAsset> = new Map(),
+    outputScale = 1
+  ): void {
     const { canvas, camera, elements } = frame;
-    this.resize(canvas.width, canvas.height);
+    const scale = Math.max(0.05, Math.min(1, Number.isFinite(outputScale) ? outputScale : 1));
+    this.resize(
+      Math.max(1, Math.round(canvas.width * scale)),
+      Math.max(1, Math.round(canvas.height * scale))
+    );
     const ctx = this.context;
 
     ctx.save();
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.globalAlpha = 1;
     ctx.filter = 'none';
     ctx.fillStyle = canvas.background;
@@ -67,7 +78,6 @@ export class CanvasRenderer {
           ctx,
           canvas,
           element,
-          laidOut,
           assets,
           elementsById,
           this.maskCanvas,
@@ -84,7 +94,6 @@ export class CanvasRenderer {
           ctx,
           canvas,
           element,
-          laidOut,
           assets,
           elementsById,
           this.maskCanvas,
@@ -235,7 +244,6 @@ function drawElementWithMask(
   ctx: CanvasRenderingContext2D,
   canvas: Canvas,
   element: EvaluatedElement,
-  elements: EvaluatedElement[],
   assets: Map<string, LoadedAsset>,
   elementsById: Map<string, EvaluatedElement>,
   maskCanvas: HTMLCanvasElement,
@@ -243,8 +251,7 @@ function drawElementWithMask(
 ): void {
   const props = element.render as unknown as Record<string, unknown>;
   const maskId = String(props['mask'] ?? '');
-  const maskElement =
-    maskId && maskId !== 'none' ? elements.find((candidate) => candidate.id === maskId) : undefined;
+  const maskElement = maskId && maskId !== 'none' ? elementsById.get(maskId) : undefined;
   if (!maskElement) {
     drawElement(ctx, canvas, element, assets, elementsById);
     return;
@@ -376,9 +383,19 @@ function drawSvgReveal(
     ctx.lineJoin = path.lineJoin;
     ctx.setLineDash([path.length, path.length]);
     ctx.lineDashOffset = path.length * (1 - progress);
-    ctx.stroke(new Path2D(path.d));
+    ctx.stroke(svgPath(path));
   }
   ctx.restore();
+}
+
+const svgPaths = new WeakMap<MotionlySvgData['paths'][number], Path2D>();
+
+function svgPath(path: MotionlySvgData['paths'][number]): Path2D {
+  const cached = svgPaths.get(path);
+  if (cached) return cached;
+  const created = new Path2D(path.d);
+  svgPaths.set(path, created);
+  return created;
 }
 
 /**

@@ -249,7 +249,7 @@ animate title {
         <FolderOpen size={18} />
         <span class="action-label">Open</span>
       </button>
-      <button on:click={handleSave} class="btn btn-primary" title="Save changes">
+      <button on:click={handleSave} class="btn btn-primary" title="Save changes (Ctrl/Cmd+S)">
         <Save size={18} />
         <span class="action-label">Save</span>
       </button>
@@ -296,7 +296,7 @@ animate title {
   </div>
 
   <!-- Editor -->
-  <MotionEditor bind:this={editor} bind:code={motionCode} />
+  <MotionEditor bind:this={editor} bind:code={motionCode} onSave={handleSave} />
 </div>
 
 <style>

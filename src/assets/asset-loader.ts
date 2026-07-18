@@ -23,6 +23,8 @@ interface LoadedAssetMetadata {
   motionlySvg?: MotionlySvgData;
   motionlyDuration?: number;
   motionlySize?: number;
+  motionlyPlay?: Promise<void>;
+  motionlySeek?: Promise<void>;
 }
 
 export type LoadedImageAsset = HTMLImageElement &
@@ -153,6 +155,8 @@ export interface VideoSyncOptions {
   exact?: boolean;
 }
 
+const activeVideosByAssetMap = new WeakMap<Map<string, LoadedAsset>, Set<LoadedVideoAsset>>();
+
 export function videoSourceTime(sourceTime: number, duration: number, trimOut = 0): number {
   const maximum = Math.max(0, duration - Math.max(0, trimOut) - 0.001);
   return Math.max(0, Math.min(maximum, Number.isFinite(sourceTime) ? sourceTime : 0));
@@ -177,31 +181,58 @@ export async function synchronizeVideoAssets(
   }
 
   const operations: Promise<void>[] = [];
-  for (const [name, asset] of assets) {
+  const previousActive = activeVideosByAssetMap.get(assets) ?? new Set<LoadedVideoAsset>();
+  const nextActive = new Set<LoadedVideoAsset>();
+  for (const [name, render] of active) {
+    const asset = assets.get(name);
     if (!isLoadedVideo(asset)) continue;
-    const render = active.get(name);
-    if (!render) {
-      asset.pause();
-      continue;
-    }
+    nextActive.add(asset);
     const sourceTime = Number(render['mediaTime'] ?? 0);
     const trimOut = Math.max(0, Number(render['mediaTrimOut'] ?? 0));
     const desired = videoSourceTime(sourceTime, asset.motionlyDuration, trimOut);
     const tolerance = options.exact ? 1 / 1000 : 0.15;
     if (Math.abs(asset.currentTime - desired) > tolerance) {
-      operations.push(seekVideo(asset, desired));
+      operations.push(seekVideoWithoutOverlap(asset, desired, options.exact === true));
     }
     if (options.playing && asset.paused) {
-      operations.push(asset.play().catch(() => undefined));
+      operations.push(playVideo(asset));
     } else if (!options.playing) {
       asset.pause();
     }
   }
+  for (const asset of previousActive) {
+    if (!nextActive.has(asset)) asset.pause();
+  }
+  activeVideosByAssetMap.set(assets, nextActive);
   await Promise.all(operations);
 }
 
 export function pauseVideoAssets(assets: Map<string, LoadedAsset>): void {
   for (const asset of assets.values()) if (isLoadedVideo(asset)) asset.pause();
+  activeVideosByAssetMap.delete(assets);
+}
+
+function playVideo(video: LoadedVideoAsset): Promise<void> {
+  if (video.motionlyPlay) return video.motionlyPlay;
+  const operation = video.play().catch(() => undefined);
+  video.motionlyPlay = operation;
+  return operation.finally(() => {
+    if (video.motionlyPlay === operation) video.motionlyPlay = undefined;
+  });
+}
+
+function seekVideoWithoutOverlap(
+  video: LoadedVideoAsset,
+  time: number,
+  exact: boolean
+): Promise<void> {
+  if (video.motionlySeek && !exact) return video.motionlySeek;
+  const previous = video.motionlySeek?.catch(() => undefined) ?? Promise.resolve();
+  const operation = previous.then(() => seekVideo(video, time));
+  video.motionlySeek = operation;
+  return operation.finally(() => {
+    if (video.motionlySeek === operation) video.motionlySeek = undefined;
+  });
 }
 
 async function seekVideo(video: LoadedVideoAsset, time: number): Promise<void> {

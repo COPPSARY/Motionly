@@ -18,6 +18,16 @@ export function quantizeTimelineTime(time: number, duration: number, fps: number
   return Math.min(safeDuration, Math.round(clamped * safeFps) / safeFps);
 }
 
+export function playbackTimeFromClock(
+  startTime: number,
+  startedAtMs: number,
+  nowMs: number,
+  duration: number
+): number {
+  const elapsed = Math.max(0, nowMs - startedAtMs) / 1000;
+  return Math.min(Math.max(0, duration), Math.max(0, startTime) + elapsed);
+}
+
 export function timelineContentWidth(
   duration: number,
   zoom: number,

@@ -14,52 +14,62 @@ import type {
   Keyframe,
   PropertyMap,
   ElementProperties,
+  Clip,
+  Track,
 } from '../types/scene';
+
+interface PreparedScene {
+  animationsByTarget: Map<string, Animation[]>;
+  clippedAssets: Set<string>;
+  clipsById: Map<string, Clip>;
+  elementsByAsset: Map<string, Element>;
+  orderedClips: Clip[];
+  regularElements: Element[];
+  tracksById: Map<string, Track>;
+}
+
+const preparedScenes = new WeakMap<Scene, PreparedScene>();
+const interpolatedKeys = new WeakMap<Animation, string[]>();
 
 /**
  * Evaluate scene at a specific time
  * Returns the scene with all animations applied
  */
 export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
-  const camera = evaluateCamera(scene, time);
-  const clippedAssets = new Set(scene.clips.map((clip) => clip.assetName));
+  const prepared = prepareScene(scene);
+  const camera = evaluateCamera(scene, prepared, time);
 
   // Evaluate regular elements
-  const elements = scene.elements
-    .filter(
-      (element) =>
-        (element.kind !== 'asset' || !element.assetName || !clippedAssets.has(element.assetName)) &&
-        elementTrackVisible(scene, element) &&
-        elementWindowActive(element, time)
-    )
+  const elements = prepared.regularElements
+    .filter((element) => elementWindowActive(element, time))
     .map((element) => {
-      const render = evaluateElement(element, scene.animations, time);
-      if (element.asset?.type === 'video') render.mediaTime = Math.max(0, time);
+      let render = evaluateElement(
+        element,
+        prepared.animationsByTarget.get(element.id) ?? [],
+        time
+      );
+      if (element.asset?.type === 'video') {
+        render = { ...render, mediaTime: Math.max(0, time) } as ElementProperties;
+      }
       return { ...element, render };
     });
 
   // Visual tracks stack bottom-to-top: higher track numbers render last.
   // Authored source order is the explicit same-track tie-breaker.
-  const activeClips = scene.clips
-    .filter((clip) => {
-      const track = scene.tracks.find((candidate) => candidate.id === String(clip.track));
-      if (track?.role === 'audio' || track?.hidden) return false;
-      const transitionTail = clip.transitionOut === 'crossfade' ? clip.transitionOutDuration : 0;
-      return time >= clip.start && time < clip.start + clip.duration + transitionTail;
-    })
-    .sort(
-      (a, b) =>
-        clipTrackRank(scene, a.track) - clipTrackRank(scene, b.track) ||
-        a.sourceOrder - b.sourceOrder
-    );
+  const activeClips = prepared.orderedClips.filter((clip) => {
+    const transitionTail = clip.transitionOut === 'crossfade' ? clip.transitionOutDuration : 0;
+    return time >= clip.start && time < clip.start + clip.duration + transitionTail;
+  });
 
   for (const clip of activeClips) {
     if (!clip.asset) continue;
-    const sourceElement = scene.elements.find(
-      (element) => element.kind === 'asset' && element.assetName === clip.assetName
-    );
+    const sourceElement = prepared.elementsByAsset.get(clip.assetName);
     const sourceRender = sourceElement
-      ? evaluateElement(sourceElement, scene.animations, time)
+      ? evaluateElement(
+          sourceElement,
+          prepared.animationsByTarget.get(sourceElement.id) ?? [],
+          time
+        )
       : ({
           x: 0,
           y: 0,
@@ -94,20 +104,70 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
         mediaTrimOut: clip.trimOut,
         mediaVolume: clip.volume ?? 1,
         mediaMuted:
-          (scene.tracks.find((track) => track.id === String(clip.track))?.muted ?? false) ||
-          (clip.mute ?? false),
+          (prepared.tracksById.get(String(clip.track))?.muted ?? false) || (clip.mute ?? false),
       } as ElementProperties,
     };
 
     elements.push(clipElement);
   }
 
-  elements.sort((left, right) => elementTrackRank(scene, left) - elementTrackRank(scene, right));
+  elements.sort(
+    (left, right) => elementTrackRank(prepared, left) - elementTrackRank(prepared, right)
+  );
   return { canvas: scene.canvas, camera, elements };
 }
 
-function clipTrackRank(scene: Scene, trackId: number | string): number {
-  const track = scene.tracks.find((candidate) => candidate.id === String(trackId));
+function prepareScene(scene: Scene): PreparedScene {
+  const cached = preparedScenes.get(scene);
+  if (cached) return cached;
+
+  const animationsByTarget = new Map<string, Animation[]>();
+  for (const animation of scene.animations) {
+    const targetAnimations = animationsByTarget.get(animation.target);
+    if (targetAnimations) targetAnimations.push(animation);
+    else animationsByTarget.set(animation.target, [animation]);
+  }
+
+  const tracksById = new Map(scene.tracks.map((track) => [track.id, track]));
+  const elementsByAsset = new Map<string, Element>();
+  for (const element of scene.elements) {
+    if (element.kind === 'asset' && element.assetName && !elementsByAsset.has(element.assetName)) {
+      elementsByAsset.set(element.assetName, element);
+    }
+  }
+
+  const prepared: PreparedScene = {
+    animationsByTarget,
+    clippedAssets: new Set(scene.clips.map((clip) => clip.assetName)),
+    clipsById: new Map(scene.clips.map((clip) => [clip.id, clip])),
+    elementsByAsset,
+    orderedClips: [],
+    regularElements: [],
+    tracksById,
+  };
+  prepared.regularElements = scene.elements.filter(
+    (element) =>
+      (element.kind !== 'asset' ||
+        !element.assetName ||
+        !prepared.clippedAssets.has(element.assetName)) &&
+      elementTrackVisible(prepared, element)
+  );
+  prepared.orderedClips = scene.clips
+    .filter((clip) => {
+      const track = prepared.tracksById.get(String(clip.track));
+      return track?.role !== 'audio' && !track?.hidden;
+    })
+    .sort(
+      (left, right) =>
+        clipTrackRank(prepared, left.track) - clipTrackRank(prepared, right.track) ||
+        left.sourceOrder - right.sourceOrder
+    );
+  preparedScenes.set(scene, prepared);
+  return prepared;
+}
+
+function clipTrackRank(prepared: PreparedScene, trackId: number | string): number {
+  const track = prepared.tracksById.get(String(trackId));
   if (track) return track.role === 'main' ? 0 : 100 + track.order;
   return trackRank(trackId);
 }
@@ -121,21 +181,21 @@ function elementWindowActive(element: Element, time: number): boolean {
   return time >= start && time < start + Math.max(0, duration);
 }
 
-function elementTrackVisible(scene: Scene, element: Element): boolean {
+function elementTrackVisible(prepared: PreparedScene, element: Element): boolean {
   const trackId = (element.properties as unknown as Record<string, unknown>)['track'];
   if (trackId === undefined) return true;
-  const track = scene.tracks.find((candidate) => candidate.id === String(trackId));
+  const track = prepared.tracksById.get(String(trackId));
   return track?.role !== 'audio' && !track?.hidden;
 }
 
 function elementTrackRank(
-  scene: Scene,
+  prepared: PreparedScene,
   element: import('../types/scene').EvaluatedElement
 ): number {
-  const clip = scene.clips.find((candidate) => candidate.id === element.id);
-  if (clip) return clipTrackRank(scene, clip.track);
+  const clip = prepared.clipsById.get(element.id);
+  if (clip) return clipTrackRank(prepared, clip.track);
   const trackId = (element.render as unknown as Record<string, unknown>)['track'];
-  if (trackId !== undefined) return clipTrackRank(scene, String(trackId));
+  if (trackId !== undefined) return clipTrackRank(prepared, String(trackId));
   return 1000;
 }
 
@@ -147,7 +207,7 @@ function trackRank(track: number | string): number {
 /**
  * Evaluate camera state at a specific time
  */
-function evaluateCamera(scene: Scene, time: number): ElementProperties {
+function evaluateCamera(scene: Scene, prepared: PreparedScene, time: number): ElementProperties {
   const cameraElement: Element = {
     id: 'camera',
     kind: 'asset',
@@ -160,7 +220,11 @@ function evaluateCamera(scene: Scene, time: number): ElementProperties {
       rotation: 0,
     }) as unknown as ElementProperties,
   };
-  return evaluateElement(cameraElement, scene.animations, time);
+  return evaluateElement(
+    cameraElement,
+    prepared.animationsByTarget.get(cameraElement.id) ?? [],
+    time
+  );
 }
 
 /**
@@ -171,12 +235,14 @@ function evaluateElement(
   animations: Animation[],
   time: number
 ): ElementProperties {
+  if (animations.length === 0) return element.properties;
+
   let state: Record<string, unknown> = { ...element.properties } as unknown as Record<
     string,
     unknown
   >;
 
-  for (const animation of animations.filter((item) => item.target === element.id)) {
+  for (const animation of animations) {
     state = applyAnimation(state as PropertyMap, animation, time) as unknown as Record<
       string,
       unknown
@@ -204,7 +270,11 @@ function applyAnimation(state: PropertyMap, animation: Animation, time: number):
 
   const progress = ease(rawProgress, animation.easing);
   const next: PropertyMap = { ...state };
-  const keys = new Set([...Object.keys(animation.from), ...Object.keys(animation.to)]);
+  let keys = interpolatedKeys.get(animation);
+  if (!keys) {
+    keys = [...new Set([...Object.keys(animation.from), ...Object.keys(animation.to)])];
+    interpolatedKeys.set(animation, keys);
+  }
 
   for (const key of keys) {
     const from = animation.from[key] ?? state[key] ?? 0;
