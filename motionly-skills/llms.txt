@@ -1,0 +1,16 @@
+# Motionly Skills discovery index
+
+Load skills/motion-dsl/SKILL.md for any .motion authoring or repair task.
+
+- skills/motion-dsl/SKILL.md — canvas, imports, elements, clips, tracks, audio, animations, keyframes, validation
+- skills/svg/SKILL.md — logos, icons, diagrams, vector artwork, DrawSVG, fill/stroke, local zoom/pan, animated SVG
+- skills/animation/SKILL.md — choreography, entrances, holds, exits, presets, sequences, professional motion patterns
+- skills/easing/SKILL.md — easing selection, duration, stagger, timing diagnosis
+- skills/camera/SKILL.md — global camera, local artwork focus, push, pull, pan, speed zoom
+- skills/composition/SKILL.md — hierarchy, spacing, color, branding, layouts, scene review
+- skills/typography/SKILL.md — titles, captions, kinetic type, narration timing, count-up
+- skills/transitions/SKILL.md — scene changes, wipes, crossfades, continuity
+- skills/timeline/SKILL.md — tracks, clips, trim, retime, overlap, audio placement
+- skills/assets/SKILL.md — PNG/JPEG, SVG, GIF, MP4, WebM, MOV, Lottie, browser codecs
+- skills/rendering/SKILL.md — preview, scrub, export, inspection, renderer limitations
+- skills/templates/SKILL.md — product launch, logo reveal, diagram walkthrough, social stat storyboards

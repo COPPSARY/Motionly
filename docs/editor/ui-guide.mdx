@@ -32,6 +32,8 @@ Icon-based tabs for quick access to tools and content:
 Browse and manage project assets:
 
 - Click thumbnails for full-screen preview (temporary, no timeline disruption)
+- Import PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and Lottie files
+- See explicit browser/renderer warnings when an animated format cannot be frame-seeked or decoded
 - Organized folder structure showing audio and visual assets
 - Drag assets directly onto timeline to create clips
 - Green drop indicator shows where clips will be placed
@@ -42,7 +44,7 @@ The Media panel has two tabs: **Assets** and **Presets**.
 
 The **AI Config** rail item (AI/Bot icon) manages the knowledge the in-app assistant uses. It has two sections:
 
-- **Skills** — Lists the built-in skills (`write-motionly`, `motion-graphics`, `motionly-rules`), shows their descriptions, and lets you enable/disable each and read its instructions. Enabled skills load their instructions into the assistant context, which replaces the need for a per-project AGENTS.md.
+- **Skills** — Lists the built-in skills (`write-motionly`, `motion-graphics`, `svg-motion`, `animated-assets`, `motionly-rules`), shows their descriptions, and lets you enable/disable each and read its instructions. Enabled skills load their instructions into the assistant context, which replaces the need for a per-project AGENTS.md.
 - **Context** — Previews exactly what the assistant currently knows: how many skills are enabled, whether a brand profile is loaded, how many assets are available, and the current project resolution, FPS, duration, and element count.
 
 ## Settings
@@ -94,7 +96,8 @@ The right panel edits the selected layer without requiring source changes.
 - Custom polished sliders for smooth value control
 - Styled inputs for precise values
 - Visual preset cards for animation selection
-- Position, scale, width, rotation, and opacity
+- Position, scale, width, rotation, transform origin, skew, and opacity
+- SVG fill and stroke overrides for simple path artwork
 - Text content, font size, and color
 - Scene background color
 - Animation preset, duration, delay, and easing

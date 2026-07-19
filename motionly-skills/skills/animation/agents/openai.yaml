@@ -1,0 +1,4 @@
+interface:
+  display_name: "Animation"
+  short_description: "Choreograph polished object animation"
+  default_prompt: "Use $animation to choreograph polished Motionly animation."

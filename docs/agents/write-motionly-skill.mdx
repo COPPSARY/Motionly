@@ -36,12 +36,12 @@ The repository parser and preset implementation are authoritative if they differ
 
 ## The Authoring Contract
 
-Before editing, an agent identifies the project type, output path, canvas/FPS/duration, audience, exact copy, narration timing, brand constraints, required assets, and prohibited treatments. It should preserve unrelated user work and avoid guessing media dimensions or duration.
+Before editing, an agent identifies the project type, audience, goal, exact copy, narration timing, brand constraints, required assets, and prohibited treatments. It infers sensible canvas/FPS/duration and file placement unless a choice materially changes the story. It should preserve unrelated user work and avoid guessing media dimensions or duration.
 
 ## Workflow
 
 1. Inspect the request, existing `.motion` project, script, audio, and every relevant asset.
-2. Determine canvas size, frame rate, exact duration, output path, and whether spoken copy must appear verbatim.
+2. Infer canvas size, frame rate, and duration from the brief/media; confirm whether spoken copy must appear verbatim.
 3. Storyboard distinct shots before editing.
 4. Give each shot a purpose, focal subject, supporting elements, entrance, exit, and time range.
 5. Write or edit the smallest valid `.motion` project that realizes the storyboard.
@@ -58,8 +58,11 @@ Agents should not invent new engine features while authoring a project. Missing 
 - Preserve original aspect ratios.
 - Do not stretch assets.
 - Do not place every available asset on screen.
-- Use `drawSVG` only for simple stroked artwork.
-- Use `maskReveal`, `dynamicSlide`, or normal image reveals for detailed logos, screenshots, and illustrations.
+- Treat MP4, WebM, MOV/M4V, GIF, animated SVG, and Lottie as animated assets; never silently flatten them.
+- Prefer native SVG/vector overlays for logos, icons, diagrams, badges, illustrations, line art, and UI graphics unless an existing animation must be preserved.
+- Use `drawSVG` for simple stroked artwork; use editable fill/stroke, masks, transforms, and grouped layers for richer vector motion.
+- Animate local SVG zoom/pan with `x`, `y`, `scale`, `rotation`, `originX`, and `originY`, not the global camera.
+- Report browser codec failures and animated-SVG exact-seeking limitations plainly.
 
 ## Script, Audio, And Timeline Rules
 

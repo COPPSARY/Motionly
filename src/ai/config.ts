@@ -13,43 +13,27 @@ import type { Asset } from '../types/scene';
 export const AI_BRAND_KEY = 'motionly.ai.brand.v1';
 export const AI_SKILLS_KEY = 'motionly.ai.skills.v1';
 
-export const MOTIONLY_PROMPT_TEMPLATE = `Read AGENTS.md, .agents/skills/write-motionly/SKILL.md, and .agents/skills/write-motionly/references/motion-syntax.md before editing.
+export const MOTIONLY_PROMPT_TEMPLATE = `Create or refine a polished, fully editable Motionly animation from this creative brief.
 
-Create or update an editable Motionly project.
-
-Project:
-- Output file: [path/to/project.motion]
-- Audience and goal: [who it is for and what it should communicate]
-- Format: [aspect ratio or canvas size]
-- Duration and FPS: [exact duration and frame rate]
+Audience and goal:
+[Who should see this, what should they understand, and what should they do next?]
 
 Story:
-[Describe the sequence of shots and the single focal subject in each shot.]
+[Describe the message or progression. A rough beginning, middle, and end is enough.]
 
-Assets:
-- Folder: [path/to/assets]
-- Required assets: [files that must appear]
-- Optional assets: [files the agent may use]
+Assets (optional):
+[List required logos, screenshots, video, animated SVG/GIF, Lottie, photos, or illustrations. Say which existing animation must be preserved.]
 
-Script and timing:
-[Paste narration, exact on-screen copy, timestamps, or an audio path. Mark text that must remain verbatim.]
+Narration or script:
+[Paste narration, exact on-screen copy, or useful timestamps. Mark any wording that must remain verbatim.]
 
 Brand direction:
-[Colors, typography, visual style, motion style, and anything to avoid.]
+[Colors, typography, visual references, motion character, and anything to avoid.]
 
-Requirements:
-- Inspect the existing project and every relevant asset before editing.
-- Probe media duration and dimensions; do not guess or stretch assets.
-- Storyboard shot purpose, time range, focal subject, entrance, hold, and exit before writing source.
-- Use only syntax and presets supported by Motionly's current parser and renderer.
-- Keep visual tracks as predictable layers; keep audio on the bottom audio track.
-- Preserve supplied copy exactly when requested and synchronize it to supplied timestamps.
-- Use restrained professional motion, deliberate exits, and one strong transition per real scene change.
-- Avoid accidental overlap, clipped text, stale layers, repeated fade-only scenes, and constant camera drift.
-- Keep all output editable in Motionly; do not replace the project with a black-box rendered video.
-- Run inspect:motion, review reported empty ranges, inspect representative frames, and verify parse/serialize/parse stability.
+Important requirements:
+[Anything that must appear, must not change, or must be avoided.]
 
-Return the completed .motion file and briefly report validation performed.`;
+Infer sensible format, duration, pacing, timeline organization, and technical settings from the brief and available media. Prefer native editable SVG artwork and Motionly animation for logos, icons, diagrams, and illustrations unless an existing asset's animation must be preserved.`;
 
 /** Structured brand identity edited visually and serialized to BRAND.md. */
 export interface BrandProfile {
@@ -114,6 +98,8 @@ export const AVAILABLE_SKILLS: SkillInfo[] = [
 Storyboard distinct shots first. For each shot define purpose, time range, focal subject, supporting elements, entrance, readable hold, exit, and transition.
 Write the smallest valid .motion project that realizes the storyboard. Use predictable visual layers, keep audio on the bottom audio track, preserve aspect ratios, and keep supplied copy verbatim when requested.
 Synchronize entrances and exits to supplied narration timestamps. Prefer power3.out, restrained 650ms–1s entrances, deliberate exits, and one strong transition for a real scene change.
+Prefer native SVG and overlay primitives for logos, icons, diagrams, and vector illustrations. Animate the object itself with x, y, scale, rotation, skew, opacity, blur, fill, stroke, masks, and drawSVG rather than moving the global camera.
+Preserve requested MP4, WebM, MOV, GIF, animated SVG, and Lottie motion; never silently flatten animated media to a still.
 Do not invent syntax, presets, block types, or renderer features. Generated output must remain editable through Motionly's parser and visual controls.
 Run inspect:motion with the expected duration, review every empty-frame range, inspect representative scene/transition frames, and confirm parse/serialize/parse preserves timing, tracks, masks, and keyframes.`,
     path: '.agents/skills/write-motionly/SKILL.md',
@@ -130,6 +116,26 @@ Use staggered word reveals for important copy only, not every label.
 Mark story progression with scene/background changes and purposeful movement — avoid constant camera drift and repeated fade-only scenes.
 Give every element a deliberate exit; do not leave unrelated layers stacked indefinitely.
 Vary shot composition (full-frame type, editorial left/right, centered hero) rather than randomizing motion.`,
+  },
+  {
+    id: 'svg-motion',
+    name: 'svg-motion',
+    description:
+      'Native editable SVG and vector animation for logos, icons, diagrams, illustrations, and UI graphics.',
+    instructions: `Prefer creating editable SVG or Motionly overlay primitives over importing a pre-rendered animation unless the user asks to preserve an existing animation.
+Use drawSVG for simple stroked paths; combine fill/stroke color animation, masks, opacity, blur, scale, rotation, skew, and local x/y movement for richer reveals.
+For push-ins, pull-backs, and pans, animate the SVG element's own x, y, scale, rotation, and originX/originY. Do not move the global camera when only the artwork should move.
+Keep detailed artwork readable, preserve its aspect ratio, and stagger related vector layers as one intentional group.`,
+  },
+  {
+    id: 'animated-assets',
+    name: 'animated-assets',
+    description:
+      'Correct import, timing, and export behavior for video, GIF, animated SVG, and Lottie assets.',
+    instructions: `Treat MP4, WebM, MOV, GIF, animated SVG, and Lottie as animated media, never as static substitutes.
+Use timeline clips to set start, duration, trimIn, and trimOut. Keep transformations editable on the asset layer.
+Browser codec support controls MOV/video decoding. Animated SVG uses real-time Canvas playback and cannot be deterministically seeked; CSS keyframes may differ from browser DOM playback, so state that limitation when it applies.
+If an asset fails to decode, report the actual format/browser limitation instead of implying its animation rendered.`,
   },
   {
     id: 'motionly-rules',

@@ -89,13 +89,11 @@ Audio files:
 - Render a normalized waveform preview inside the clip so you can align beats visually
 - Export with MP4 at the same timeline offset
 - Persist in saved `.motion` projects
-- Are **not yet included in MP4 export** (see AUDIO_EXPORT_LIMITATION.md)
+- Are mixed into MP4 export from their persisted timeline offset
 
-Export audio mixing requires WebAudio API implementation and is planned for future work.
+## Animated Assets
 
-## Video Assets
-
-Motionly plays MP4 and WebM assets as native clips. Import a video, drag it onto a track, and the browser decodes frames through the same renderer as images:
+Motionly treats MP4, WebM, MOV/M4V, GIF, animated SVG, and Lottie as animated clips. Import media, drag it onto a track, and the renderer synchronizes frames to the project timeline whenever the format exposes frame seeking:
 
 ```motion
 import "/assets/my-project/intro.mp4" as intro
@@ -109,13 +107,15 @@ clip intro {
 }
 ```
 
-Video clips support the same timeline operations as other media—drag to time, trim either edge, split at the playhead, and scrub to a specific frame. During playback, scrubbing, and export, the renderer draws frames from `trimIn + (projectTime - start)`.
+Animated clips support the same timeline operations as other media—drag to time, trim either edge, split at the playhead, and scrub. Video, Lottie, and supported GIF frames use `trimIn + (projectTime - start)` during preview and export.
 
 Current limitations:
 
 - **MP4 export does not mix video audio.** Motionly writes only the project `audio` element into the exported file.
 - **A single imported video cannot play two source times at once.** If you need the same file at two different offsets on the timeline, import it under two aliases.
-- **Codec support follows the browser** (typically H.264/AAC MP4 and VP8/VP9 WebM).
+- **Codec support follows the browser** (typically H.264/AAC MP4 and VP8/VP9 WebM). MOV works when the browser supports the codec inside the container.
+- **Animated SVG uses real-time Canvas playback.** Its internal timeline cannot be deterministically frame-seeked, and CSS keyframes may differ from browser DOM playback, so Motionly shows a clear warning and uses real-time playback/export.
+- **GIF exact seeking uses `ImageDecoder`.** Browsers without it use real-time playback/export and show a warning.
 
 ## Animation Presets
 
@@ -131,9 +131,7 @@ Use `power3.out` as the default for restrained motion. Additional presets and sc
 
 ## MP4 Export
 
-Motionly exports video at the canvas resolution and FPS from the current `.motion` project. Attached audio is not included yet.
-
-The current exporter uses browser MP4 recording and renders in real time. Keep the editor tab active during export. Resolution, FPS, aspect-ratio choices, and other export formats are planned.
+Motionly renders evaluated canvas frames at the project's resolution and FPS, sends them to the local FFmpeg export server, and mixes project audio at its timeline offset. Video, Lottie, and decoded GIF assets seek before each frame. Projects containing real-time animated SVG/GIF fallbacks export at wall-clock speed so their animation is preserved.
 
 ## `.motion` Source
 

@@ -1,0 +1,55 @@
+---
+title: Animated assets
+description: Import, preview, scrub, edit, and export video, GIF, animated SVG, and Lottie in Motionly.
+---
+
+# Animated Assets
+
+Motionly treats animation as part of the asset. It does not replace animated media with a poster frame or silently discard motion.
+
+## Supported Formats
+
+| Format | Preview and playback | Scrub/export synchronization |
+| --- | --- | --- |
+| MP4, WebM, MOV/M4V | Native browser video decoder | Exact seek when the browser supports the file's codec |
+| Lottie `.lottie` | Official dotLottie Canvas renderer | Exact frame selection from project time |
+| GIF | Native `ImageDecoder` when available | Exact variable-duration frames; real-time fallback with a warning |
+| Animated SVG | Real-time SVG-to-Canvas playback | SMIL where supported; real-time export; CSS keyframe differences are reported |
+
+All formats remain normal editable Motionly layers: position, scale, rotation, transform origin, skew, opacity, blur, masks, timing, and transitions continue to work.
+
+## Import And Time Media
+
+Use the Media panel or import it in source:
+
+```motion
+import "./assets/feature.lottie" as feature
+
+feature {
+  center
+  width 640
+  layer hero
+}
+
+clip feature {
+  track hero
+  start 1s
+  duration 4s
+  trimIn 0s
+  trimOut 0s
+}
+```
+
+Drag the clip horizontally to change its start, vertically to change its visual layer, or trim its edges without rippling other clips.
+
+## Browser Limitations
+
+MOV names a container, not a codec. If a MOV file fails to load, Motionly reports the browser decoder error; re-encoding to H.264 MP4 or VP9 WebM is the most portable fallback.
+
+Animated SVG remains live in preview and real-time export, but exact scrub positions cannot control its internal animation clock. The Canvas SVG runtime handles common SMIL animation; CSS keyframes are not fully supported and may differ from browser DOM playback. Motionly reports this instead of displaying a still and pretending the animation worked.
+
+Browsers without `ImageDecoder` use real-time GIF playback/export and show the same kind of explicit warning.
+
+## Verify Before Delivery
+
+Preview an early, middle, and late frame of every animated asset. Check clip trim boundaries, replay after resetting the playhead, and render a representative export to prove the animation was not flattened.

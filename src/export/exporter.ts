@@ -10,7 +10,13 @@
 import { evaluateScene } from '../animation/evaluator';
 import { GifEncoder } from './gif-encoder';
 import { CanvasRenderer } from '../render/canvas-renderer';
-import { pauseVideoAssets, synchronizeVideoAssets, type LoadedAsset } from '../assets/asset-loader';
+import {
+  hasRealtimeOnlyAssets,
+  pauseAnimatedAssets,
+  resetRealtimeAssets,
+  synchronizeAnimatedAssets,
+  type LoadedAsset,
+} from '../assets/asset-loader';
 import type { Scene, Animation, Element, Keyframe } from '../types/scene';
 import type { ExportFormat, ExportSupport } from '../types/export';
 
@@ -85,11 +91,15 @@ async function exportMp4Frames(options: {
   });
 
   try {
+    const realtime = hasRealtimeOnlyAssets(assets);
+    if (realtime) await resetRealtimeAssets(assets);
+    const startedAt = performance.now();
     let uploads: Promise<void>[] = [];
     let uploadedFrames = 0;
     for (let frame = 0; frame < totalFrames; frame += 1) {
+      if (realtime) await waitForFrame(startedAt, frame, fps);
       const evaluated = evaluateScene(scaledScene, frame / fps);
-      await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
+      await synchronizeAnimatedAssets(evaluated, assets, { playing: false, exact: true });
       renderer.render(evaluated, assets);
       const image = await canvasToJpeg(canvas);
       uploads.push(
@@ -170,8 +180,9 @@ async function exportWebmRealtime(options: {
       reject((event as ErrorEvent).error ?? new Error('WebM recording failed'));
   });
 
+  await resetRealtimeAssets(assets);
   const firstFrame = evaluateScene(scaledScene, 0);
-  await synchronizeVideoAssets(firstFrame, assets, { playing: false, exact: true });
+  await synchronizeAnimatedAssets(firstFrame, assets, { playing: false, exact: true });
   renderer.render(firstFrame, assets);
   recorder.start();
   audio?.start();
@@ -188,7 +199,7 @@ async function exportWebmRealtime(options: {
   } finally {
     if (recorder.state !== 'inactive') recorder.stop();
     audio?.stop();
-    pauseVideoAssets(assets);
+    pauseAnimatedAssets(assets);
     stream.getTracks().forEach((track) => track.stop());
   }
 }
@@ -239,11 +250,15 @@ async function exportGif(options: {
   const scaledScene = scaleScene(scene, width, height);
   const encoder = new GifEncoder(width, height, 1000 / fps);
   const totalFrames = frameCount(scaledScene.canvas.duration, fps);
+  const realtime = hasRealtimeOnlyAssets(assets);
+  if (realtime) await resetRealtimeAssets(assets);
+  const startedAt = performance.now();
 
   for (let frame = 0; frame < totalFrames; frame += 1) {
+    if (realtime) await waitForFrame(startedAt, frame, fps);
     const time = frame / fps;
     const evaluated = evaluateScene(scaledScene, time);
-    await synchronizeVideoAssets(evaluated, assets, { playing: false, exact: true });
+    await synchronizeAnimatedAssets(evaluated, assets, { playing: false, exact: true });
     renderer.render(evaluated, assets);
     const ctx = (renderer as unknown as { context: CanvasRenderingContext2D }).context;
     encoder.addFrame(ctx.getImageData(0, 0, width, height));
@@ -278,7 +293,7 @@ async function renderTimelineRealtime(options: {
     previousFrame = frame;
     const time = Math.min(scene.canvas.duration, elapsed);
     const evaluated = evaluateScene(scene, time);
-    await synchronizeVideoAssets(evaluated, assets, { playing: true });
+    await synchronizeAnimatedAssets(evaluated, assets, { playing: true });
     renderer.render(evaluated, assets);
     onProgress?.(elapsed / scene.canvas.duration);
     if (elapsed >= scene.canvas.duration) break;
@@ -288,6 +303,11 @@ async function renderTimelineRealtime(options: {
 
 function frameCount(duration: number, fps: number): number {
   return Math.max(1, Math.ceil(duration * fps));
+}
+
+async function waitForFrame(startedAt: number, frame: number, fps: number): Promise<void> {
+  const delay = startedAt + (frame * 1000) / fps - performance.now();
+  if (delay > 0) await wait(delay);
 }
 
 function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Camera"
+  short_description: "Direct purposeful camera and local focus"
+  default_prompt: "Use $camera to direct a purposeful Motionly camera move."

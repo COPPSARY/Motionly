@@ -1,0 +1,4 @@
+interface:
+  display_name: "Timeline"
+  short_description: "Organize clips timing and sequencing"
+  default_prompt: "Use $timeline to organize this Motionly timeline and sequence."

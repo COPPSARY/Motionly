@@ -2,6 +2,12 @@ import type { Clip } from '../types/scene';
 
 export type ClipTiming = Pick<Clip, 'start' | 'duration' | 'trimIn' | 'trimOut'>;
 
+export interface PlacedMediaClip {
+  start: number;
+  duration: number;
+  timelineDuration: number;
+}
+
 const DEFAULT_MINIMUM_DURATION = 1 / 60;
 
 function finite(value: number, fallback: number): number {
@@ -21,6 +27,28 @@ function normalized(clip: ClipTiming): ClipTiming {
     duration: Math.max(0, finite(clip.duration, 0)),
     trimIn: Math.max(0, finite(clip.trimIn, 0)),
     trimOut: Math.max(0, finite(clip.trimOut, 0)),
+  };
+}
+
+/** Place imported media at full source length, extending the project instead of trimming it. */
+export function placeMediaClip(
+  requestedStart: number,
+  sourceDuration: number,
+  timelineDuration: number,
+  fallbackDuration = 5,
+  minimum = DEFAULT_MINIMUM_DURATION
+): PlacedMediaClip {
+  const currentTimeline = Math.max(0, finite(timelineDuration, 0));
+  const start = Math.min(currentTimeline, Math.max(0, finite(requestedStart, 0)));
+  const fallback = Math.max(minimumDuration(minimum), finite(fallbackDuration, 5));
+  const duration = Math.max(
+    minimumDuration(minimum),
+    finite(sourceDuration, 0) > 0 ? sourceDuration : fallback
+  );
+  return {
+    start,
+    duration,
+    timelineDuration: Math.max(currentTimeline, start + duration),
   };
 }
 

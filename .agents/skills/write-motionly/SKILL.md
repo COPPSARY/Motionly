@@ -11,10 +11,10 @@ Read [references/motion-syntax.md](references/motion-syntax.md) completely befor
 
 ## Establish The Contract
 
-Before editing, determine:
+Before editing, infer sensible technical defaults from the brief and determine:
 
 - whether this is a new project, a repair, or a refinement of existing user work
-- output path, canvas size/aspect ratio, FPS, and exact duration
+- canvas size/aspect ratio, FPS, and exact duration; ask only when the choice changes the story
 - audience, communication goal, and required call to action
 - exact copy that must remain verbatim
 - script, narration/audio path, timestamps, and required silent holds
@@ -48,14 +48,24 @@ Vary composition when the story changes: full-frame typography, editorial left/r
 
 ## Assets
 
+- Treat MP4, WebM, MOV/M4V, GIF, animated SVG, and Lottie as animated media. Never flatten them to still images or silently ignore their motion.
 - Preserve aspect ratio by setting one of `width` or `height`, not both, unless distortion is intentional.
 - Do not place every available asset on screen.
 - Keep photos, screenshots, textured art, and detailed logos in their original format.
-- Use `drawSVG` only for simple stroked SVG artwork intended to draw on.
-- Prefer `maskReveal`, `dynamicSlide`, or a normal reveal for detailed media.
+- Use `drawSVG` for simple stroked SVG artwork intended to draw on.
+- Prefer native SVG or overlay primitives for logos, icons, diagrams, badges, illustrations, line art, and UI graphics unless the user explicitly wants an imported animation preserved.
+- Browser-decoded video support depends on the file codec. Animated SVG uses a real-time Canvas SVG runtime and cannot be deterministically frame-seeked; CSS keyframes may differ from browser DOM playback. Report these real limitations instead of calling the format unsupported.
 - Keep original asset paths stable so save/reload and export use the same files.
 
 Before generating or converting missing supporting artwork, ask one concise question only when it would materially improve the result. Continue with existing assets if declined.
+
+## Native SVG And Vector Motion
+
+- Animate SVG layers with the same `x`, `y`, `scale`, `rotation`, `originX`, `originY`, `skewX`, `skewY`, `opacity`, `blur`, mask, fill, and stroke system used by other elements.
+- Use normalized `originX`/`originY` values from `0` to `1` to push into a specific region of an SVG.
+- For "zoom into the logo," "pan across the diagram," or similar requests, animate the SVG itself. Do not move the global camera when only one artwork changes focus.
+- Separate meaningful vector parts only when they need independent timing; stagger related parts by roughly `60–140ms` and hold the completed artwork.
+- Motionly does not currently provide deterministic path morphing. Use transform, mask, or matched-shape crossfades and state the limitation.
 
 ## Script, Audio, And Timing
 
@@ -103,6 +113,8 @@ Persist explicit track assignments, `start`, and `duration` when timing matters.
 
 Avoid repeated fade-only scenes, random rotation, large bounce, constant camera motion, and applying the same entrance to every object.
 
+For professional launch work, vary the story beats: establish the promise, show product proof, focus on one feature, then resolve to the brand/CTA. Reuse a coherent motion language without repeating identical choreography.
+
 ## Source Rules
 
 - Use only syntax supported by the current parser and renderer.
@@ -110,6 +122,7 @@ Avoid repeated fade-only scenes, random rotation, large bounce, constant camera 
 - Explicit `animate` blocks use `easing`; preset calls use `ease`.
 - Keep names/aliases single words and imports quoted.
 - Keep source readable and minimize unnecessary layers.
+- If `motionly-skills/llms.txt` exists, use it to load only the focused skills needed for SVG, animation, easing, camera, composition, typography, transitions, timeline, assets, rendering, or templates.
 - Never hand back only a fragment when the user requested a complete project.
 - Never replace existing user work wholesale unless the request authorizes it.
 

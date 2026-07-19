@@ -54,6 +54,8 @@ const PROPERTY_NAMES = new Set([
   'cameraAnimation',
   'textAnimation',
   'opacity',
+  'originX',
+  'originY',
   'parent',
   'path',
   'pathProgress',

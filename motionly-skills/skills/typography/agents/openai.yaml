@@ -1,0 +1,4 @@
+interface:
+  display_name: "Typography"
+  short_description: "Animate readable expressive typography"
+  default_prompt: "Use $typography to choreograph readable animated type."

@@ -76,4 +76,6 @@ Build scenes around one focal subject. Use scene color changes and purposeful ob
 
 For simple stroked SVG logos, `animation drawSVG(...)` animates their paths and resolves into the original artwork. Use it sparingly on a hero logo; use normal image reveals for detailed SVGs, mockups, and photos.
 
+Treat MP4, WebM, MOV/M4V, GIF, animated SVG, and Lottie as animated assets. Never flatten or silently ignore their animation. Prefer native editable SVG for logos, icons, diagrams, illustrations, badges, line art, and UI graphics unless an existing animation must be preserved. Animate local SVG focus with the object's own `x`, `y`, `scale`, `rotation`, `originX`, and `originY` instead of the global camera.
+
 Use the small transition set when a shot actually changes: `shapeWipe`, `irisWipe`, `maskReveal`, `dynamicSlide`, and camera `speedZoom`. Prefer one strong transition per scene over stacking effects.

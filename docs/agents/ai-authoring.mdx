@@ -60,60 +60,44 @@ The `write-motionly` skill is designed for Codex and other agentic tools that ca
 1. Create a folder such as `video-motion/assets/my-project/`.
 2. Add the images, SVGs, logos, videos, and audio references needed for the story.
 3. Keep original aspect ratios and use clear filenames.
-4. Provide the script, target duration, canvas ratio, and preferred output path.
+4. Provide the story, audience, goal, and script. Motionly can infer format, duration, and technical defaults.
 5. Tell the agent which text must appear exactly and provide narration timestamps when available.
 
 Images, SVGs, and videos can be imported and used as timeline clips. Audio persists in `.motion` format. You can also drag assets from the Assets panel onto the timeline in the editor to create clips visually.
 
 ## Prompt Template
 
-Replace every bracketed value. Delete sections that genuinely do not apply, but keep the validation requirements.
+Replace the bracketed creative fields that matter. Delete sections that do not apply. Motionly infers file placement, canvas settings, duration, FPS, and renderer details.
 
 ```text
-Read AGENTS.md, .agents/skills/write-motionly/SKILL.md, and .agents/skills/write-motionly/references/motion-syntax.md before editing.
+Create or refine a polished, fully editable Motionly animation from this creative brief.
 
-Create or update an editable Motionly project.
-
-Project:
-- Output file: [path/to/project.motion]
-- Audience and goal: [who it is for and what it should communicate]
-- Format: [aspect ratio or canvas size]
-- Duration and FPS: [exact duration and frame rate]
+Audience and goal:
+[Who should see this, what should they understand, and what should they do next?]
 
 Story:
-[Describe the sequence of shots and the single focal subject in each shot.]
+[Describe the message or progression. A rough beginning, middle, and end is enough.]
 
-Assets:
-- Folder: [path/to/assets]
-- Required assets: [files that must appear]
-- Optional assets: [files the agent may use]
+Assets (optional):
+[List required logos, screenshots, video, animated SVG/GIF, Lottie, photos, or illustrations. Say which existing animation must be preserved.]
 
-Script and timing:
-[Paste narration, exact on-screen copy, timestamps, or an audio path. Mark text that must remain verbatim.]
+Narration or script:
+[Paste narration, exact on-screen copy, or useful timestamps. Mark any wording that must remain verbatim.]
 
 Brand direction:
-[Colors, typography, visual style, motion style, and anything to avoid.]
+[Colors, typography, visual references, motion character, and anything to avoid.]
 
-Requirements:
-- Inspect the existing project and every relevant asset before editing.
-- Probe media duration and dimensions; do not guess or stretch assets.
-- Storyboard shot purpose, time range, focal subject, entrance, hold, and exit before writing source.
-- Use only syntax and presets supported by Motionly's current parser and renderer.
-- Keep visual tracks as predictable layers; keep audio on the bottom audio track.
-- Preserve supplied copy exactly when requested and synchronize it to supplied timestamps.
-- Use restrained professional motion, deliberate exits, and one strong transition per real scene change.
-- Avoid accidental overlap, clipped text, stale layers, repeated fade-only scenes, and constant camera drift.
-- Keep all output editable in Motionly; do not replace the project with a black-box rendered video.
-- Run inspect:motion, review reported empty ranges, inspect representative frames, and verify parse/serialize/parse stability.
+Important requirements:
+[Anything that must appear, must not change, or must be avoided.]
 
-Return the completed .motion file and briefly report validation performed.
+Infer sensible format, duration, pacing, timeline organization, and technical settings from the brief and available media. Prefer native editable SVG artwork and Motionly animation for logos, icons, diagrams, and illustrations unless an existing asset's animation must be preserved.
 ```
 
 ## What To Include For Better Results
 
 <CardGroup cols={2}>
-  <Card title="Exact timing">
-    Give narration timestamps, audio paths, required holds, and the exact canvas duration/FPS.
+  <Card title="Story and timing">
+    Give narration timestamps, audio, or required holds when they matter. Otherwise let Motionly establish the pacing.
   </Card>
   <Card title="Asset intent">
     Separate required assets from optional assets and say which file is the hero in each shot.
@@ -151,7 +135,7 @@ To start from the included sample:
 4. Ask the agent to replace all old imports and remove unused layers.
 5. Open the generated project in Motionly and refine it visually.
 
-Do not ask the agent to invent unsupported engine features. Add missing editor or renderer capabilities as separate engineering work.
+Do not ask the agent for implementation details. Describe the creative result; Motionly's skills choose supported, editable techniques and disclose real renderer limitations.
 
 ## Review Any Generated Result
 

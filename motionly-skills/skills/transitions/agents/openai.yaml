@@ -1,0 +1,4 @@
+interface:
+  display_name: "Transitions"
+  short_description: "Design meaningful scene transitions"
+  default_prompt: "Use $transitions to choose a meaningful Motionly transition."

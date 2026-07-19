@@ -26,6 +26,7 @@ Use `size`, not `fontSize`. Use `easing` in explicit animation blocks. Preset ca
 ```motion
 import "./assets/logo.svg" as logo
 import "./assets/video.mp4" as bgVideo
+import "./assets/loader.lottie" as loader
 
 logo {
   center
@@ -35,12 +36,30 @@ logo {
   y 0
   scale 1
   rotation 0
+  originX .5
+  originY .5
   opacity 0
   animation maskReveal(delay 1s duration 800ms direction down exitAt 5s exitDuration 450ms ease power3.out)
 }
 ```
 
-Preserve aspect ratio by setting one of `width` or `height`. Useful properties include `x`, `y`, `width`, `height`, `scale`, `rotation`, `opacity`, `blur`, `brightness`, `contrast`, `saturation`, `hue`, `grayscale`, `sepia`, `invert`, `shadow`, `center`, `cover`, and `layer`.
+Preserve aspect ratio by setting one of `width` or `height`. Useful properties include `x`, `y`, `width`, `height`, `scale`, `rotation`, `originX`, `originY`, `skewX`, `skewY`, `opacity`, `blur`, `brightness`, `contrast`, `saturation`, `hue`, `grayscale`, `sepia`, `invert`, `shadow`, `center`, `cover`, and `layer`. Transform origins are normalized from `0` to `1`.
+
+Motionly treats PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and `.lottie` as visual assets. Video, Lottie, and supported GIFs seek to project time for preview and export. Animated SVG uses a real-time Canvas SVG runtime; its internal timeline cannot be deterministically frame-seeked, and CSS keyframes may differ from browser DOM playback. Motionly reports those limitations in the editor.
+
+Simple imported path SVGs can use editable fill/stroke overrides:
+
+```motion
+logo {
+  center
+  width 320
+  fill #38bdf8
+  stroke #ffffff
+  strokeWidth 2
+}
+```
+
+`fill`, `stroke`, and `strokeWidth` can appear in explicit keyframes. For a local push-in or pan, animate the SVG's own transform and origin rather than the global camera.
 
 Adjustment values are serializable and animatable. `brightness`, `contrast`, and `saturation` are multipliers (default `1`); `hue` is degrees (default `0`); `grayscale`, `sepia`, and `invert` range from `0` to `1`; and `blur` is measured in pixels. These use deterministic Canvas 2D filters in preview and export. Chroma key is not currently supported.
 
@@ -123,11 +142,11 @@ clip bgVideo {
 }
 ```
 
-Timeline clips reference imported assets (images, SVGs, MP4, and WebM). They appear on the timeline and can be created visually by dragging from the Assets panel. Video frames are decoded by the browser, drawn through the same Canvas renderer as images, and synchronized from `trimIn + (projectTime - start)` during playback, scrubbing, and export.
+Timeline clips reference imported images, static/animated SVG, GIF, MP4, WebM, MOV/M4V, and Lottie assets. They appear on the timeline and can be created visually by dragging from the Assets panel. Animated frames are synchronized from `trimIn + (projectTime - start)` when the format exposes seeking.
 
 Video limitations:
 
-- Codec support follows the current browser (typically H.264/AAC MP4 and VP8/VP9 WebM where available).
+- Codec support follows the current browser (typically H.264/AAC MP4 and VP8/VP9 WebM; MOV support depends on its codec).
 - Video clip audio is currently muted; use the project `audio` track for preview and exported sound.
 - Two simultaneous clips referencing the same imported video cannot display different source times yet; import the file under two aliases as a workaround.
 - Embedded video uploads increase `.motion` file size and are limited to 100 MB in the editor.
