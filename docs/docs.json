@@ -72,6 +72,8 @@
               "guides/user-guide",
               "guides/first-scene",
               "guides/logo-reveal",
+              "guides/svg-animation",
+              "guides/animated-assets",
               "guides/text-reveal"
             ]
           },

@@ -26,6 +26,7 @@ import type {
   TrackRole,
 } from '../types/scene';
 import type { ProgramNode, AnimationNode } from '../types/parser';
+import { assetFilename } from '../assets/asset-resolution';
 
 const LAYER_ORDER: Record<Layer, number> = {
   background: 0,
@@ -358,11 +359,17 @@ function layerRank(layer: Layer): number {
  */
 export function assetType(path: string): AssetType {
   const lower = path.toLowerCase();
-  if (lower.startsWith('data:video/')) return 'video';
-  if (lower.startsWith('data:image/svg+xml')) return 'svg';
+  const filename = assetFilename(path).toLowerCase();
   const pathname = lower.split(/[?#]/, 1)[0] ?? lower;
-  if (/\.(mp4|webm|m4v)$/.test(pathname)) return 'video';
-  if (pathname.endsWith('.svg')) return 'svg';
+  if (lower.startsWith('data:video/') || /\.(mp4|webm|mov|m4v)$/.test(filename || pathname))
+    return 'video';
+  if (
+    lower.startsWith('data:application/zip+dotlottie') ||
+    (filename || pathname).endsWith('.lottie')
+  )
+    return 'lottie';
+  if (lower.startsWith('data:image/svg+xml') || (filename || pathname).endsWith('.svg'))
+    return 'svg';
   return 'image';
 }
 

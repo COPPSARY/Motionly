@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   moveClip,
+  placeMediaClip,
   splitClip,
   trimClipEnd,
   trimClipStart,
@@ -11,6 +12,27 @@ const clip: ClipTiming = { start: 2, duration: 4, trimIn: 1, trimOut: 2 };
 const sourceSpan = (value: ClipTiming) => value.trimIn + value.duration + value.trimOut;
 
 describe('clip timing edits', () => {
+  it('places full-length media and extends the timeline instead of trimming it', () => {
+    expect(placeMediaClip(4, 8, 5)).toEqual({
+      start: 4,
+      duration: 8,
+      timelineDuration: 12,
+    });
+    expect(placeMediaClip(2, 0.6, 10)).toEqual({
+      start: 2,
+      duration: 0.6,
+      timelineDuration: 10,
+    });
+  });
+
+  it('uses the fallback duration only for media without an intrinsic duration', () => {
+    expect(placeMediaClip(5, 0, 5, 5)).toEqual({
+      start: 5,
+      duration: 5,
+      timelineDuration: 10,
+    });
+  });
+
   it('moves only the project range and allows the source to extend past the timeline', () => {
     expect(moveClip(clip, 8, 10)).toEqual({ ...clip, start: 8 });
     expect(moveClip(clip, -2, 10)).toEqual({ ...clip, start: 0 });

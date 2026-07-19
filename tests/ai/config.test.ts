@@ -59,17 +59,21 @@ describe('AI config brand markdown', () => {
 
 describe('AI config skills', () => {
   it('provides the complete copyable authoring prompt template', () => {
-    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('Read AGENTS.md');
-    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('single focal subject');
-    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('inspect:motion');
-    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('bottom audio track');
+    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('Audience and goal');
+    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('Story:');
+    expect(MOTIONLY_PROMPT_TEMPLATE).toContain('native editable SVG');
+    expect(MOTIONLY_PROMPT_TEMPLATE).not.toContain('Output file');
+    expect(MOTIONLY_PROMPT_TEMPLATE).not.toContain('Assets:\n- Folder');
+    expect(MOTIONLY_PROMPT_TEMPLATE).not.toContain('Duration and FPS');
   });
 
   it('ships multiple built-in skills, all enabled by default', () => {
-    expect(AVAILABLE_SKILLS.length).toBeGreaterThanOrEqual(3);
+    expect(AVAILABLE_SKILLS.length).toBeGreaterThanOrEqual(5);
     const ids = AVAILABLE_SKILLS.map((skill) => skill.id);
     expect(ids).toContain('write-motionly');
     expect(ids).toContain('motion-graphics');
+    expect(ids).toContain('svg-motion');
+    expect(ids).toContain('animated-assets');
     expect(ids).toContain('motionly-rules');
     const state = defaultSkillState();
     expect(enabledSkills(state)).toHaveLength(AVAILABLE_SKILLS.length);

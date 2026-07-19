@@ -1,0 +1,80 @@
+---
+title: Native SVG animation
+description: Build editable DrawSVG, fill, stroke, mask, transform, and local camera-style SVG motion in Motionly.
+---
+
+# Native SVG Animation
+
+Prefer native SVG or Motionly vector overlays for logos, icons, diagrams, badges, illustrations, line art, and UI graphics. Native animation stays editable; import an existing animated SVG only when its original animation must be preserved.
+
+## Draw And Resolve A Logo
+
+```motion
+import "./assets/mark.svg" as mark
+
+mark {
+  center
+  width 360
+  fill #38bdf8
+  stroke #ffffff
+  strokeWidth 2
+  animation "drawSVG(duration 1s ease power3.out)"
+}
+
+animate mark {
+  from {
+    opacity 0
+    scale .86
+    blur 8
+  }
+  to {
+    opacity 1
+    scale 1
+    blur 0
+  }
+  duration 1.1s
+  easing power3.out
+}
+```
+
+Simple imported path SVGs support editable `fill`, `stroke`, and `strokeWidth` overrides. These properties can be keyframed like opacity or scale.
+
+## Push Into One Region
+
+When the request says “zoom into the logo,” “pan across the illustration,” or “focus on this diagram node,” animate the SVG itself:
+
+```motion
+diagram {
+  center
+  width 1500
+  originX .78
+  originY .32
+}
+
+animate diagram {
+  from {
+    scale 1
+    x 0
+    y 0
+    rotation 0
+  }
+  to {
+    scale 1.45
+    x -280
+    y 110
+    rotation -1
+  }
+  duration 1.4s
+  easing power3.out
+}
+```
+
+`originX` and `originY` range from `0` to `1`. They set the local pivot used by scale, rotation, and skew. The global camera should move only when the whole composition changes viewpoint.
+
+## Vector Callouts
+
+Use `image` plus `overlay` children for editable paths, arrows, circles, labels, masks, and clipping attached to a screenshot or diagram. Stagger related paths by `60–140ms`, then hold the completed group.
+
+## Current Limit
+
+Deterministic path morphing is not implemented. Use matched-shape crossfades, masks, scale/rotation, or separate editable vector layers and state the limitation when true morphing is required.

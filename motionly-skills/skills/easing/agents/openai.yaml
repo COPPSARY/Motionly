@@ -1,0 +1,4 @@
+interface:
+  display_name: "Easing"
+  short_description: "Choose natural professional easing"
+  default_prompt: "Use $easing to choose professional easing and timing."

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseMotion } from '../../src/language/parser';
 import { buildSceneGraph } from '../../src/scene/scene-graph';
+import { serializeProgram } from '../../src/language/serializer';
 
 describe('drawSVG preset', () => {
   it('animates vector path progress', () => {
@@ -22,6 +23,33 @@ describe('drawSVG preset', () => {
         >
       ).pathProgress
     ).toBe(0);
+  });
+
+  it('round-trips editable SVG transform origin, skew, fill, and stroke', () => {
+    const program = parseMotion(`
+      import "/logo.svg" as logo
+      logo {
+        originX .75
+        originY .25
+        skewX 4
+        fill #38bdf8
+        stroke #ffffff
+        strokeWidth 2
+      }
+    `);
+    const serialized = serializeProgram(program);
+    const logo = buildSceneGraph(parseMotion(serialized)).elements.find(
+      (item) => item.id === 'logo'
+    );
+
+    expect(logo?.properties).toMatchObject({
+      originX: 0.75,
+      originY: 0.25,
+      skewX: 4,
+      fill: '#38bdf8',
+      stroke: '#ffffff',
+      strokeWidth: 2,
+    });
   });
 });
 

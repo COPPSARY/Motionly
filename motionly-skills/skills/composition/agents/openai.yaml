@@ -1,0 +1,4 @@
+interface:
+  display_name: "Composition"
+  short_description: "Build clear motion design hierarchy"
+  default_prompt: "Use $composition to improve the visual hierarchy of this scene."

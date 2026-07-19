@@ -83,6 +83,21 @@ describe('timeline clips', () => {
     ]);
   });
 
+  it('keeps timeline-only media at natural size instead of covering the canvas', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        import "/video.mp4" as video
+        clip video { track 1 start 0s duration 2s }
+      `)
+    );
+
+    expect(evaluateScene(scene, 1).elements[0]?.render).toMatchObject({
+      center: true,
+      cover: false,
+      scale: 1,
+    });
+  });
+
   it('round-trips paired crossfades and evaluates both sides of the cut', () => {
     const ast = parseMotion(`
       import "/outgoing.svg" as outgoing

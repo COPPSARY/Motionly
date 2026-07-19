@@ -80,6 +80,8 @@ export interface BaseElementProperties {
   height: number | null;
   scale: number;
   rotation: number;
+  originX: number;
+  originY: number;
   opacity: number;
   blur: number;
   brightness: number;

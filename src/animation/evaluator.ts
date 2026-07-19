@@ -48,7 +48,7 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
         prepared.animationsByTarget.get(element.id) ?? [],
         time
       );
-      if (element.asset?.type === 'video') {
+      if (element.asset) {
         render = { ...render, mediaTime: Math.max(0, time) } as ElementProperties;
       }
       return { ...element, render };
@@ -77,7 +77,7 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
           rotation: 0,
           opacity: 1,
           center: true,
-          cover: true,
+          cover: false,
           layer: 'content',
         } as ElementProperties);
 

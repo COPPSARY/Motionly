@@ -1,0 +1,4 @@
+interface:
+  display_name: "Motion DSL"
+  short_description: "Author valid editable Motionly source"
+  default_prompt: "Use $motion-dsl to author a valid editable Motionly project."

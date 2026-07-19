@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rendering"
+  short_description: "Validate preview export and limitations"
+  default_prompt: "Use $rendering to validate Motionly preview and export behavior."

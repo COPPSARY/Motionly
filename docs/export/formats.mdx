@@ -9,21 +9,18 @@ description: Current and planned Motionly export formats.
 
 Motionly currently exposes MP4 export from the top toolbar.
 
-The browser records the preview in real time using the project's canvas resolution and FPS. Keep the editor tab active while exporting.
+The browser evaluates the project at its canvas resolution and FPS, synchronizes animated assets, and sends frames to the local FFmpeg server for MP4 encoding. Project audio is mixed at its persisted start offset.
 
 ## Current Limits
 
-- Attached audio is not included in exported MP4 files yet.
-- Export depends on browser MP4 recording support.
+- Audio embedded in video clips is muted; use the project audio track for exported sound.
+- Export requires the local Motionly server and FFmpeg.
+- Animated SVG and GIF fallback use real-time playback because exact seeking is unavailable; Motionly reports this limitation and any CSS-keyframe differences.
 - WebM and GIF code exists internally but is not exposed as a supported editor workflow yet.
 
 ## Planned
 
-- Deterministic frame capture
-- Stable frame pacing, duration, and audio synchronization
-- Audio inclusion in MP4 output
 - Visual 24, 30, and 60 FPS choices
 - Resolution and aspect-ratio presets
 - 720p, 1080p, 1440p, and 4K output choices
 - WebM, GIF, PNG stills, and image-sequence export
-

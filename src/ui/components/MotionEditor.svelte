@@ -4,7 +4,14 @@
   import { parseMotion } from '../../language/parser';
   import { buildSceneGraph } from '../../scene/scene-graph';
   import { evaluateScene } from '../../animation/evaluator';
-  import { loadAssets, isLoadedVideo, pauseVideoAssets, synchronizeVideoAssets } from '../../assets/asset-loader';
+  import {
+    assetWarnings,
+    disposeAssets,
+    loadAssets,
+    isLoadedVideo,
+    pauseAnimatedAssets,
+    synchronizeAnimatedAssets,
+  } from '../../assets/asset-loader';
   import type { LoadedAsset } from '../../assets/asset-loader';
   import { assetFilename, significantlyDifferentAsset, tagEmbeddedAssetPath } from '../../assets/asset-resolution';
   import type { AssetIdentity } from '../../assets/asset-resolution';
@@ -16,7 +23,7 @@
   import { combinePersistentTrackRows, packClipTrackLanes, packTimelineLanes, type TimelineLane } from '../timeline-lanes';
   import { alignRect, snapRect, type Alignment, type SnapGuides } from '../canvas-geometry';
   import { moveKeyframe, removeKeyframe, seedKeyframes, setKeyframeEasing, upsertKeyframe } from '../keyframe-editing';
-  import { splitClip, type ClipTiming } from '../clip-timing';
+  import { placeMediaClip, splitClip, type ClipTiming } from '../clip-timing';
   import {
     adjacentClipBoundaries,
     applyClipTransition,
@@ -247,6 +254,7 @@
     
     return () => {
       observer.disconnect();
+      disposeAssets(assets);
       audioLoadId += 1;
       audioWaveformLoadId += 1;
       if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -344,6 +352,11 @@
   $: selectedElement =
     scene?.elements.find((element) => element.id === selectedElementId) ?? null;
   $: selectedClip = scene?.clips.find((clip) => clip.id === selectedElementId) ?? null;
+  $: selectedClipElement = selectedClip
+    ? scene?.elements.find((element) => element.id === selectedClip?.assetName) ??
+      currentFrame?.elements.find((element) => element.id === selectedClip?.id) ??
+      null
+    : null;
   $: selectedAnimation =
     scene?.animations.find((animation) => animation.target === selectedElement?.id) ?? null;
   $: keyframeDragDelta =
@@ -351,7 +364,13 @@
       ? clipDrag.ghostStart - timelineRange(clipDrag.id).start
       : 0;
   $: sourceElements = scene?.elements.filter((element) => !element.id.includes('__')) ?? [];
-  $: allTimelineRows = packTimelineLanes(sourceElements, timelineRange);
+  $: timelineElements = sourceElements.filter(
+    (element) =>
+      element.kind !== 'asset' ||
+      !element.assetName ||
+      !scene?.clips.some((clip) => clip.assetName === element.assetName)
+  );
+  $: allTimelineRows = packTimelineLanes(timelineElements, timelineRange);
   $: combinedTimelineRows = combinePersistentTrackRows(
     packClipTrackLanes(scene?.clips ?? [], scene?.tracks ?? []),
     allTimelineRows
@@ -434,7 +453,7 @@
     }
   }
 
-  function renderFrame(time: number, exactVideoSeek = false) {
+  async function renderFrame(time: number, exactVideoSeek = false) {
     if (!renderer || !scene) return;
     const frame = evaluateScene(scene, time);
     const outputScale = previewRenderScale();
@@ -445,16 +464,15 @@
       renderer.render(frame, assets, outputScale);
       drawSelection(outputScale);
     };
-    if (exactVideoSeek) {
-      void synchronizeVideoAssets(frame, assets, { playing: false, exact: true })
-        .then(draw)
-        .catch((error) => console.warn('Video seek failed:', error));
-      return;
+    try {
+      await synchronizeAnimatedAssets(frame, assets, {
+        playing: exactVideoSeek ? false : isPlaying,
+        exact: exactVideoSeek,
+      });
+      draw();
+    } catch (error) {
+      console.warn('Animated asset synchronization failed:', error);
     }
-    void synchronizeVideoAssets(frame, assets, { playing: isPlaying }).catch((error) =>
-      console.warn('Video synchronization failed:', error)
-    );
-    draw();
   }
 
   function drawSelection(outputScale = previewRenderScale()) {
@@ -480,7 +498,7 @@
     ctx.lineWidth = 2 / zoom;
     ctx.setLineDash([8 / zoom, 5 / zoom]);
     ctx.strokeRect(left + inset, top + inset, right - left - inset * 2, bottom - top - inset * 2);
-    if (selectedElement?.kind === 'asset' || selectedElement?.kind === 'text') {
+    if (selectedElement?.kind === 'asset' || selectedElement?.kind === 'text' || selectedClip) {
       ctx.setLineDash([]);
       ctx.fillStyle = '#0d1513';
       const corners: Array<[number, number]> = [[left, top], [right, top], [right, bottom], [left, bottom]];
@@ -495,16 +513,32 @@
   async function refreshAssets(nextScene: Scene) {
     const loadId = ++assetLoadId;
     const previousAssets = assets;
+    const failures: string[] = [];
     try {
-      const loaded = await loadAssets(nextScene);
-      if (loadId !== assetLoadId) return;
+      const loaded = await loadAssets(nextScene, document.baseURI, (name, error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`${name}: ${message}`);
+      });
+      if (loadId !== assetLoadId) {
+        disposeAssets(loaded);
+        return;
+      }
       for (const asset of nextScene.imports) {
         const previous = previousAssets.get(asset.name);
         if (!loaded.has(asset.name) && previous) loaded.set(asset.name, previous);
       }
+      for (const [name, previous] of previousAssets) {
+        if (loaded.get(name) !== previous) disposeAssets(new Map([[name, previous]]));
+      }
       assets = loaded;
       const missing = nextScene.imports.filter((asset) => !loaded.has(asset.name));
-      assetError = missing.length ? `Could not load ${missing.map((asset) => asset.name).join(', ')}.` : '';
+      assetError = [
+        ...failures,
+        ...(failures.length || !missing.length
+          ? []
+          : [`Could not load ${missing.map((asset) => asset.name).join(', ')}.`]),
+        ...assetWarnings(loaded),
+      ].join(' ');
       assetsReady = true;
       renderFrame(currentTime, true);
     } catch (error) {
@@ -534,7 +568,7 @@
     let previousFrame = -1;
     let lastUiUpdate = 0;
     
-    function animate(now: number) {
+    async function animate(now: number) {
       if (!isPlaying) return;
 
       const audioIsClock = Boolean(
@@ -556,7 +590,11 @@
       const frame = Math.round(nextTime * fps);
       if (frame !== previousFrame) {
         previousFrame = frame;
-        renderFrame(nextTime);
+        await renderFrame(nextTime);
+        if (!isPlaying) {
+          pauseAnimatedAssets(assets);
+          return;
+        }
       }
       if (now - lastUiUpdate >= 1000 / 30 || nextTime >= totalDuration) {
         currentTime = nextTime;
@@ -578,7 +616,7 @@
     isPlaying = false;
     if (wasPlaying) currentTime = playbackTime;
     audioElement?.pause();
-    pauseVideoAssets(assets);
+    pauseAnimatedAssets(assets);
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
@@ -991,23 +1029,37 @@
   }
 
   function updateElementProperty(key: string, value: string | number | boolean) {
-    if (!ast || !selectedElement) return;
-    const node = ast.body.find(
-      (item): item is ElementNode =>
-        item.type === 'Element' && item.name === selectedElement.id
-    );
+    if (!ast) return;
+    const target = selectedElement?.id ?? selectedClip?.assetName;
+    if (!target) return;
+    const node = ensureAssetElement(target);
     if (!node) return;
     node.properties = { ...node.properties, [key]: value };
     code = serializeProgram(ast);
+  }
+
+  function ensureAssetElement(assetName: string): ElementNode | null {
+    if (!ast) return null;
+    const existing = ast.body.find(
+      (item): item is ElementNode => item.type === 'Element' && item.name === assetName
+    );
+    if (existing) return existing;
+    if (!ast.body.some((item) => item.type === 'Import' && item.name === assetName)) return null;
+    const node: ElementNode = {
+      type: 'Element',
+      kind: 'asset',
+      name: assetName,
+      properties: { center: true },
+    };
+    ast.body.push(node);
+    return node;
   }
 
   function resetElementSize() {
     if (!ast) return;
     const targetId = selectedElement?.kind === 'asset' ? selectedElement.id : selectedClip?.assetName;
     if (!targetId) return;
-    const node = ast.body.find(
-      (item): item is ElementNode => item.type === 'Element' && item.name === targetId
-    );
+    const node = ensureAssetElement(targetId);
     if (!node) return;
     const properties = { ...node.properties };
     delete properties['width'];
@@ -1037,7 +1089,9 @@
   function handleCanvasPointerDown(event: PointerEvent) {
     if (!scene || !canvas) return;
     const point = pointerToCanvas(event);
-    if (selectedElement && (selectedElement.kind === 'asset' || selectedElement.kind === 'text')) {
+    const selectedVisual =
+      selectedElement ?? currentFrame?.elements.find((element) => element.id === selectedClip?.id);
+    if (selectedVisual && (selectedVisual.kind === 'asset' || selectedVisual.kind === 'text')) {
       const bounds = selectedBounds();
       if (bounds) {
         const corners: Array<[number, number]> = [
@@ -1052,11 +1106,11 @@
           const centerY = bounds.y + bounds.height / 2;
           dragState = {
             mode: 'resize',
-            id: selectedElement.id,
+            id: selectedElement?.id ?? selectedClip?.assetName ?? selectedVisual.id,
             centerX,
             centerY,
             startDistance: Math.max(1, Math.hypot(point.x - centerX, point.y - centerY)),
-            startScale: numericProperty(selectedElement, 'scale', 1),
+            startScale: numericProperty(selectedVisual, 'scale', 1),
           };
           canvas.setPointerCapture(event.pointerId);
           return;
@@ -1181,7 +1235,7 @@
     const loaded = assets.get(asset.name);
     if (loaded) {
       previewAsset = {
-        src: loaded.src,
+        src: assetPreviewSource(loaded, asset.path),
         width: loaded.width,
         height: loaded.height,
         type: isLoadedVideo(loaded) ? 'video' : 'image',
@@ -1189,11 +1243,29 @@
     }
   }
 
+  function assetPreviewSource(asset: LoadedAsset | undefined, fallback = ''): string {
+    if (!asset) return fallback;
+    if (asset.motionlyType === 'lottie') {
+      try {
+        return asset.toDataURL('image/png');
+      } catch {
+        return fallback;
+      }
+    }
+    return asset.motionlySource;
+  }
+
   function clearAssetPreview() {
     previewAsset = null;
   }
 
   function handleAssetDragStart(event: DragEvent, asset: Asset) {
+    const loaded = assets.get(asset.name);
+    if (!loaded || (asset.type === 'video' && !loaded.motionlyDuration)) {
+      event.preventDefault();
+      assetError = `${asset.name} is still loading. Try again in a moment.`;
+      return;
+    }
     draggingAsset = asset;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
@@ -1251,14 +1323,15 @@
     for (const file of files) {
       const lowerName = file.name.toLowerCase();
       const isImage = file.type.startsWith('image/') || lowerName.endsWith('.svg');
-      const isVideo = file.type === 'video/mp4' || file.type === 'video/webm' || /\.(mp4|webm|m4v)$/.test(lowerName);
-      if (!isImage && !isVideo) {
-        assetError = `${file.name} is not a supported image, SVG, MP4, or WebM file.`;
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/.test(lowerName);
+      const isLottie = file.type === 'application/zip+dotlottie' || lowerName.endsWith('.lottie');
+      if (!isImage && !isVideo && !isLottie) {
+        assetError = `${file.name} is not a supported image, SVG, GIF, video, or Lottie file.`;
         continue;
       }
-      const maximumSize = isVideo ? 100_000_000 : 10_000_000;
+      const maximumSize = isVideo ? 100_000_000 : isLottie ? 50_000_000 : 10_000_000;
       if (file.size > maximumSize) {
-        assetError = `${file.name} is larger than ${isVideo ? '100' : '10'} MB.`;
+        assetError = `${file.name} is larger than ${isVideo ? '100' : isLottie ? '50' : '10'} MB.`;
         continue;
       }
       let path = '';
@@ -1277,13 +1350,15 @@
           .find((asset): asset is LoadedAsset => !!asset);
         let replacement: AssetIdentity;
         try {
-          replacement = await readMediaIdentity(file, isVideo);
+          replacement = isLottie
+            ? { width: 0, height: 0, size: file.size }
+            : await readMediaIdentity(file, isVideo);
         } catch (cause) {
           assetError = cause instanceof Error ? cause.message : `Could not inspect ${file.name}.`;
           continue;
         }
         if (
-          existing &&
+          existing && replacement.width > 0 && replacement.height > 0 &&
           significantlyDifferentAsset(
             { width: existing.width, height: existing.height, size: existing.motionlySize },
             replacement
@@ -1374,13 +1449,26 @@
     if (!draggingAsset) return;
     
     const assetName = draggingAsset.name;
+    ensureAssetElement(assetName);
     const frame = 1 / (scene?.canvas.fps ?? 60);
     const loadedAsset = assets.get(assetName);
-    const naturalDuration = isLoadedVideo(loadedAsset) && loadedAsset.motionlyDuration > 0
-      ? loadedAsset.motionlyDuration
-      : 5;
-    const duration = Math.min(naturalDuration, Math.max(frame, totalDuration - dropTargetTime));
-    const start = Math.min(dropTargetTime, Math.max(0, totalDuration - duration));
+    const placement = placeMediaClip(
+      dropTargetTime,
+      loadedAsset?.motionlyDuration ?? 0,
+      totalDuration,
+      5,
+      frame
+    );
+    const { start, duration } = placement;
+    if (placement.timelineDuration > totalDuration) {
+      const canvasNode = ast.body.find((candidate) => candidate.type === 'Canvas');
+      if (canvasNode) {
+        canvasNode.properties = {
+          ...canvasNode.properties,
+          duration: `${placement.timelineDuration.toFixed(3)}s`,
+        };
+      }
+    }
     const targetId = String(dropTargetTrack || defaultMainTrack);
     const targetTrack = ensureLayerTrack(targetId);
     const clipNode: ClipNode = {
@@ -1415,7 +1503,7 @@
         newId,
         targetTrack,
         start,
-        totalDuration
+        placement.timelineDuration
       );
       if (next) {
         writeClipLayout(next, false);
@@ -2568,7 +2656,7 @@
           </div>
           {#if mediaSubTab === 'assets'}
             <div class="panel-header-actions">
-              <input bind:this={assetInput} class="file-input" type="file" accept="image/*,video/mp4,video/webm,.svg,.mp4,.webm,.m4v" multiple on:change={handleAssetUpload} />
+              <input bind:this={assetInput} class="file-input" type="file" accept="image/*,video/*,.svg,.gif,.mp4,.webm,.mov,.m4v,.lottie" multiple on:change={handleAssetUpload} />
             </div>
           {/if}
         </div>
@@ -2591,7 +2679,7 @@
                   Import media
                 </button>
                 <span>or drag & drop from your device</span>
-                <small>Images, SVG, MP4, and WebM</small>
+                <small>Images, animated SVG/GIF, MP4/WebM/MOV, and Lottie</small>
               </div>
             <!-- Audio Section -->
             {#if scene?.audio}
@@ -2635,16 +2723,16 @@
                     <button
                       type="button"
                       class="asset-card"
-                      draggable="true"
+                      draggable={assets.has(asset.name)}
                       on:click={() => previewAssetOnly(asset)}
                       on:dragstart={(e) => handleAssetDragStart(e, asset)}
                       on:dragend={handleAssetDragEnd}
                     >
                       <div class="asset-thumbnail">
                         {#if asset.type === 'video'}
-                          <video src={assets.get(asset.name)?.src ?? asset.path} muted playsinline preload="metadata"></video>
+                          <video src={assetPreviewSource(assets.get(asset.name), asset.path)} muted playsinline preload="metadata"></video>
                         {:else if asset.path}
-                          <img src={assets.get(asset.name)?.src ?? asset.path} alt={asset.name} />
+                          <img src={assetPreviewSource(assets.get(asset.name), asset.path)} alt={asset.name} />
                         {:else}
                           <FileImage size={24} />
                         {/if}
@@ -2961,7 +3049,7 @@
         <div class="selection-summary">
           <span class="layer-icon">
             {#if selectedElement.kind === 'asset' && selectedElement.asset?.type === 'video'}<Video size={15} />
-            {:else if selectedElement.kind === 'asset' && selectedElement.asset?.path}<img src={assets.get(selectedElement.assetName ?? '')?.src ?? selectedElement.asset.path} alt="" />
+            {:else if selectedElement.kind === 'asset' && selectedElement.asset?.path}<img src={assetPreviewSource(assets.get(selectedElement.assetName ?? ''), selectedElement.asset.path)} alt="" />
             {:else if selectedElement.kind === 'text'}<Type size={15} />
             {:else if selectedElement.kind === 'asset'}<FileImage size={15} />
             {:else if selectedElement.kind === 'effect'}<Sparkles size={15} />
@@ -3057,6 +3145,47 @@
             />
           </div>
         </div>
+
+        {#if selectedElement.kind === 'asset'}
+          <div class="property-group">
+            <div class="property-label">Transform Origin</div>
+            <div class="property-row">
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="0" max="1" step="0.05" value={numericProperty(selectedElement, 'originX', 0.5)} on:input={(e) => updateElementProperty('originX', Number(e.currentTarget.value))} />
+                <span class="input-suffix">x</span>
+              </div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="0" max="1" step="0.05" value={numericProperty(selectedElement, 'originY', 0.5)} on:input={(e) => updateElementProperty('originY', Number(e.currentTarget.value))} />
+                <span class="input-suffix">y</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="property-group">
+            <div class="property-label">Skew</div>
+            <div class="property-row">
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" step="1" value={numericProperty(selectedElement, 'skewX', 0)} on:input={(e) => updateElementProperty('skewX', Number(e.currentTarget.value))} />
+                <span class="input-suffix">x°</span>
+              </div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" step="1" value={numericProperty(selectedElement, 'skewY', 0)} on:input={(e) => updateElementProperty('skewY', Number(e.currentTarget.value))} />
+                <span class="input-suffix">y°</span>
+              </div>
+            </div>
+          </div>
+
+          {#if selectedElement.asset?.type === 'svg' && !assets.get(selectedElement.assetName ?? '')?.motionlySvg?.animated}
+            <div class="property-group">
+              <div class="property-label">SVG Fill Override</div>
+              <input class="color-input" type="color" value={stringProperty(selectedElement, 'fill', '#ffffff')} on:input={(e) => updateElementProperty('fill', e.currentTarget.value)} />
+            </div>
+            <div class="property-group">
+              <div class="property-label">SVG Stroke Override</div>
+              <input class="color-input" type="color" value={stringProperty(selectedElement, 'stroke', '#ffffff')} on:input={(e) => updateElementProperty('stroke', e.currentTarget.value)} />
+            </div>
+          {/if}
+        {/if}
 
         <div class="property-group">
           <div class="property-label">Opacity</div>
@@ -3300,12 +3429,26 @@
         <div class="selection-summary">
           <span class="layer-icon">
             {#if selectedClip.asset?.type === 'video'}<Video size={15} />
-            {:else if selectedClip.asset?.path}<img src={assets.get(selectedClip.assetName)?.src ?? selectedClip.asset.path} alt="" />
+            {:else if selectedClip.asset?.path}<img src={assetPreviewSource(assets.get(selectedClip.assetName), selectedClip.asset.path)} alt="" />
             {:else}<FileImage size={15} />{/if}
           </span>
           <span><strong>{selectedClip.assetName}</strong><small>Timeline clip</small></span>
         </div>
         <button type="button" class="timeline-command clip-original-size" on:click={resetElementSize}>Original size</button>
+        <div class="property-group">
+          <div class="property-label">Scale</div>
+          <div class="slider-control">
+            <input class="custom-slider" type="range" min="0.05" max="3" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
+            <input class="slider-value-input" type="number" min="0.05" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1).toFixed(2)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
+          </div>
+        </div>
+        <div class="property-group">
+          <div class="property-label">Width</div>
+          <div class="number-input-wrapper">
+            <input class="number-input" type="number" min="1" step="1" value={selectedClipElement ? estimateElementWidth(selectedClipElement) : (assets.get(selectedClip.assetName)?.width ?? 200)} on:input={(event) => updateElementProperty('width', Number(event.currentTarget.value))} />
+            <span class="input-suffix">px</span>
+          </div>
+        </div>
         <div class="property-group">
           <div class="property-label">Track</div>
           <select class="text-input" value={String(selectedClip.track)} on:change={(event) => moveSelectedClipFromInspector(event.currentTarget.value, selectedClip.start)}>
@@ -3437,7 +3580,7 @@
           <div class="track-label" class:track-hidden={rowTrack?.hidden}>
             <span class="track-thumb">
               {#if row.items[0].element.kind === 'asset' && row.items[0].element.asset?.type === 'video'}<Video size={12} />
-              {:else if row.items[0].element.kind === 'asset' && row.items[0].element.asset?.path}<img src={assets.get(row.items[0].element.assetName ?? '')?.src ?? row.items[0].element.asset.path} alt="" />
+              {:else if row.items[0].element.kind === 'asset' && row.items[0].element.asset?.path}<img src={assetPreviewSource(assets.get(row.items[0].element.assetName ?? ''), row.items[0].element.asset.path)} alt="" />
               {:else if row.kind === 'text'}<Type size={12} />
               {:else if row.kind === 'effect'}<Sparkles size={12} />
               {:else}<Square size={12} />{/if}
@@ -3472,7 +3615,7 @@
                 {:else if item.element.kind === 'asset' && item.element.asset?.path}
                   <span
                     class="clip-media"
-                    style={`background-image: url('${assets.get(item.element.assetName ?? '')?.src ?? item.element.asset.path}')`}
+                    style={`background-image: url('${assetPreviewSource(assets.get(item.element.assetName ?? ''), item.element.asset.path)}')`}
                   ></span>
                 {:else if item.element.kind === 'text'}
                   <span class="clip-text">{stringProperty(item.element, 'value', item.element.id)}</span>
@@ -3521,7 +3664,7 @@
                 {:else if clipTrack.clips[0]?.clip.asset?.type === 'video'}
                   <Video size={12} />
                 {:else if clipTrack.clips[0]?.clip.asset?.path}
-                  <img src={assets.get(clipTrack.clips[0].clip.assetName)?.src ?? clipTrack.clips[0].clip.asset?.path} alt="" />
+                  <img src={assetPreviewSource(assets.get(clipTrack.clips[0].clip.assetName), clipTrack.clips[0].clip.asset?.path)} alt="" />
                 {:else}
                   <Layers3 size={12} />
                 {/if}
@@ -3573,7 +3716,7 @@
                   {#if item.element.kind === 'asset' && item.element.asset?.type === 'video'}
                     <span class="clip-media video-clip-media"><Video size={13} /></span>
                   {:else if item.element.kind === 'asset' && item.element.asset?.path}
-                    <span class="clip-media" style={`background-image: url('${assets.get(item.element.assetName ?? '')?.src ?? item.element.asset.path}')`}></span>
+                    <span class="clip-media" style={`background-image: url('${assetPreviewSource(assets.get(item.element.assetName ?? ''), item.element.asset.path)}')`}></span>
                   {:else if item.element.kind === 'text'}
                     <span class="clip-text">{stringProperty(item.element, 'value', item.element.id)}</span>
                   {:else if item.element.kind === 'overlay'}
@@ -3618,7 +3761,7 @@
                   {:else if clip.asset?.path}
                     <span
                       class="clip-media"
-                      style={`background-image: url('${assets.get(clip.assetName)?.src ?? clip.asset.path}')`}
+                      style={`background-image: url('${assetPreviewSource(assets.get(clip.assetName), clip.asset.path)}')`}
                     ></span>
                   {:else}
                     <span class="clip-text">{clip.assetName}</span>

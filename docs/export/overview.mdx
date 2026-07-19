@@ -7,23 +7,18 @@ Motionly currently exposes MP4 export in the top toolbar.
 - Uses the project's canvas resolution and FPS
 - Shows export progress in the toolbar
 - Downloads a file named after the current `.motion` project
-- Disables or reports an error when the browser cannot record MP4
+- Reports local server, FFmpeg, browser decoder, or asset failures clearly
 
-The current path uses browser `MediaRecorder`, so export runs in real time and can lose pacing if the browser throttles or the renderer cannot keep up. Keep the editor tab active while exporting.
+The current path evaluates each project frame in the browser, synchronizes seekable animated assets, uploads JPEG frames to the local Motionly server, and uses FFmpeg for H.264/AAC output.
 
-**Audio is not currently included in exported MP4 files.** This includes:
-- Background audio defined with `audio` blocks
-- Audio from timeline clips (videos with audio)
+Project audio defined with an `audio` block is mixed at its persisted timeline offset. Audio embedded in video clips remains muted; use the project audio track when sound must export.
 
-Audio export requires WebAudio API mixing to combine multiple sources and sync with the canvas capture. See `AUDIO_EXPORT_LIMITATION.md` for technical details. This is planned for future implementation.
+Video, Lottie, and supported GIF assets seek before each captured frame. Animated SVG and GIF fallback use real-time runtimes, so Motionly restarts them and captures in real time while displaying an explicit editor warning about seeking and CSS-animation limitations.
 
 WebM and GIF code exists internally but is not a supported editor workflow yet.
 
 ## Near-Term Work
 
-- Deterministic frame capture
-- Stable frame pacing, duration, and audio synchronization
-- Audio inclusion in MP4 output
 - Visual 24, 30, and 60 FPS choices
 - Resolution and aspect-ratio presets
 - 720p, 1080p, 1440p, and 4K output choices
@@ -32,7 +27,7 @@ WebM and GIF code exists internally but is not a supported editor workflow yet.
 
 ## Export Rules
 
-- Render from the same scene graph as preview
+- Render from the same scene graph and animated-asset synchronizer as preview
 - Never mutate the source scene or loaded assets
 - Make output settings explicit
 - Report unsupported browsers and failures clearly

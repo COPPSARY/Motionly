@@ -332,24 +332,43 @@ function drawAsset(
 
   const asset = assets.get(assetName);
   if (!asset) return;
-  if (isLoadedVideo(asset) && asset.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+  const drawable = isLoadedVideo(asset) ? asset.motionlyPreviewFrame : asset;
+  if (!drawable?.width || !drawable.height) return;
 
   const box = resolveBox(canvas, asset, props);
   drawShadow(ctx, props);
 
   const rotation = (props['rotation'] as number) ?? 0;
   const scale = (props['scale'] as number) ?? 1;
+  const originX = finiteNumber(props['originX'], 0.5);
+  const originY = finiteNumber(props['originY'], 0.5);
+  const drawX = -box.width * originX;
+  const drawY = -box.height * originY;
 
-  ctx.translate(box.x + box.width / 2, box.y + box.height / 2);
+  ctx.translate(box.x + box.width * originX, box.y + box.height * originY);
   ctx.rotate((rotation * Math.PI) / 180);
   applySkew(ctx, props);
   ctx.scale(scale, scale);
-  clipReveal(ctx, box.width, box.height, props);
+  clipReveal(ctx, box.width, box.height, props, drawX, drawY);
   const progress = props['pathProgress'];
   if (typeof progress === 'number' && asset.motionlySvg?.paths.length) {
-    drawSvgReveal(ctx, asset, box, progress);
+    drawSvgReveal(ctx, asset, box, progress, drawX, drawY, props);
+  } else if (
+    asset.motionlySvg?.paths.length &&
+    !asset.motionlySvg.animated &&
+    (props['fill'] !== undefined ||
+      props['stroke'] !== undefined ||
+      props['strokeWidth'] !== undefined)
+  ) {
+    drawSvgVector(ctx, asset.motionlySvg, box, drawX, drawY, props);
   } else {
-    ctx.drawImage(asset, -box.width / 2, -box.height / 2, box.width, box.height);
+    try {
+      ctx.drawImage(drawable, drawX, drawY, box.width, box.height);
+    } catch (error) {
+      // Chromium can briefly expose a decoded video as ready while replacing its
+      // current frame. Skipping that frame keeps the whole canvas render alive.
+      if (!isLoadedVideo(asset)) throw error;
+    }
   }
 }
 
@@ -357,33 +376,71 @@ function drawSvgReveal(
   ctx: CanvasRenderingContext2D,
   asset: LoadedAsset,
   box: BoundingBox,
-  value: number
+  value: number,
+  drawX: number,
+  drawY: number,
+  props: Record<string, unknown>
 ): void {
-  const svg = asset.motionlySvg!;
+  const svg = asset.motionlySvg;
+  if (!svg) return;
   const progress = Math.max(0, Math.min(1, value));
   const artworkOpacity = Math.max(0, Math.min(1, (progress - 0.72) / 0.28));
 
   if (artworkOpacity > 0) {
     ctx.save();
     ctx.globalAlpha *= artworkOpacity;
-    ctx.drawImage(asset, -box.width / 2, -box.height / 2, box.width, box.height);
+    ctx.drawImage(asset, drawX, drawY, box.width, box.height);
     ctx.restore();
   }
 
   if (progress >= 1) return;
   ctx.save();
-  ctx.translate(-box.width / 2, -box.height / 2);
+  ctx.translate(drawX, drawY);
   ctx.scale(box.width / svg.width, box.height / svg.height);
   const alpha = ctx.globalAlpha;
   for (const path of svg.paths) {
-    ctx.strokeStyle = path.stroke;
+    if (path.stroke === 'none') continue;
+    ctx.strokeStyle = String(props['stroke'] ?? path.stroke);
     ctx.globalAlpha = alpha * path.opacity;
-    ctx.lineWidth = path.strokeWidth;
+    ctx.lineWidth = finiteNumber(props['strokeWidth'], path.strokeWidth);
     ctx.lineCap = path.lineCap;
     ctx.lineJoin = path.lineJoin;
     ctx.setLineDash([path.length, path.length]);
     ctx.lineDashOffset = path.length * (1 - progress);
     ctx.stroke(svgPath(path));
+  }
+  ctx.restore();
+}
+
+function drawSvgVector(
+  ctx: CanvasRenderingContext2D,
+  svg: MotionlySvgData,
+  box: BoundingBox,
+  drawX: number,
+  drawY: number,
+  props: Record<string, unknown>
+): void {
+  ctx.save();
+  ctx.translate(drawX, drawY);
+  ctx.scale(box.width / svg.width, box.height / svg.height);
+  const alpha = ctx.globalAlpha;
+  for (const path of svg.paths) {
+    const vector = svgPath(path);
+    const fill = String(props['fill'] ?? path.fill);
+    const stroke = String(props['stroke'] ?? path.stroke);
+    if (fill !== 'none') {
+      ctx.globalAlpha = alpha * path.fillOpacity;
+      ctx.fillStyle = fill;
+      ctx.fill(vector);
+    }
+    if (stroke !== 'none') {
+      ctx.globalAlpha = alpha * path.opacity;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = finiteNumber(props['strokeWidth'], path.strokeWidth);
+      ctx.lineCap = path.lineCap;
+      ctx.lineJoin = path.lineJoin;
+      ctx.stroke(vector);
+    }
   }
   ctx.restore();
 }
@@ -541,14 +598,16 @@ function drawImageOverlay(
   const referenceHeight = asset.height || box.height;
   const parentRotation = Number(parentProps['rotation'] ?? 0);
   const parentScale = Number(parentProps['scale'] ?? 1);
+  const parentOriginX = finiteNumber(parentProps['originX'], 0.5);
+  const parentOriginY = finiteNumber(parentProps['originY'], 0.5);
 
   ctx.save();
   ctx.globalAlpha *= parentOpacity;
-  ctx.translate(box.x + box.width / 2, box.y + box.height / 2);
+  ctx.translate(box.x + box.width * parentOriginX, box.y + box.height * parentOriginY);
   ctx.rotate((parentRotation * Math.PI) / 180);
   applySkew(ctx, parentProps);
   ctx.scale(parentScale, parentScale);
-  ctx.translate(-box.width / 2, -box.height / 2);
+  ctx.translate(-box.width * parentOriginX, -box.height * parentOriginY);
   ctx.scale(box.width / referenceWidth, box.height / referenceHeight);
 
   if (props['clip']) {
@@ -681,18 +740,19 @@ function clipReveal(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  props: Record<string, unknown>
+  props: Record<string, unknown>,
+  x = -width / 2,
+  y = -height / 2
 ): void {
   const progress = props['revealProgress'];
   if (typeof progress !== 'number') return;
   const value = Math.max(0, Math.min(1, progress));
   const direction = String(props['revealDirection'] ?? 'right');
   ctx.beginPath();
-  if (direction === 'left') ctx.rect(width / 2 - width * value, -height / 2, width * value, height);
-  else if (direction === 'up')
-    ctx.rect(-width / 2, height / 2 - height * value, width, height * value);
-  else if (direction === 'down') ctx.rect(-width / 2, -height / 2, width, height * value);
-  else ctx.rect(-width / 2, -height / 2, width * value, height);
+  if (direction === 'left') ctx.rect(x + width - width * value, y, width * value, height);
+  else if (direction === 'up') ctx.rect(x, y + height - height * value, width, height * value);
+  else if (direction === 'down') ctx.rect(x, y, width, height * value);
+  else ctx.rect(x, y, width * value, height);
   ctx.clip();
 }
 

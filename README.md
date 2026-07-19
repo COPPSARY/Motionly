@@ -105,14 +105,16 @@ Current editor features:
 - AI Config (rail) manages enabled skills fed to the assistant; Settings (rail) holds a brand profile (BRAND.md). Both become assistant knowledge.
 
 **Export:**
-- Browser-supported MP4 export with progress
+- Canvas-frame MP4 export through the local Motionly/FFmpeg server with progress and project-audio mixing
 
 Current limits:
 
-- MP4/WebM clips use the browser's native codecs and now render decoded frames during preview, scrub, trim, and export
+- MP4/WebM/MOV clips use the browser's native codecs and render decoded frames during preview, scrub, trim, and export
+- GIF uses frame-accurate `ImageDecoder` when available, Lottie uses the official dotLottie Canvas renderer, and animated SVG uses a real-time SVG-to-Canvas runtime
 - Video clip audio is muted and is not mixed into export yet; use the project audio track
 - Two simultaneous clips that reference one video alias cannot seek that decoder to two source times; import a second alias when needed
-- MP4 export runs in real time and does not include audio from video clips yet (see AUDIO_EXPORT_LIMITATION.md)
+- Project audio exports at its timeline offset; embedded audio from video clips remains muted
+- Animated SVG and GIF fallback export in real time because those runtimes do not expose deterministic seeking
 - Canvas resolution, aspect ratio, and FPS still come from `.motion`
 - WebM, GIF, still-image, and image-sequence export are not exposed yet
 

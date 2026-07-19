@@ -1,0 +1,4 @@
+interface:
+  display_name: "SVG Motion"
+  short_description: "Create editable native SVG animation"
+  default_prompt: "Use $svg to design an editable native SVG animation."

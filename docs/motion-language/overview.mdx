@@ -46,7 +46,7 @@ logo {
 }
 ```
 
-`import` accepts SVG, PNG, JPEG, MP4, and WebM. Video assets decode natively and use the same timeline `clip` syntax as images.
+`import` accepts PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and `.lottie`. Animated assets use the same editable layer transforms and timeline `clip` syntax as images.
 
 ## Animation
 
@@ -80,12 +80,15 @@ Use `easing`, not `ease`.
 - `height`
 - `scale`
 - `rotation`
+- `originX` / `originY` (normalized transform origin)
+- `skewX` / `skewY`
 - `opacity`
 - `blur`
 - `brightness`
 - `shadow`
 - `size`
 - `color`
+- `fill`, `stroke`, `strokeWidth` (simple path SVG overrides)
 - `center`
 - `layer`
 
