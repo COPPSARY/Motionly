@@ -105,7 +105,7 @@ The lower panel contains playback and layer-based clip editing.
 
 - Every visual track behaves as a simple layer. Existing role/content metadata remains compatible but does not change drag behavior.
 - Overlaps are allowed and remain visible for the user to arrange.
-- Audio stays on the bottom track and drags horizontally to change its persisted start time.
+- Audio stays on the bottom track and drags horizontally to change its persisted start time. Imported audio clips render a normalized waveform preview so you can align beats and dialogue visually.
 - Scrubbable ruler and frame-accurate playhead anchor Split and trim operations.
 - Drag clips horizontally to change time and vertically to move between visual layers.
 - Trim handles work for media, text, images, overlays, and effects.
@@ -115,6 +115,22 @@ The lower panel contains playback and layer-based clip editing.
 - Eye and speaker controls persist track visibility and mute state.
 - Dragging Assets creates thumbnail clips and writes track/timing metadata automatically.
 - The panel divider remains vertically resizable.
+
+## Keyboard shortcuts
+
+The editor listens for these shortcuts whenever the canvas or timeline has focus (they are ignored while typing in text inputs):
+
+| Shortcut | Action |
+| --- | --- |
+| `Space` | Toggle playback |
+| `Home` | Reset playhead to the start |
+| `S` | Split the selected clip at the playhead |
+| `Delete` / `Backspace` | Delete the current selection |
+| `Arrow keys` | Nudge the selected layer by one unit |
+| `Escape` | Clear selection |
+| `Ctrl/Cmd` + `S` | Save the current `.motion` project |
+| `Ctrl/Cmd` + `Z` | Undo |
+| `Ctrl/Cmd` + `Shift` + `Z` | Redo |
 
 ## `.motion` Source
 
