@@ -77,7 +77,7 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
           rotation: 0,
           opacity: 1,
           center: true,
-          cover: true,
+          cover: false,
           layer: 'content',
         } as ElementProperties);
 

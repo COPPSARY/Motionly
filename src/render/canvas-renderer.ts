@@ -332,15 +332,8 @@ function drawAsset(
 
   const asset = assets.get(assetName);
   if (!asset) return;
-  if (
-    isLoadedVideo(asset) &&
-    (asset.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-      asset.seeking ||
-      asset.videoWidth <= 0 ||
-      asset.videoHeight <= 0 ||
-      asset.error)
-  )
-    return;
+  const drawable = isLoadedVideo(asset) ? asset.motionlyPreviewFrame : asset;
+  if (!drawable?.width || !drawable.height) return;
 
   const box = resolveBox(canvas, asset, props);
   drawShadow(ctx, props);
@@ -370,7 +363,7 @@ function drawAsset(
     drawSvgVector(ctx, asset.motionlySvg, box, drawX, drawY, props);
   } else {
     try {
-      ctx.drawImage(asset, drawX, drawY, box.width, box.height);
+      ctx.drawImage(drawable, drawX, drawY, box.width, box.height);
     } catch (error) {
       // Chromium can briefly expose a decoded video as ready while replacing its
       // current frame. Skipping that frame keeps the whole canvas render alive.

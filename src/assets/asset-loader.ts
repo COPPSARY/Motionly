@@ -2,8 +2,10 @@
 
 import type { Canvg } from 'canvg';
 import type { DotLottie } from '@lottiefiles/dotlottie-web';
+import { decompressFrames, parseGIF } from 'gifuct-js';
 import type { AssetType, EvaluatedScene, Scene } from '../types/scene';
 import { assetFilename } from './asset-resolution';
+import type { DemuxedMp4Video } from './mp4-video';
 
 export interface MotionlySvgData {
   width: number;
@@ -28,11 +30,16 @@ interface LoadedAssetMetadata {
   motionlySize?: number;
   motionlySource: string;
   motionlyWarning?: string;
-  motionlyRealtime?: boolean;
   motionlyPlay?: Promise<void>;
   motionlySeek?: Promise<void>;
+  motionlyPreviewFrame?: HTMLCanvasElement;
+  motionlyFrameCallback?: number;
+  motionlyFrameCallbackType?: 'rvfc' | 'raf';
+  motionlyFramePumpActive?: boolean;
   motionlyCanvg?: Canvg;
   motionlyLottie?: DotLottie;
+  motionlyGif?: GifDecoderState;
+  motionlyMp4?: DemuxedMp4Video;
   motionlyRestart?: () => Promise<void>;
   motionlyResume?: () => void;
 }
@@ -216,7 +223,22 @@ async function loadVideo(url: string): Promise<LoadedVideoAsset> {
   if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) await mediaEvent(video, 'loadeddata');
   video.width = Math.max(1, video.videoWidth);
   video.height = Math.max(1, video.videoHeight);
-  video.motionlyDuration = Number.isFinite(video.duration) ? video.duration : 0;
+  video.motionlyPreviewFrame = document.createElement('canvas');
+  video.motionlyPreviewFrame.width = video.width;
+  video.motionlyPreviewFrame.height = video.height;
+  if (isMp4(url)) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`MP4 request failed (${response.status})`);
+      const { demuxMp4 } = await import('./mp4-video');
+      video.motionlyMp4 = await demuxMp4(await response.arrayBuffer());
+    } catch (error) {
+      console.warn('Could not demux MP4 metadata:', error);
+    }
+  }
+  video.motionlyDuration =
+    video.motionlyMp4?.duration ?? (await reliableBrowserVideoDuration(video));
+  captureVideoFrame(video);
   return video;
 }
 
@@ -273,9 +295,69 @@ async function loadLottie(url: string): Promise<LoadedCanvasAsset> {
 }
 
 async function loadGif(url: string): Promise<LoadedAsset> {
-  const image = await loadImage(url, false);
-  image.motionlyRealtime = true;
-  return image;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`GIF request failed (${response.status})`);
+  const gif = parseGIF(await response.arrayBuffer());
+  const decoded = decompressFrames(gif, true);
+  if (!decoded.length) throw new Error('GIF contains no frames');
+
+  const canvas = document.createElement('canvas') as LoadedCanvasAsset;
+  canvas.width = gif.lsd.width;
+  canvas.height = gif.lsd.height;
+  canvas.src = url;
+  canvas.motionlySource = url;
+  canvas.motionlyType = 'gif';
+  const composite = document.createElement('canvas');
+  composite.width = canvas.width;
+  composite.height = canvas.height;
+  const context = composite.getContext('2d');
+  const patchCanvas = document.createElement('canvas');
+  const patchContext = patchCanvas.getContext('2d');
+  if (!context || !patchContext) throw new Error('Could not create GIF render context');
+
+  const frames: GifFrame[] = [];
+  let elapsed = 0;
+  let previous: (typeof decoded)[number] | undefined;
+  let restore: ImageData | undefined;
+  for (const frame of decoded) {
+    if (previous?.disposalType === 2) {
+      context.clearRect(
+        previous.dims.left,
+        previous.dims.top,
+        previous.dims.width,
+        previous.dims.height
+      );
+    } else if (previous?.disposalType === 3 && restore) {
+      context.putImageData(restore, 0, 0);
+    }
+    restore =
+      frame.disposalType === 3
+        ? context.getImageData(0, 0, canvas.width, canvas.height)
+        : undefined;
+    patchCanvas.width = frame.dims.width;
+    patchCanvas.height = frame.dims.height;
+    const patch = patchContext.createImageData(frame.dims.width, frame.dims.height);
+    patch.data.set(frame.patch);
+    patchContext.putImageData(patch, 0, 0);
+    context.drawImage(patchCanvas, frame.dims.left, frame.dims.top);
+    elapsed += Math.max(0.01, frame.delay / 1000);
+    frames.push({ endTime: elapsed, bitmap: await createImageBitmap(composite) });
+    previous = frame;
+  }
+  canvas.motionlyDuration = elapsed;
+  canvas.motionlyGif = { frames, currentFrame: -1 };
+  seekGif(canvas, 0);
+  return canvas;
+}
+
+interface GifFrame {
+  endTime: number;
+  bitmap: ImageBitmap;
+}
+
+interface GifDecoderState {
+  frames: GifFrame[];
+  currentFrame: number;
 }
 
 function mediaEvent(
@@ -352,9 +434,14 @@ export async function synchronizeAnimatedAssets(
       } else if (options.playing && asset.paused) {
         operations.push(playVideo(asset));
       }
-      if (!options.playing) asset.pause();
+      if (!options.playing) {
+        asset.pause();
+        stopVideoFramePump(asset);
+      }
     } else if (isLoadedCanvas(asset) && asset.motionlyLottie) {
       seekLottie(asset, sourceTime);
+    } else if (isLoadedCanvas(asset) && asset.motionlyGif) {
+      seekGif(asset, sourceTime);
     } else if (isRealtimeOnly(asset)) {
       if (!options.playing) {
         if (asset.motionlyCanvg) asset.motionlyCanvg.stop();
@@ -375,7 +462,10 @@ export async function synchronizeAnimatedAssets(
   }
   for (const asset of previousActive) {
     if (nextActive.has(asset)) continue;
-    if (isLoadedVideo(asset)) asset.pause();
+    if (isLoadedVideo(asset)) {
+      asset.pause();
+      stopVideoFramePump(asset);
+    }
     if (asset.motionlyCanvg) {
       asset.motionlyCanvg.stop();
       pausedRealtimeAssets.delete(asset);
@@ -387,7 +477,10 @@ export async function synchronizeAnimatedAssets(
 
 export function pauseAnimatedAssets(assets: Map<string, LoadedAsset>): void {
   for (const asset of assets.values()) {
-    if (isLoadedVideo(asset)) asset.pause();
+    if (isLoadedVideo(asset)) {
+      asset.pause();
+      stopVideoFramePump(asset);
+    }
     if (asset.motionlyCanvg) {
       asset.motionlyCanvg.stop();
       pausedRealtimeAssets.add(asset);
@@ -403,6 +496,7 @@ export function disposeAssets(assets: Map<string, LoadedAsset>): void {
     asset.motionlyCanvg?.stop();
     pausedRealtimeAssets.delete(asset);
     asset.motionlyLottie?.destroy();
+    asset.motionlyGif?.frames.forEach((frame) => frame.bitmap.close());
   }
 }
 
@@ -432,7 +526,7 @@ function isAnimated(asset: LoadedAsset): boolean {
 }
 
 function isRealtimeOnly(asset: LoadedAsset): boolean {
-  return Boolean(asset.motionlyRestart || asset.motionlyRealtime);
+  return Boolean(asset.motionlyRestart);
 }
 
 function seekLottie(asset: LoadedCanvasAsset, time: number): void {
@@ -441,6 +535,26 @@ function seekLottie(asset: LoadedCanvasAsset, time: number): void {
   const local =
     (((Number.isFinite(time) ? time : 0) % player.duration) + player.duration) % player.duration;
   player.setFrame(Math.min(player.totalFrames - 1, (local / player.duration) * player.totalFrames));
+}
+
+export function gifFrameAtTime(frames: readonly Pick<GifFrame, 'endTime'>[], time: number): number {
+  const duration = frames.at(-1)?.endTime ?? 0;
+  if (!duration) return 0;
+  const local = (((Number.isFinite(time) ? time : 0) % duration) + duration) % duration;
+  const index = frames.findIndex((frame) => local < frame.endTime);
+  return index < 0 ? Math.max(0, frames.length - 1) : index;
+}
+
+function seekGif(asset: LoadedCanvasAsset, time: number): void {
+  const state = asset.motionlyGif;
+  if (!state) return;
+  const frame = gifFrameAtTime(state.frames, time);
+  if (frame === state.currentFrame) return;
+  const context = asset.getContext('2d');
+  if (!context) return;
+  context.clearRect(0, 0, asset.width, asset.height);
+  context.drawImage(state.frames[frame]!.bitmap, 0, 0);
+  state.currentFrame = frame;
 }
 
 async function restartRealtimeAsset(asset: LoadedAsset): Promise<void> {
@@ -455,6 +569,7 @@ async function restartRealtimeAsset(asset: LoadedAsset): Promise<void> {
 
 function playVideo(video: LoadedVideoAsset): Promise<void> {
   if (video.motionlyPlay) return video.motionlyPlay;
+  startVideoFramePump(video);
   const operation = video.play().catch(() => undefined);
   video.motionlyPlay = operation;
   return operation.finally(() => {
@@ -477,11 +592,13 @@ function seekVideoWithoutOverlap(
 }
 
 async function seekVideo(video: LoadedVideoAsset, time: number): Promise<void> {
-  if (Math.abs(video.currentTime - time) <= 1 / 1000) return;
-  const done = mediaEvent(video, 'seeked');
-  video.currentTime = time;
-  await done;
-  await waitForPresentedVideoFrame(video);
+  if (Math.abs(video.currentTime - time) > 1 / 1000) {
+    const done = mediaEvent(video, 'seeked');
+    video.currentTime = time;
+    await done;
+    await waitForPresentedVideoFrame(video);
+  }
+  captureVideoFrame(video);
 }
 
 function waitForPresentedVideoFrame(video: LoadedVideoAsset): Promise<void> {
@@ -501,6 +618,65 @@ function waitForPresentedVideoFrame(video: LoadedVideoAsset): Promise<void> {
     }, 100);
     callbackId = video.requestVideoFrameCallback(finish);
   });
+}
+
+function startVideoFramePump(video: LoadedVideoAsset): void {
+  if (video.motionlyFramePumpActive) return;
+  video.motionlyFramePumpActive = true;
+  const draw = () => {
+    if (!video.motionlyFramePumpActive) return;
+    captureVideoFrame(video);
+    if (video.requestVideoFrameCallback) {
+      video.motionlyFrameCallbackType = 'rvfc';
+      video.motionlyFrameCallback = video.requestVideoFrameCallback(draw);
+    } else {
+      video.motionlyFrameCallbackType = 'raf';
+      video.motionlyFrameCallback = requestAnimationFrame(draw);
+    }
+  };
+  draw();
+}
+
+function stopVideoFramePump(video: LoadedVideoAsset): void {
+  video.motionlyFramePumpActive = false;
+  if (video.motionlyFrameCallback === undefined) return;
+  if (video.motionlyFrameCallbackType === 'rvfc') {
+    video.cancelVideoFrameCallback?.(video.motionlyFrameCallback);
+  } else {
+    cancelAnimationFrame(video.motionlyFrameCallback);
+  }
+  video.motionlyFrameCallback = undefined;
+}
+
+function captureVideoFrame(video: LoadedVideoAsset): void {
+  const canvas = video.motionlyPreviewFrame;
+  if (
+    !canvas ||
+    video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+    video.seeking ||
+    !video.videoWidth ||
+    !video.videoHeight
+  )
+    return;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  try {
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  } catch {
+    // The previous decoded frame remains valid while the browser swaps buffers.
+  }
+}
+
+async function reliableBrowserVideoDuration(video: LoadedVideoAsset): Promise<number> {
+  if (Number.isFinite(video.duration) && video.duration > 0) return video.duration;
+  const seeked = mediaEvent(video, 'seeked');
+  video.currentTime = Number.MAX_SAFE_INTEGER;
+  await seeked;
+  const duration = video.duration;
+  const reset = mediaEvent(video, 'seeked');
+  video.currentTime = 0;
+  await reset;
+  return Number.isFinite(duration) && duration > 0 ? duration : 0;
 }
 
 function parseSvg(source: string): MotionlySvgData {
@@ -567,4 +743,12 @@ function getComputedSvgStyle(path: Element): Record<string, string> {
 
 function isGif(url: string): boolean {
   return url.startsWith('data:image/gif') || /\.gif(?:[?#]|$)/i.test(url);
+}
+
+function isMp4(url: string): boolean {
+  return (
+    /^data:video\/(?:mp4|quicktime)/i.test(url) ||
+    /\.(?:mp4|mov|m4v)(?:[?#]|$)/i.test(url) ||
+    /motionly-filename=[^#]*(?:mp4|mov|m4v)(?:[&#]|$)/i.test(url)
+  );
 }

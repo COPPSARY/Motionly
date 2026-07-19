@@ -18,7 +18,9 @@ import {
   type LoadedAsset,
 } from '../assets/asset-loader';
 import type { Scene, Animation, Element, Keyframe } from '../types/scene';
+import type { EvaluatedScene } from '../types/scene';
 import type { ExportFormat, ExportSupport } from '../types/export';
+import { Mp4FrameSource } from '../assets/mp4-video';
 
 const EXPORT_API = '/api/exports';
 const WEBM_TYPES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -89,18 +91,20 @@ async function exportMp4Frames(options: {
       audioStart: scaledScene.audioStart,
     }),
   });
+  const decoded = await prepareDecodedVideoAssets(assets);
 
   try {
-    const realtime = hasRealtimeOnlyAssets(assets);
-    if (realtime) await resetRealtimeAssets(assets);
+    const realtime = hasRealtimeOnlyAssets(decoded.assets);
+    if (realtime) await resetRealtimeAssets(decoded.assets);
     const startedAt = performance.now();
     let uploads: Promise<void>[] = [];
     let uploadedFrames = 0;
     for (let frame = 0; frame < totalFrames; frame += 1) {
       if (realtime) await waitForFrame(startedAt, frame, fps);
       const evaluated = evaluateScene(scaledScene, frame / fps);
-      await synchronizeAnimatedAssets(evaluated, assets, { playing: false, exact: true });
-      renderer.render(evaluated, assets);
+      await renderDecodedVideos(evaluated, decoded.sources);
+      await synchronizeAnimatedAssets(evaluated, decoded.assets, { playing: false, exact: true });
+      renderer.render(evaluated, decoded.assets);
       const image = await canvasToJpeg(canvas);
       uploads.push(
         request(`${EXPORT_API}/${job.id}/frames/${frame}`, {
@@ -142,6 +146,8 @@ async function exportMp4Frames(options: {
   } catch (error) {
     await fetch(`${EXPORT_API}/${job.id}`, { method: 'DELETE' }).catch(() => undefined);
     throw error;
+  } finally {
+    decoded.sources.forEach((source) => source.close());
   }
 }
 
@@ -250,23 +256,62 @@ async function exportGif(options: {
   const scaledScene = scaleScene(scene, width, height);
   const encoder = new GifEncoder(width, height, 1000 / fps);
   const totalFrames = frameCount(scaledScene.canvas.duration, fps);
-  const realtime = hasRealtimeOnlyAssets(assets);
-  if (realtime) await resetRealtimeAssets(assets);
-  const startedAt = performance.now();
+  const decoded = await prepareDecodedVideoAssets(assets);
+  try {
+    const realtime = hasRealtimeOnlyAssets(decoded.assets);
+    if (realtime) await resetRealtimeAssets(decoded.assets);
+    const startedAt = performance.now();
 
-  for (let frame = 0; frame < totalFrames; frame += 1) {
-    if (realtime) await waitForFrame(startedAt, frame, fps);
-    const time = frame / fps;
-    const evaluated = evaluateScene(scaledScene, time);
-    await synchronizeAnimatedAssets(evaluated, assets, { playing: false, exact: true });
-    renderer.render(evaluated, assets);
-    const ctx = (renderer as unknown as { context: CanvasRenderingContext2D }).context;
-    encoder.addFrame(ctx.getImageData(0, 0, width, height));
-    onProgress?.((frame + 1) / totalFrames);
-    if (frame % 4 === 0) await wait(0);
+    for (let frame = 0; frame < totalFrames; frame += 1) {
+      if (realtime) await waitForFrame(startedAt, frame, fps);
+      const time = frame / fps;
+      const evaluated = evaluateScene(scaledScene, time);
+      await renderDecodedVideos(evaluated, decoded.sources);
+      await synchronizeAnimatedAssets(evaluated, decoded.assets, { playing: false, exact: true });
+      renderer.render(evaluated, decoded.assets);
+      const ctx = (renderer as unknown as { context: CanvasRenderingContext2D }).context;
+      encoder.addFrame(ctx.getImageData(0, 0, width, height));
+      onProgress?.((frame + 1) / totalFrames);
+      if (frame % 4 === 0) await wait(0);
+    }
+  } finally {
+    decoded.sources.forEach((source) => source.close());
   }
 
   return encoder.finish();
+}
+
+async function prepareDecodedVideoAssets(assets: Map<string, LoadedAsset>) {
+  const prepared = new Map(assets);
+  const sources = new Map<string, Mp4FrameSource>();
+  if (typeof VideoDecoder === 'undefined') return { assets: prepared, sources };
+  for (const [name, asset] of assets) {
+    if (!asset.motionlyMp4) continue;
+    const source = await Mp4FrameSource.create(asset.motionlyMp4);
+    const canvas = source.canvas as unknown as LoadedAsset;
+    Object.assign(canvas, { motionlyType: 'image', motionlySource: asset.motionlySource });
+    prepared.set(name, canvas);
+    sources.set(name, source);
+  }
+  return { assets: prepared, sources };
+}
+
+async function renderDecodedVideos(
+  frame: EvaluatedScene,
+  sources: Map<string, Mp4FrameSource>
+): Promise<void> {
+  const times = new Map<string, number>();
+  for (const element of frame.elements) {
+    if (element.assetName && sources.has(element.assetName)) {
+      times.set(element.assetName, Number(element.render.mediaTime ?? 0));
+    }
+  }
+  await Promise.all(
+    [...times].flatMap(([name, time]) => {
+      const source = sources.get(name);
+      return source ? [source.renderAt(time)] : [];
+    })
+  );
 }
 
 function selectWebmMimeType(): string | undefined {

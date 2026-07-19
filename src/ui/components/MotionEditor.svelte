@@ -352,6 +352,11 @@
   $: selectedElement =
     scene?.elements.find((element) => element.id === selectedElementId) ?? null;
   $: selectedClip = scene?.clips.find((clip) => clip.id === selectedElementId) ?? null;
+  $: selectedClipElement = selectedClip
+    ? scene?.elements.find((element) => element.id === selectedClip?.assetName) ??
+      currentFrame?.elements.find((element) => element.id === selectedClip?.id) ??
+      null
+    : null;
   $: selectedAnimation =
     scene?.animations.find((animation) => animation.target === selectedElement?.id) ?? null;
   $: keyframeDragDelta =
@@ -359,7 +364,13 @@
       ? clipDrag.ghostStart - timelineRange(clipDrag.id).start
       : 0;
   $: sourceElements = scene?.elements.filter((element) => !element.id.includes('__')) ?? [];
-  $: allTimelineRows = packTimelineLanes(sourceElements, timelineRange);
+  $: timelineElements = sourceElements.filter(
+    (element) =>
+      element.kind !== 'asset' ||
+      !element.assetName ||
+      !scene?.clips.some((clip) => clip.assetName === element.assetName)
+  );
+  $: allTimelineRows = packTimelineLanes(timelineElements, timelineRange);
   $: combinedTimelineRows = combinePersistentTrackRows(
     packClipTrackLanes(scene?.clips ?? [], scene?.tracks ?? []),
     allTimelineRows
@@ -487,7 +498,7 @@
     ctx.lineWidth = 2 / zoom;
     ctx.setLineDash([8 / zoom, 5 / zoom]);
     ctx.strokeRect(left + inset, top + inset, right - left - inset * 2, bottom - top - inset * 2);
-    if (selectedElement?.kind === 'asset' || selectedElement?.kind === 'text') {
+    if (selectedElement?.kind === 'asset' || selectedElement?.kind === 'text' || selectedClip) {
       ctx.setLineDash([]);
       ctx.fillStyle = '#0d1513';
       const corners: Array<[number, number]> = [[left, top], [right, top], [right, bottom], [left, bottom]];
@@ -1018,23 +1029,37 @@
   }
 
   function updateElementProperty(key: string, value: string | number | boolean) {
-    if (!ast || !selectedElement) return;
-    const node = ast.body.find(
-      (item): item is ElementNode =>
-        item.type === 'Element' && item.name === selectedElement.id
-    );
+    if (!ast) return;
+    const target = selectedElement?.id ?? selectedClip?.assetName;
+    if (!target) return;
+    const node = ensureAssetElement(target);
     if (!node) return;
     node.properties = { ...node.properties, [key]: value };
     code = serializeProgram(ast);
+  }
+
+  function ensureAssetElement(assetName: string): ElementNode | null {
+    if (!ast) return null;
+    const existing = ast.body.find(
+      (item): item is ElementNode => item.type === 'Element' && item.name === assetName
+    );
+    if (existing) return existing;
+    if (!ast.body.some((item) => item.type === 'Import' && item.name === assetName)) return null;
+    const node: ElementNode = {
+      type: 'Element',
+      kind: 'asset',
+      name: assetName,
+      properties: { center: true },
+    };
+    ast.body.push(node);
+    return node;
   }
 
   function resetElementSize() {
     if (!ast) return;
     const targetId = selectedElement?.kind === 'asset' ? selectedElement.id : selectedClip?.assetName;
     if (!targetId) return;
-    const node = ast.body.find(
-      (item): item is ElementNode => item.type === 'Element' && item.name === targetId
-    );
+    const node = ensureAssetElement(targetId);
     if (!node) return;
     const properties = { ...node.properties };
     delete properties['width'];
@@ -1064,7 +1089,9 @@
   function handleCanvasPointerDown(event: PointerEvent) {
     if (!scene || !canvas) return;
     const point = pointerToCanvas(event);
-    if (selectedElement && (selectedElement.kind === 'asset' || selectedElement.kind === 'text')) {
+    const selectedVisual =
+      selectedElement ?? currentFrame?.elements.find((element) => element.id === selectedClip?.id);
+    if (selectedVisual && (selectedVisual.kind === 'asset' || selectedVisual.kind === 'text')) {
       const bounds = selectedBounds();
       if (bounds) {
         const corners: Array<[number, number]> = [
@@ -1079,11 +1106,11 @@
           const centerY = bounds.y + bounds.height / 2;
           dragState = {
             mode: 'resize',
-            id: selectedElement.id,
+            id: selectedElement?.id ?? selectedClip?.assetName ?? selectedVisual.id,
             centerX,
             centerY,
             startDistance: Math.max(1, Math.hypot(point.x - centerX, point.y - centerY)),
-            startScale: numericProperty(selectedElement, 'scale', 1),
+            startScale: numericProperty(selectedVisual, 'scale', 1),
           };
           canvas.setPointerCapture(event.pointerId);
           return;
@@ -1233,6 +1260,12 @@
   }
 
   function handleAssetDragStart(event: DragEvent, asset: Asset) {
+    const loaded = assets.get(asset.name);
+    if (!loaded || (asset.type === 'video' && !loaded.motionlyDuration)) {
+      event.preventDefault();
+      assetError = `${asset.name} is still loading. Try again in a moment.`;
+      return;
+    }
     draggingAsset = asset;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
@@ -1416,6 +1449,7 @@
     if (!draggingAsset) return;
     
     const assetName = draggingAsset.name;
+    ensureAssetElement(assetName);
     const frame = 1 / (scene?.canvas.fps ?? 60);
     const loadedAsset = assets.get(assetName);
     const placement = placeMediaClip(
@@ -2689,7 +2723,7 @@
                     <button
                       type="button"
                       class="asset-card"
-                      draggable="true"
+                      draggable={assets.has(asset.name)}
                       on:click={() => previewAssetOnly(asset)}
                       on:dragstart={(e) => handleAssetDragStart(e, asset)}
                       on:dragend={handleAssetDragEnd}
@@ -3401,6 +3435,20 @@
           <span><strong>{selectedClip.assetName}</strong><small>Timeline clip</small></span>
         </div>
         <button type="button" class="timeline-command clip-original-size" on:click={resetElementSize}>Original size</button>
+        <div class="property-group">
+          <div class="property-label">Scale</div>
+          <div class="slider-control">
+            <input class="custom-slider" type="range" min="0.05" max="3" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
+            <input class="slider-value-input" type="number" min="0.05" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1).toFixed(2)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
+          </div>
+        </div>
+        <div class="property-group">
+          <div class="property-label">Width</div>
+          <div class="number-input-wrapper">
+            <input class="number-input" type="number" min="1" step="1" value={selectedClipElement ? estimateElementWidth(selectedClipElement) : (assets.get(selectedClip.assetName)?.width ?? 200)} on:input={(event) => updateElementProperty('width', Number(event.currentTarget.value))} />
+            <span class="input-suffix">px</span>
+          </div>
+        </div>
         <div class="property-group">
           <div class="property-label">Track</div>
           <select class="text-input" value={String(selectedClip.track)} on:change={(event) => moveSelectedClipFromInspector(event.currentTarget.value, selectedClip.start)}>

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  assetWarnings,
+  gifFrameAtTime,
   isAnimatedSvgSource,
   pauseAnimatedAssets,
   synchronizeVideoAssets,
@@ -30,6 +30,14 @@ describe('animated assets', () => {
     );
     expect(assetType('/media/loop.gif')).toBe('image');
     expect(assetType('/media/photo.png')).toBe('image');
+  });
+
+  it('maps timeline time to variable-duration GIF frames', () => {
+    const frames = [{ endTime: 0.1 }, { endTime: 0.35 }, { endTime: 0.5 }];
+    expect(gifFrameAtTime(frames, 0)).toBe(0);
+    expect(gifFrameAtTime(frames, 0.2)).toBe(1);
+    expect(gifFrameAtTime(frames, 0.49)).toBe(2);
+    expect(gifFrameAtTime(frames, 0.6)).toBe(0);
   });
 
   it('detects SMIL and CSS-animated SVG without flagging static artwork', () => {
@@ -84,6 +92,7 @@ describe('animated assets', () => {
         order.push('play');
         return Promise.resolve();
       }),
+      requestVideoFrameCallback: vi.fn(() => 1),
     } as unknown as LoadedAsset;
     const assets = new Map([['demo', video]]);
     const frame = {
@@ -123,26 +132,5 @@ describe('animated assets', () => {
     await synchronizeVideoAssets(frame, assets, { playing: false, exact: true });
     await synchronizeVideoAssets(frame, assets, { playing: true });
     expect(restart).toHaveBeenCalledTimes(2);
-  });
-
-  it('restarts a native GIF when timeline playback begins', async () => {
-    const decode = vi.fn().mockResolvedValue(undefined);
-    const gif = {
-      motionlyType: 'image',
-      motionlyRealtime: true,
-      motionlySource: 'animation.gif',
-      src: 'animation.gif',
-      decode,
-    } as unknown as LoadedAsset;
-    const assets = new Map([['animation', gif]]);
-    const frame = {
-      elements: [{ assetName: 'animation', render: { mediaTime: 0 } }],
-    } as unknown as EvaluatedScene;
-
-    await synchronizeVideoAssets(frame, assets, { playing: false, exact: true });
-    await synchronizeVideoAssets(frame, assets, { playing: true });
-
-    expect(decode).toHaveBeenCalledTimes(2);
-    expect(assetWarnings(assets)).toEqual([]);
   });
 });
