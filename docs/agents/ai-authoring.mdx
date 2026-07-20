@@ -43,17 +43,25 @@ When skills are enabled or a brand is set, the assistant is told to honor them w
 
 ## Use An External Agent
 
-Agents that work directly inside the repository can use Motionly's authoring guidance instead of the in-app panel.
+Agents that work directly inside a project folder can use Motionly's installed skill instead of the in-app panel.
 
-### Repository Instructions
+### Install The Skill
 
-Ask the agent to read these files before writing a project:
+From your project, install the skill and its reference library for your agent:
 
-- `AGENTS.md` for product boundaries and core syntax
-- `.agents/skills/write-motionly/SKILL.md` for the authoring workflow
-- `.agents/skills/write-motionly/references/motion-syntax.md` for supported presets and properties
+```bash
+npx motionly skills add --all        # or --provider codex|claude|gemini|opencode|kiro
+```
 
-The `write-motionly` skill is designed for Codex and other agentic tools that can read repository files. Other LLMs can use the same files as prompt context.
+`init` installs it too (it asks which agent). Each install writes, under your agent's skills folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
+
+- `SKILL.md` — the quick `.motion` contract.
+- `references/llms.txt` — a discovery index for the focused skills.
+- `references/skills/*/SKILL.md` — the full library: `motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`, `typography`, `transitions`, `timeline`, `assets`, `rendering`, and `templates`.
+
+Ask the agent to read `AGENTS.md` and the installed `SKILL.md` first, then load `references/llms.txt` and only the reference skills the task needs (always `motion-dsl` for authoring or repair). Re-running the installer keeps your edits and never overwrites existing files.
+
+Working inside a clone of this repository instead? The same guidance lives at `AGENTS.md`, `.agents/skills/write-motionly/SKILL.md`, and `.agents/skills/write-motionly/references/motion-syntax.md`.
 
 ### Prepare Your Project
 

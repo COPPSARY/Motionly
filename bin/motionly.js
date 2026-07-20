@@ -14,12 +14,25 @@ const root = normalize(join(here, '..'));
 const dist = join(root, 'dist');
 const skillTemplatePath = join(root, 'templates', 'motionly-skill', 'SKILL.md');
 const projectTemplateRoot = join(root, 'templates', 'project');
+// The full, maintained skill library (llms.txt index + focused SKILL.md files).
+// It ships inside the published package and is installed beside the top-level
+// SKILL.md as a `references/` bundle so agents get real depth, not one file.
+const skillsLibraryRoot = join(root, 'motionly-skills');
 
 const PROVIDERS = {
-  claude: '.claude/skills/motionly/SKILL.md',
   codex: '.agents/skills/motionly/SKILL.md',
+  claude: '.claude/skills/motionly/SKILL.md',
   gemini: '.gemini/skills/motionly/SKILL.md',
+  opencode: '.opencode/skills/motionly/SKILL.md',
   kiro: '.kiro/skills/motionly/SKILL.md',
+};
+
+const AGENT_LABELS = {
+  codex: 'Codex',
+  claude: 'Claude Code',
+  gemini: 'Gemini CLI',
+  opencode: 'opencode',
+  kiro: 'Kiro',
 };
 
 const MIME = {
@@ -103,10 +116,12 @@ async function installSkills(base, providers) {
     throw new Error(`Unknown provider "${unknown}". Use: ${Object.keys(PROVIDERS).join(', ')}`);
 
   const source = await readFile(skillTemplatePath, 'utf8');
+  const libraryAvailable = await exists(skillsLibraryRoot);
   for (const provider of providers) {
     const relative = PROVIDERS[provider];
     const target = join(base, relative);
-    await mkdir(dirname(target), { recursive: true });
+    const skillDir = dirname(target);
+    await mkdir(skillDir, { recursive: true });
     try {
       await writeFile(target, source, { encoding: 'utf8', flag: 'wx' });
       console.log(`Added ${provider}: ${target}`);
@@ -114,7 +129,38 @@ async function installSkills(base, providers) {
       if (error.code !== 'EEXIST') throw error;
       console.log(`Kept ${provider}: ${target} already exists`);
     }
+    if (libraryAvailable) {
+      const added = await copyReferenceLibrary(skillsLibraryRoot, join(skillDir, 'references'));
+      if (added) console.log(`  + reference library: ${added} file${added === 1 ? '' : 's'}`);
+    }
   }
+}
+
+/**
+ * Recursively copy the discovery index and focused SKILL.md files from the
+ * skill library into an installed `references/` folder. Provider-specific
+ * `agents/` metadata is skipped, and existing files are never overwritten so
+ * user edits survive re-running the installer. Returns the number of new files.
+ */
+async function copyReferenceLibrary(source, destination) {
+  let copied = 0;
+  await mkdir(destination, { recursive: true });
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    if (entry.name === 'agents') continue;
+    const from = join(source, entry.name);
+    const to = join(destination, entry.name);
+    if (entry.isDirectory()) {
+      copied += await copyReferenceLibrary(from, to);
+    } else if (entry.name === 'SKILL.md' || entry.name === 'llms.txt' || entry.name === 'AGENTS.md') {
+      try {
+        await writeFile(to, await readFile(from), { flag: 'wx' });
+        copied += 1;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+    }
+  }
+  return copied;
 }
 
 async function choose(terminal, question, options) {
@@ -141,10 +187,7 @@ async function selectSkillOptions(terminal, providers, scope) {
   if (!selectedProviders.length) {
     const provider = await choose(terminal, 'Which agents should receive the Motionly skill?', [
       { label: 'All supported agents', value: 'all' },
-      { label: 'Claude Code', value: 'claude' },
-      { label: 'Codex', value: 'codex' },
-      { label: 'Gemini CLI', value: 'gemini' },
-      { label: 'Kiro CLI', value: 'kiro' },
+      ...Object.keys(PROVIDERS).map((id) => ({ label: AGENT_LABELS[id], value: id })),
     ]);
     selectedProviders = provider === 'all' ? Object.keys(PROVIDERS) : [provider];
   }
@@ -194,19 +237,15 @@ async function resolveSkillOptions(argv) {
   return options;
 }
 
-async function promptForSkills(target) {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) return;
-
+async function promptForAgent(scope) {
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const scope = await choose(terminal, 'Install Motionly agent skills?', [
-      { label: 'Skip', value: 'skip' },
-      { label: 'Project — inside the new project', value: 'project' },
-      { label: 'Global — every project for this user', value: 'global' },
+    const choice = await choose(terminal, 'Which agent are you using?', [
+      ...Object.keys(PROVIDERS).map((id) => ({ label: AGENT_LABELS[id], value: id })),
+      { label: 'All supported agents', value: 'all' },
     ]);
-    if (scope === 'skip') return;
-    const options = await selectSkillOptions(terminal, [], scope);
-    await installSkills(skillBase(options.scope, target), options.providers);
+    const providers = choice === 'all' ? Object.keys(PROVIDERS) : [choice];
+    return { providers, scope };
   } finally {
     terminal.close();
   }
@@ -231,7 +270,21 @@ async function initProject(name, argv = []) {
   }
   await mkdir(join(target, 'assets'));
   console.log(`Created ${target}`);
-  await promptForSkills(target);
+  // Skills install unless opted out. Explicit --provider/--all/--scope flags win
+  // (non-interactive/CI). Otherwise, in a terminal, ask which agent to set up;
+  // with no terminal and no flags, default to every supported agent.
+  if (!argv.includes('--skip-skills') && !argv.includes('--no-skills')) {
+    const explicit = parseSkillOptions(argv);
+    const scope = explicit.scope ?? 'project';
+    let providers = explicit.providers;
+    if (!providers.length) {
+      providers =
+        process.stdin.isTTY && process.stdout.isTTY
+          ? (await promptForAgent(scope)).providers
+          : Object.keys(PROVIDERS);
+    }
+    if (providers.length) await installSkills(skillBase(scope, target), providers);
+  }
   if (process.stdin.isTTY && process.stdout.isTTY) {
     console.log(`\n  To reopen later: cd ${name} && npx motionly dev`);
     await serveEditor(argv, target);
@@ -367,12 +420,14 @@ async function serveEditor(argv, projectFolder = null) {
 function printHelp() {
   console.log(`Motionly
 
-  npx motionly                         Open the browser editor
-  npx motionly skills add              Pick project/global scope and agents
-  npx motionly skills add --provider <claude|codex|gemini|kiro>
+  npx motionly init <project-folder>            Create a project; asks which agent to set up
+  npx motionly init <folder> --provider codex   Create a project; install for one agent (no prompt)
+  npx motionly init <folder> --all              Create a project; install for every agent
+  npx motionly init <folder> --skip-skills      Create a project without agent skills
+  npx motionly skills add                       Install agent skills into an existing project
   npx motionly skills add --all
-  npx motionly init <project-folder>    Create and open a local project
-  npx motionly dev [project-folder]    Open and save a local project
+  npx motionly skills add --provider <codex|claude|gemini|opencode|kiro>
+  npx motionly dev [project-folder]             Reopen and edit a local project
 
 Options: --scope <project|global>, --port <number>, --no-open`);
 }

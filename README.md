@@ -210,14 +210,15 @@ Open Motionly Assistant beside Assets, enter your own provider key, and describe
 
 **Model quality matters.** The AI model you choose directly affects composition, timing, and correct preset use. Smaller models may generate valid syntax but weaker visual decisions. Prefer a current, high-capability model with strong code-generation and instruction-following performance.
 
-For agents working inside the repository, use these files:
+For coding agents working inside a project, install the skill with `npx motionly skills add` (or `npx motionly init`, which asks which agent). This writes the `SKILL.md` contract plus a full `references/` library into your agent's folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
 
 | Path | Purpose |
 |---|---|
-| `AGENTS.md` | Product scope and core `.motion` syntax |
-| `.agents/skills/write-motionly/SKILL.md` | Storyboard, timing, composition, asset, and validation workflow |
-| `.agents/skills/write-motionly/references/motion-syntax.md` | Supported syntax and preset reference |
-| `docs/agents/ai-authoring.mdx` | Prompting and project setup guide |
+| `<agent>/skills/motionly/SKILL.md` | Quick `.motion` contract |
+| `<agent>/skills/motionly/references/llms.txt` | Discovery index for the focused skills |
+| `<agent>/skills/motionly/references/skills/*/SKILL.md` | Full library: `motion-dsl`, `svg`, `animation`, `timeline`, and more |
+
+Point the agent at `AGENTS.md` and the installed `SKILL.md`, then let it load `references/llms.txt` and the reference skills the task needs. Working inside a clone of this repository instead? The same guidance lives at `AGENTS.md` and `.agents/skills/write-motionly/`. See the [AI Authoring Guide](docs/agents/ai-authoring.mdx) for prompting details.
 
 Use this short prompt with an LLM or agent working inside the repository:
 
@@ -317,79 +318,29 @@ Known limitations:
 
 ---
 
-## Install from npm
+## Install and use
 
-Use the public `motionly` package from the npm registry. You do not need to clone this repository or download a tarball. Motionly requires Node.js `20.19.0` or newer.
+Motionly ships on npm — no clone and no global install. It needs Node.js `20.19.0` or newer, and every command runs through `npx`.
+
+### Create a project
 
 ```bash
 npx motionly init demo
 ```
 
-For the easiest project setup:
+`init` scaffolds the project and asks **which agent you're using**, then installs the Motionly agent skill for just that one (or choose "All supported agents"). Supported agents: **Codex, Claude Code, Gemini CLI, opencode, and Kiro**. The install is not a single file: it writes the `SKILL.md` contract plus a full `references/` library (`motion-dsl`, `svg`, `animation`, `timeline`, and more) with an `llms.txt` discovery index.
 
-1. Enter `2` to install the skills inside the new project.
-2. Enter `1` to install them for all supported agents.
-
-The complete terminal session looks like this:
-
-```text
-$ npx motionly init demo
-Created /path/to/workspace/demo
-
-Install Motionly agent skills?
-  1. Skip
-  2. Project — inside the new project
-  3. Global — every project for this user
-Select [1]: 2
-
-Which agents should receive the Motionly skill?
-  1. All supported agents
-  2. Claude Code
-  3. Codex
-  4. Gemini CLI
-  5. Kiro CLI
-Select [1]: 1
-
-Added claude: /path/to/workspace/demo/.claude/skills/motionly/SKILL.md
-Added codex: /path/to/workspace/demo/.agents/skills/motionly/SKILL.md
-Added gemini: /path/to/workspace/demo/.gemini/skills/motionly/SKILL.md
-Added kiro: /path/to/workspace/demo/.kiro/skills/motionly/SKILL.md
-
-  To reopen later: cd demo && npx motionly dev
-
-  Motionly is running.
-  Open this URL in your browser: http://localhost:4173/editor
-  Project: /path/to/workspace/demo
-  Press Ctrl+C to stop.
-```
-
-Open `http://localhost:4173/editor` in your browser. Keep the terminal running while you edit and
-press `Ctrl+C` when finished.
-
-Other wizard choices:
-
-- Choose **Skip** to create the project without agent skills.
-- Choose **Global** to make the selected skills available to every project for your user.
-- Choose one agent instead of **All supported agents** if you only use that agent.
-
-To install skills without creating a project:
+Skip the prompt with flags:
 
 ```bash
-motionly skills add
+npx motionly init demo --provider opencode   # install for one agent, no prompt
+npx motionly init demo --all                 # every supported agent
+npx motionly init demo --skip-skills          # no agent skills
 ```
 
-For scripts and CI, skip the wizard with flags:
+Provider names are `codex`, `claude`, `gemini`, `opencode`, and `kiro`. Use `--scope project` (default) or `--scope global` to install for every project on your machine.
 
-```bash
-motionly skills add --all --scope project
-motionly skills add --provider codex --scope global
-```
-
-Supported provider names are `claude`, `codex`, `gemini`, and `kiro`.
-
-### 3. Project layout
-
-The project contains:
+The scaffolded project:
 
 ```text
 demo/
@@ -400,29 +351,24 @@ demo/
 └── README.md
 ```
 
-### 4. Reopen the project later
+### Add skills to an existing project
+
+```bash
+npx motionly skills add                      # pick scope and agents
+npx motionly skills add --all --scope project
+npx motionly skills add --provider codex --scope global
+```
+
+Re-running is safe: existing skill files are kept, never overwritten.
+
+### Open and edit
 
 ```bash
 cd demo
-motionly dev
+npx motionly dev
 ```
 
-Motionly opens `http://localhost:4173/editor`, loads `project.motion`, serves files from `assets/`, and saves editor changes back to the project. Use `--port <n>` to change the port or `--no-open` to skip opening the browser.
-
-### Run without a global installation
-
-You can use the public package directly through `npx` instead:
-
-```bash
-npx motionly --help
-npx motionly init my-video
-```
-
-For the no-setup browser editor:
-
-```bash
-npx motionly
-```
+Motionly opens `http://localhost:4173/editor`, loads `project.motion`, serves media from `assets/`, and saves editor changes back to the project. Add `--port <n>` to change the port or `--no-open` to skip launching the browser. For the no-setup browser editor, run `npx motionly`.
 
 ## Development from source
 

@@ -4,6 +4,26 @@ Keep Motionly simple and visual.
 
 Read the installed `motionly` skill before creating or substantially editing `project.motion`.
 
+## Agent Skill
+
+Installing the skill placed it at `.<agent>/skills/motionly/SKILL.md` (Codex uses
+`.agents/`, plus `.claude/`, `.gemini/`, `.opencode/`, or `.kiro/`). That file is the
+quick contract; a full reference library sits beside it under `references/` (`llms.txt`
+index plus focused skills: `motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`,
+`typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`).
+
+Before writing or repairing `.motion` beyond a trivial edit:
+
+1. Read this file and `project.motion`.
+2. Open the skill `SKILL.md`, then `references/llms.txt`, and load
+   `references/skills/motion-dsl/SKILL.md` plus only the other reference skills the
+   task needs.
+3. Treat the reference library and Motionly's parser/renderer as authoritative over
+   the short summary below.
+
+If the skill was not installed, run `npx motionly skills add` to add it (with its
+reference library) for your agent.
+
 ## Product Rule
 
 Motionly is a motion graphics editor around `.motion`. The user edits visually; `.motion` is the saved source format underneath.
