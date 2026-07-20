@@ -50,7 +50,7 @@ Agents that work directly inside a project folder can use Motionly's installed s
 From your project, install the skill and its reference library for your agent:
 
 ```bash
-npx motionly skills add --all        # or --provider codex|claude|gemini|opencode|kiro
+npx @coppsary/motionly skills add --all        # or --provider codex|claude|gemini|opencode|kiro
 ```
 
 `init` installs it too (it asks which agent). Each install writes, under your agent's skills folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
@@ -78,6 +78,7 @@ Images, SVGs, and videos can be imported and used as timeline clips. Audio persi
 Replace the bracketed creative fields that matter. Delete sections that do not apply. Motionly infers file placement, canvas settings, duration, FPS, and renderer details.
 
 ```text
+/motionly
 Create or refine a polished, fully editable Motionly animation from this creative brief.
 
 Audience and goal:
@@ -123,6 +124,7 @@ Infer sensible format, duration, pacing, timeline organization, and technical se
 For a second pass, name the observed problem and timestamp instead of asking for a generic improvement:
 
 ```text
+/motionly
 Update the existing project; do not replace unrelated work.
 
 At [timestamp], [describe the visible/timing problem].

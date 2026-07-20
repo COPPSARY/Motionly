@@ -51,12 +51,12 @@ Motionly's priority is a simple, reliable visual editor for `.motion`. Roadmap i
 
 ## Distribution: Run It Instantly
 
-- [x] Zero-config local launcher: `npx motionly` serves the built editor and opens the browser
+- [x] Zero-config local launcher: `npx @coppsary/motionly` serves the built editor and opens the browser
 - [x] Ship the production build with the published package (`dist/` in `files`, build on publish)
 - [x] `--port` and `--no-open` flags with SPA fallback routing
 - [ ] Publish to npm under a stable package name and version scheme
-- [ ] Provide a one-line quickstart (`npx motionly`) in all docs and the site
-- [ ] Optional `npx motionly <project.motion>` to open a specific project on launch
+- [ ] Provide a one-line quickstart (`npx @coppsary/motionly`) in all docs and the site
+- [ ] Optional `npx @coppsary/motionly <project.motion>` to open a specific project on launch
 
 ## UX And UI Polish
 
