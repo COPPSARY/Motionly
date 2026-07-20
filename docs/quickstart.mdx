@@ -1,39 +1,48 @@
-# Motionly Quick Start
+---
+title: Quickstart
+description: Create your first Motionly project, edit it visually, and export an MP4 in a few minutes.
+---
 
-## Run Motionly
+# Quickstart
+
+Get from an empty folder to an exported MP4 in a few minutes. You need Node.js `20.19.0` or newer.
+
+## Create and open a project
 
 ```bash
-npm install
-npm run dev
+npx @coppsary/motionly init my-video
 ```
 
-Open `http://localhost:5173`.
+`init` scaffolds `my-video/`, offers to install the Motionly agent skill, then starts the editor at `http://localhost:4173/editor`. Press `Ctrl+C` to stop it and reopen the project later with:
 
-## Edit A Project
+```bash
+cd my-video
+npx @coppsary/motionly dev
+```
 
-1. Select a layer in Scene or click a visible object on the canvas.
-2. Drag the object or use Position, Scale, Rotation, and Opacity in Properties.
-3. For text, change the content, font size, or color.
-4. Choose an animation preset and tune Duration, Delay, and Easing.
-5. Press Play or scrub the timeline to review each frame.
-6. Drag clip edges in the timeline to adjust when a layer starts or ends.
-7. Click Save. An opened file overwrites through its file handle; the server-loaded sample overwrites `video-motion/motionly.motion` during local development.
+Prefer to skip agent setup for now? Pass `--skip-skills`. See [Installation](/installation) for the full CLI reference.
 
-Motionly serializes visual changes back to `.motion` automatically.
+## Edit the scene
 
-## Add Text Or Audio
+1. Select a layer in the **Scene** panel or click a visible object on the canvas.
+2. Drag to reposition, or use **Position**, **Scale**, **Rotation**, and **Opacity** in the Properties panel.
+3. For text layers, change the content, font size, or color.
+4. Select an animation preset and tune **Duration**, **Delay**, and **Easing**.
+5. Click **Play** or scrub the timeline to review each frame.
+6. Drag clip edges in the timeline to change when a layer starts or ends.
+7. Click **Save**. Motionly serializes visual changes back to `project.motion` automatically.
 
-- Click Text in the Scene panel to add a text layer.
-- Import an audio file from the **Audio** rail item, then drag it onto the timeline. The bottom track shows a waveform preview, and you can drag the clip horizontally to adjust its start time.
+## Add text or audio
 
-Motionly persists audio placement in `.motion`, plays it synchronized with preview, and mixes it into MP4 at the same start offset.
+- Click **Text** in the Scene panel to add a text layer.
+- Import an audio file from the **Audio** rail, then drag it onto the timeline. The bottom track shows a waveform preview, and you can drag the clip horizontally to adjust its start time.
+
+Motionly saves audio placement in `project.motion`, plays it back in sync with the preview, and mixes it into MP4 exports at the same start offset.
 
 ## Export MP4
 
-Click Export MP4 in the top toolbar. Motionly exports at the project's current resolution and FPS.
+Click **Export MP4** in the top toolbar. Motionly captures evaluated canvas frames, sends them to the local FFmpeg export server, and includes project audio. Exports use the project's current resolution and FPS.
 
-Motionly captures evaluated canvas frames and sends them to the local FFmpeg export server. Project audio is included. Real-time animated SVG/GIF fallback assets deliberately render at wall-clock speed so their motion is preserved.
+## Inspect the source
 
-## Source View
-
-Click `.motion` to inspect the generated source. Normal editing should happen through the visual controls.
+Click **.motion** to inspect the generated source. Edit through the visual controls for normal work, and see the [Motion language overview](/motion-language/overview) when you want to hand-edit or generate `.motion` from an agent.
