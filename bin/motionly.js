@@ -252,7 +252,7 @@ async function promptForAgent(scope) {
 }
 
 async function initProject(name, argv = []) {
-  if (!name || name.startsWith('-')) throw new Error('Usage: npx motionly init <project-folder>');
+  if (!name || name.startsWith('-')) throw new Error('Usage: npx @coppsary/motionly init <project-folder>');
   const target = resolve(name);
   if (await exists(target)) {
     if ((await readdir(target)).length) throw new Error(`Folder is not empty: ${target}`);
@@ -286,7 +286,7 @@ async function initProject(name, argv = []) {
     if (providers.length) await installSkills(skillBase(scope, target), providers);
   }
   if (process.stdin.isTTY && process.stdout.isTTY) {
-    console.log(`\n  To reopen later: cd ${name} && npx motionly dev`);
+    console.log(`\n  To reopen later: cd ${name} && npx @coppsary/motionly dev`);
     await serveEditor(argv, target);
   }
 }
@@ -408,7 +408,7 @@ async function serveEditor(argv, projectFolder = null) {
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
       console.error(
-        `Port ${port} is in use. Try: npx motionly ${projectRoot ? 'dev ' : ''}--port ${port + 1}`
+        `Port ${port} is in use. Try: npx @coppsary/motionly ${projectRoot ? 'dev ' : ''}--port ${port + 1}`
       );
       process.exitCode = 1;
       return;
@@ -420,14 +420,14 @@ async function serveEditor(argv, projectFolder = null) {
 function printHelp() {
   console.log(`Motionly
 
-  npx motionly init <project-folder>            Create a project; asks which agent to set up
-  npx motionly init <folder> --provider codex   Create a project; install for one agent (no prompt)
-  npx motionly init <folder> --all              Create a project; install for every agent
-  npx motionly init <folder> --skip-skills      Create a project without agent skills
-  npx motionly skills add                       Install agent skills into an existing project
-  npx motionly skills add --all
-  npx motionly skills add --provider <codex|claude|gemini|opencode|kiro>
-  npx motionly dev [project-folder]             Reopen and edit a local project
+  npx @coppsary/motionly init <project-folder>            Create a project; asks which agent to set up
+  npx @coppsary/motionly init <folder> --provider codex   Create a project; install for one agent (no prompt)
+  npx @coppsary/motionly init <folder> --all              Create a project; install for every agent
+  npx @coppsary/motionly init <folder> --skip-skills      Create a project without agent skills
+  npx @coppsary/motionly skills add                       Install agent skills into an existing project
+  npx @coppsary/motionly skills add --all
+  npx @coppsary/motionly skills add --provider <codex|claude|gemini|opencode|kiro>
+  npx @coppsary/motionly dev [project-folder]             Reopen and edit a local project
 
 Options: --scope <project|global>, --port <number>, --no-open`);
 }
@@ -438,7 +438,7 @@ async function main() {
   if (command === 'skills') {
     if (subcommand !== 'add')
       throw new Error(
-        'Usage: npx motionly skills add [--provider <name> | --all] [--scope project|global]'
+        'Usage: npx @coppsary/motionly skills add [--provider <name> | --all] [--scope project|global]'
       );
     const options = await resolveSkillOptions(argv.slice(2));
     await installSkills(skillBase(options.scope, process.cwd()), options.providers);

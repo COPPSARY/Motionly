@@ -210,7 +210,7 @@ Open Motionly Assistant beside Assets, enter your own provider key, and describe
 
 **Model quality matters.** The AI model you choose directly affects composition, timing, and correct preset use. Smaller models may generate valid syntax but weaker visual decisions. Prefer a current, high-capability model with strong code-generation and instruction-following performance.
 
-For coding agents working inside a project, install the skill with `npx motionly skills add` (or `npx motionly init`, which asks which agent). This writes the `SKILL.md` contract plus a full `references/` library into your agent's folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
+For coding agents working inside a project, install the skill with `npx @coppsary/motionly skills add` (or `npx @coppsary/motionly init`, which asks which agent). This writes the `SKILL.md` contract plus a full `references/` library into your agent's folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
 
 | Path | Purpose |
 |---|---|
@@ -223,6 +223,7 @@ Point the agent at `AGENTS.md` and the installed `SKILL.md`, then let it load `r
 Use this short prompt with an LLM or agent working inside the repository:
 
 ```text
+/motionly
 Read AGENTS.md and .agents/skills/write-motionly/SKILL.md first.
 Inspect my assets, storyboard the animation, then create a valid .motion project.
 Use only supported Motionly syntax and presets. Keep one focal subject per shot,
@@ -325,7 +326,7 @@ Motionly ships on npm — no clone and no global install. It needs Node.js `20.1
 ### Create a project
 
 ```bash
-npx motionly init demo
+npx @coppsary/motionly init demo
 ```
 
 `init` scaffolds the project and asks **which agent you're using**, then installs the Motionly agent skill for just that one (or choose "All supported agents"). Supported agents: **Codex, Claude Code, Gemini CLI, opencode, and Kiro**. The install is not a single file: it writes the `SKILL.md` contract plus a full `references/` library (`motion-dsl`, `svg`, `animation`, `timeline`, and more) with an `llms.txt` discovery index.
@@ -333,9 +334,9 @@ npx motionly init demo
 Skip the prompt with flags:
 
 ```bash
-npx motionly init demo --provider opencode   # install for one agent, no prompt
-npx motionly init demo --all                 # every supported agent
-npx motionly init demo --skip-skills          # no agent skills
+npx @coppsary/motionly init demo --provider opencode   # install for one agent, no prompt
+npx @coppsary/motionly init demo --all                 # every supported agent
+npx @coppsary/motionly init demo --skip-skills          # no agent skills
 ```
 
 Provider names are `codex`, `claude`, `gemini`, `opencode`, and `kiro`. Use `--scope project` (default) or `--scope global` to install for every project on your machine.
@@ -354,9 +355,9 @@ demo/
 ### Add skills to an existing project
 
 ```bash
-npx motionly skills add                      # pick scope and agents
-npx motionly skills add --all --scope project
-npx motionly skills add --provider codex --scope global
+npx @coppsary/motionly skills add                      # pick scope and agents
+npx @coppsary/motionly skills add --all --scope project
+npx @coppsary/motionly skills add --provider codex --scope global
 ```
 
 Re-running is safe: existing skill files are kept, never overwritten.
@@ -365,10 +366,10 @@ Re-running is safe: existing skill files are kept, never overwritten.
 
 ```bash
 cd demo
-npx motionly dev
+npx @coppsary/motionly dev
 ```
 
-Motionly opens `http://localhost:4173/editor`, loads `project.motion`, serves media from `assets/`, and saves editor changes back to the project. Add `--port <n>` to change the port or `--no-open` to skip launching the browser. For the no-setup browser editor, run `npx motionly`.
+Motionly opens `http://localhost:4173/editor`, loads `project.motion`, serves media from `assets/`, and saves editor changes back to the project. Add `--port <n>` to change the port or `--no-open` to skip launching the browser. For the no-setup browser editor, run `npx @coppsary/motionly`.
 
 ## Development from source
 

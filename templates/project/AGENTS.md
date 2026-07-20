@@ -21,7 +21,7 @@ Before writing or repairing `.motion` beyond a trivial edit:
 3. Treat the reference library and Motionly's parser/renderer as authoritative over
    the short summary below.
 
-If the skill was not installed, run `npx motionly skills add` to add it (with its
+If the skill was not installed, run `npx @coppsary/motionly skills add` to add it (with its
 reference library) for your agent.
 
 ## Product Rule
@@ -35,7 +35,7 @@ Do not make users hand-write `.motion` for normal animation creation.
 - `project.motion` is the editable animation source.
 - Keep local media in `assets/` and reference it by filename, such as `./assets/logo.svg`.
 - Preserve asset aspect ratios by setting only `width` or `height`.
-- Run `npx motionly dev` to load, validate, preview, and visually refine the project.
+- Run `npx @coppsary/motionly dev` to load, validate, preview, and visually refine the project.
 
 ## `.motion` Syntax
 

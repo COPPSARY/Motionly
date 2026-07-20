@@ -10,7 +10,7 @@ Motionly runs from npm through `npx` — no clone and no global install. You nee
 ## Create a project
 
 ```bash
-npx motionly init my-video
+npx @coppsary/motionly init my-video
 ```
 
 `init` scaffolds the project and asks which agent you're using, then installs the Motionly agent skill for that agent (or pick "All supported agents"). Supported agents are **Codex, Claude Code, Gemini CLI, opencode, and Kiro**. The install is not a single file: it writes the `SKILL.md` contract plus a full `references/` library (`motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`, `typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`) with an `llms.txt` discovery index.
@@ -18,9 +18,9 @@ npx motionly init my-video
 Skip the prompt with flags (also used in scripts and non-interactive shells):
 
 ```bash
-npx motionly init my-video --provider opencode   # one agent, no prompt
-npx motionly init my-video --all                 # every supported agent
-npx motionly init my-video --skip-skills          # no agent skills
+npx @coppsary/motionly init my-video --provider opencode   # one agent, no prompt
+npx @coppsary/motionly init my-video --all                 # every supported agent
+npx @coppsary/motionly init my-video --skip-skills          # no agent skills
 ```
 
 Provider names are `codex`, `claude`, `gemini`, `opencode`, and `kiro`. Use `--scope project` (default) or `--scope global`.
@@ -29,23 +29,23 @@ After setup Motionly starts the project and prints `http://localhost:4173/editor
 
 ```bash
 cd my-video
-npx motionly dev
+npx @coppsary/motionly dev
 ```
 
 ## Add skills to an existing project
 
 ```bash
-npx motionly skills add                       # pick scope and agents
-npx motionly skills add --all --scope project
-npx motionly skills add --provider codex --scope global
+npx @coppsary/motionly skills add                       # pick scope and agents
+npx @coppsary/motionly skills add --all --scope project
+npx @coppsary/motionly skills add --provider codex --scope global
 ```
 
-Each install includes the same `references/` library. Re-running keeps existing files and never overwrites your edits.
+Each install includes the same `references/` library. Re-running keeps existing files and never overwrites your edits. After installation, start an agent request with `/motionly`, for example: `/motionly inspect my assets and create an editable Motionly animation`.
 
 ## Open the editor with no project
 
 ```bash
-npx motionly
+npx @coppsary/motionly
 ```
 
 This serves the editor at `http://localhost:4173`. Use `--port <n>` to pick a port or `--no-open` to skip launching the browser.
@@ -88,7 +88,7 @@ npm run build
 npm run serve
 ```
 
-This runs the same launcher `npx motionly` uses against your local `dist/`.
+This runs the same launcher `npx @coppsary/motionly` uses against your local `dist/`.
 
 ## Test
 

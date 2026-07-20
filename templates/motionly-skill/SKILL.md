@@ -121,7 +121,7 @@ Prefer `power3.out`. Useful text presets: `keynoteText`, `wordReveal`, `charReve
 From the project folder:
 
 ```bash
-npx motionly dev
+npx @coppsary/motionly dev
 ```
 
 This loads `project.motion` and `assets/`, opens the editor, and saves changes back to `project.motion`. Verify the canvas size, FPS, exact duration, imports, readable holds, transitions, final frame, and save/reload behavior before finishing.
