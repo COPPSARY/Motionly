@@ -3,59 +3,44 @@ import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Transform, type Readable } from 'node:stream';
+import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-interface ExportJob {
-  directory: string;
-  fps: number;
-  duration: number;
-  totalFrames: number;
-  receivedFrames: Set<number>;
-  hasAudio: boolean;
-  audioStart: number;
-  audioReceived: boolean;
-}
-
-type NextFunction = (error?: unknown) => void;
-type ExportMiddleware = (
-  request: IncomingMessage,
-  response: ServerResponse,
-  next: NextFunction
-) => void;
-
-const jobs = new Map<string, ExportJob>();
+const jobs = new Map();
 const MAX_FRAME_BYTES = 100 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 1024 * 1024 * 1024;
 
-export function createFfmpegExportMiddleware(): ExportMiddleware {
-  return (request, response, next) => {
-    const url = new URL(request.url ?? '/', 'http://motionly.local');
-    if (!url.pathname.startsWith('/api/exports')) {
-      next();
-      return;
-    }
+/** Handle an export request in the standalone npm CLI server. */
+export async function handleFfmpegExportRequest(request, response) {
+  const url = new URL(request.url ?? '/', 'http://motionly.local');
+  if (!url.pathname.startsWith('/api/exports')) return false;
 
-    void handleExportRequest(request, response, url).catch((error: unknown) => {
-      if (response.headersSent) {
-        response.destroy(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
+  try {
+    await handleExportRequest(request, response, url);
+  } catch (error) {
+    if (response.headersSent) {
+      response.destroy(error instanceof Error ? error : new Error(String(error)));
+    } else {
       response.statusCode = 500;
       response.setHeader('content-type', 'text/plain;charset=utf-8');
       response.end(error instanceof Error ? error.message : String(error));
-    });
+    }
+  }
+  return true;
+}
+
+/** Connect-compatible middleware used by the Vite development and preview servers. */
+export function createFfmpegExportMiddleware() {
+  return (request, response, next) => {
+    void handleFfmpegExportRequest(request, response).then((handled) => {
+      if (!handled) next();
+    }, next);
   };
 }
 
-async function handleExportRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  url: URL
-): Promise<void> {
+async function handleExportRequest(request, response, url) {
   if (request.method === 'POST' && url.pathname === '/api/exports') {
     await createJob(request, response);
     return;
@@ -122,16 +107,8 @@ async function handleExportRequest(
   respond(response, 405, 'Method not allowed');
 }
 
-async function createJob(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const input = JSON.parse((await readRequest(request, 64 * 1024)).toString('utf8')) as {
-    width?: unknown;
-    height?: unknown;
-    fps?: unknown;
-    duration?: unknown;
-    totalFrames?: unknown;
-    hasAudio?: unknown;
-    audioStart?: unknown;
-  };
+async function createJob(request, response) {
+  const input = JSON.parse((await readRequest(request, 64 * 1024)).toString('utf8'));
   positiveInteger(input.width, 'width', 8192);
   positiveInteger(input.height, 'height', 8192);
   const fps = positiveNumber(input.fps, 'fps', 240);
@@ -157,7 +134,7 @@ async function createJob(request: IncomingMessage, response: ServerResponse): Pr
   response.end(JSON.stringify({ id }));
 }
 
-async function finishJob(id: string, job: ExportJob, response: ServerResponse): Promise<void> {
+async function finishJob(id, job, response) {
   const outputPath = join(job.directory, 'motionly.mp4');
   const framePattern = join(job.directory, 'frame-%08d.jpg');
   const args = [
@@ -208,17 +185,17 @@ async function finishJob(id: string, job: ExportJob, response: ServerResponse): 
   }
 }
 
-function runFfmpeg(args: string[]): Promise<void> {
+function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
     const child = spawn('ffmpeg', args, { windowsHide: true });
     let errorOutput = '';
     child.stderr.setEncoding('utf8');
-    child.stderr.on('data', (chunk: string) => {
+    child.stderr.on('data', (chunk) => {
       errorOutput = `${errorOutput}${chunk}`.slice(-16_384);
     });
     child.once('error', (error) => {
       reject(
-        'code' in error && error.code === 'ENOENT'
+        error.code === 'ENOENT'
           ? new Error('ffmpeg is not installed or is not available on PATH')
           : error
       );
@@ -230,14 +207,10 @@ function runFfmpeg(args: string[]): Promise<void> {
   });
 }
 
-async function writeRequest(
-  request: IncomingMessage,
-  path: string,
-  maxBytes: number
-): Promise<void> {
+async function writeRequest(request, path, maxBytes) {
   let size = 0;
   const limiter = new Transform({
-    transform(chunk: Buffer, _encoding, callback) {
+    transform(chunk, _encoding, callback) {
       size += chunk.byteLength;
       callback(size > maxBytes ? new Error('Export upload is too large') : null, chunk);
     },
@@ -250,11 +223,11 @@ async function writeRequest(
   }
 }
 
-async function readRequest(request: Readable, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
+async function readRequest(request, maxBytes) {
+  const chunks = [];
   let size = 0;
   for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.byteLength;
     if (size > maxBytes) throw new Error('Export upload is too large');
     chunks.push(buffer);
@@ -262,28 +235,28 @@ async function readRequest(request: Readable, maxBytes: number): Promise<Buffer>
   return Buffer.concat(chunks);
 }
 
-function positiveInteger(value: unknown, name: string, max: number): number {
+function positiveInteger(value, name, max) {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0 || value > max) {
     throw new Error(`Invalid export ${name}`);
   }
   return value;
 }
 
-function positiveNumber(value: unknown, name: string, max: number): number {
+function positiveNumber(value, name, max) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > max) {
     throw new Error(`Invalid export ${name}`);
   }
   return value;
 }
 
-function nonNegativeNumber(value: unknown, name: string, max: number): number {
+function nonNegativeNumber(value, name, max) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) {
     throw new Error(`Invalid export ${name}`);
   }
   return value;
 }
 
-function respond(response: ServerResponse, status: number, message?: string): void {
+function respond(response, status, message) {
   response.statusCode = status;
   if (message) response.setHeader('content-type', 'text/plain;charset=utf-8');
   response.end(message);

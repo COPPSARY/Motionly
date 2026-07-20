@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createFfmpegExportMiddleware } from './src/export/ffmpeg-server';
+import { createFfmpegExportMiddleware } from './bin/ffmpeg-export.js';
 
 const motionProjectPath = resolve('video-motion/motionly.motion');
 

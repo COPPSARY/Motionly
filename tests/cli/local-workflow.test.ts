@@ -113,6 +113,28 @@ describe('local CLI workflow', () => {
       const bundle = await fetch(`http://127.0.0.1:${port}${script}`);
       expect(bundle.headers.get('content-type')).toContain('text/javascript');
 
+      const exportResponse = await fetch(`http://127.0.0.1:${port}/api/exports`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          width: 16,
+          height: 16,
+          fps: 1,
+          duration: 1,
+          totalFrames: 1,
+          hasAudio: false,
+          audioStart: 0,
+        }),
+      });
+      expect(exportResponse.status).toBe(201);
+      expect(exportResponse.headers.get('content-type')).toContain('application/json');
+      const exportJob = (await exportResponse.json()) as { id: string };
+      expect(exportJob.id).toMatch(/^[a-z0-9-]+$/);
+      const cancelledExport = await fetch(`http://127.0.0.1:${port}/api/exports/${exportJob.id}`, {
+        method: 'DELETE',
+      });
+      expect(cancelledExport.status).toBe(204);
+
       const asset = await fetch(`http://127.0.0.1:${port}/assets/logo.svg`, { method: 'HEAD' });
       expect(asset.headers.get('content-length')).toBe('11');
 

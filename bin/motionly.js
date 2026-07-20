@@ -2,6 +2,7 @@
 // Zero-dependency Motionly CLI and local editor server.
 
 import { createServer } from 'node:http';
+import { handleFfmpegExportRequest } from './ffmpeg-export.js';
 import { createInterface } from 'node:readline/promises';
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -151,7 +152,11 @@ async function copyReferenceLibrary(source, destination) {
     const to = join(destination, entry.name);
     if (entry.isDirectory()) {
       copied += await copyReferenceLibrary(from, to);
-    } else if (entry.name === 'SKILL.md' || entry.name === 'llms.txt' || entry.name === 'AGENTS.md') {
+    } else if (
+      entry.name === 'SKILL.md' ||
+      entry.name === 'llms.txt' ||
+      entry.name === 'AGENTS.md'
+    ) {
       try {
         await writeFile(to, await readFile(from), { flag: 'wx' });
         copied += 1;
@@ -252,7 +257,8 @@ async function promptForAgent(scope) {
 }
 
 async function initProject(name, argv = []) {
-  if (!name || name.startsWith('-')) throw new Error('Usage: npx @coppsary/motionly init <project-folder>');
+  if (!name || name.startsWith('-'))
+    throw new Error('Usage: npx @coppsary/motionly init <project-folder>');
   const target = resolve(name);
   if (await exists(target)) {
     if ((await readdir(target)).length) throw new Error(`Folder is not empty: ${target}`);
@@ -334,6 +340,8 @@ async function serveEditor(argv, projectFolder = null) {
     try {
       const url = new URL(request.url ?? '/', 'http://localhost');
       const pathname = decodeURIComponent(url.pathname);
+
+      if (await handleFfmpegExportRequest(request, response)) return;
 
       if (projectPath && pathname === '/api/motion-project') {
         if (request.method === 'GET' || request.method === 'HEAD') {

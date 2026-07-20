@@ -384,6 +384,12 @@ async function request(url: string, init: RequestInit): Promise<Response> {
 
 async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
   const response = await request(url, init);
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      'MP4 export API is unavailable. Start Motionly with npx @coppsary/motionly dev and try again'
+    );
+  }
   return (await response.json()) as T;
 }
 
