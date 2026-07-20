@@ -7,6 +7,28 @@ description: Create, edit, validate, and preview editable Motionly .motion anima
 
 Motionly is a visual motion-graphics editor. Its editable source is `project.motion`; normal users refine it in the editor rather than hand-writing it. Keep generated source readable and load it through Motionly's parser and renderer.
 
+## Deep reference library
+
+This skill ships a full reference library beside this file at `references/`. This
+SKILL.md is only the quick contract — **before any non-trivial `.motion` work,
+open `references/llms.txt` and load the focused skills it lists**, then follow
+`references/AGENTS.md` for routing by intent:
+
+- `references/skills/motion-dsl/SKILL.md` — canvas, imports, elements, tracks, clips, audio, animations, keyframes, validation (load this first for any authoring or repair)
+- `references/skills/svg/SKILL.md` — logos, icons, diagrams, vector artwork, drawSVG, fill/stroke, local zoom/pan
+- `references/skills/animation/SKILL.md` and `references/skills/easing/SKILL.md` — choreography, presets, keyframes, timing
+- `references/skills/camera/SKILL.md` — global camera vs. local artwork focus
+- `references/skills/composition/SKILL.md` — hierarchy, spacing, color, brand, scene review
+- `references/skills/typography/SKILL.md` — titles, captions, kinetic type, narration timing
+- `references/skills/transitions/SKILL.md` — scene changes, wipes, crossfades, continuity
+- `references/skills/timeline/SKILL.md` — tracks, clips, trim, retime, overlap, audio placement
+- `references/skills/assets/SKILL.md` — PNG/JPEG, SVG, GIF, MP4, WebM, MOV, Lottie, codecs
+- `references/skills/rendering/SKILL.md` — preview, scrub, export, inspection, limitations
+- `references/skills/templates/SKILL.md` — product launch, logo reveal, diagram, social-stat storyboards
+
+Load only the topics the current task needs. The library is authoritative when it
+is more detailed than the summary below.
+
 ## Project and asset workflow
 
 - Read `AGENTS.md`, `project.motion`, and relevant files in `assets/` before editing.

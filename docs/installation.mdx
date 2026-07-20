@@ -5,36 +5,50 @@ description: Install and run Motionly locally.
 
 # Installation
 
-## Quickest Start (no clone)
+Motionly runs from npm through `npx` — no clone and no global install. You need Node.js `20.19.0` or newer.
 
-Run the built editor instantly with npx:
-
-```bash
-npx motionly
-```
-
-This serves the editor at `http://localhost:4173` and opens your browser. Use `--port <n>` to pick a port or `--no-open` to skip launching the browser.
-
-## Optional local project
+## Create a project
 
 ```bash
 npx motionly init my-video
 ```
 
-The `init` wizard offers **Skip**, **Project**, and **Global** skill setup choices. If you install a
-skill, it then lets you choose all supported agents or one agent. After setup, Motionly starts the
-generated project automatically and tells you to open `http://localhost:4173/editor`.
+`init` scaffolds the project and asks which agent you're using, then installs the Motionly agent skill for that agent (or pick "All supported agents"). Supported agents are **Codex, Claude Code, Gemini CLI, opencode, and Kiro**. The install is not a single file: it writes the `SKILL.md` contract plus a full `references/` library (`motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`, `typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`) with an `llms.txt` discovery index.
 
-Press `Ctrl+C` to stop it. To reopen the project later:
+Skip the prompt with flags (also used in scripts and non-interactive shells):
+
+```bash
+npx motionly init my-video --provider opencode   # one agent, no prompt
+npx motionly init my-video --all                 # every supported agent
+npx motionly init my-video --skip-skills          # no agent skills
+```
+
+Provider names are `codex`, `claude`, `gemini`, `opencode`, and `kiro`. Use `--scope project` (default) or `--scope global`.
+
+After setup Motionly starts the project and prints `http://localhost:4173/editor`. Press `Ctrl+C` to stop it, then reopen later with:
 
 ```bash
 cd my-video
 npx motionly dev
 ```
 
-To install skills without creating a project, run `npx motionly skills add`. For a non-interactive
-install, use `--all --scope project` or `--provider codex --scope global`. Supported providers are
-`claude`, `codex`, `gemini`, and `kiro`.
+## Add skills to an existing project
+
+```bash
+npx motionly skills add                       # pick scope and agents
+npx motionly skills add --all --scope project
+npx motionly skills add --provider codex --scope global
+```
+
+Each install includes the same `references/` library. Re-running keeps existing files and never overwrites your edits.
+
+## Open the editor with no project
+
+```bash
+npx motionly
+```
+
+This serves the editor at `http://localhost:4173`. Use `--port <n>` to pick a port or `--no-open` to skip launching the browser.
 
 The local editor reads and saves `project.motion` and serves files from `assets/`. Asset imports are
 resolved by filename, so the same import works with local media or a browser upload. Motionly asks
