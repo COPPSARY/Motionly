@@ -581,27 +581,40 @@ animate title {
   /* Subtly illuminated buttons with the Motionly logo palette. */
   .btn {
     border-color: rgba(255,255,255,.1);
-    background: linear-gradient(180deg, #242428 0%, #19191c 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.075), 0 1px 2px rgba(0,0,0,.3);
+    background: #1b1b1e;
+    box-shadow: none;
     font-weight: 520;
   }
   .btn:hover {
     border-color: rgba(255,255,255,.16);
-    background: linear-gradient(180deg, #2d2d32 0%, #202024 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 2px rgba(0,0,0,.35);
+    background: #242428;
+    box-shadow: none;
   }
   .btn:active {
     background: #171719;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
-    transform: translateY(1px);
+    box-shadow: none;
+    transform: none;
   }
   .btn-primary,
   .btn-primary:hover {
     border-color: rgba(255,255,255,.16);
-    background: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+    background: #0a84ff;
     color: #fff;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 3px rgba(0,0,0,.38);
+    box-shadow: none;
   }
-  .btn-primary:hover { background: linear-gradient(135deg, #6d9bf0, #59bd9c); }
+  .btn-primary:hover { background: #2997ff; }
+
+  /* Flat at rest; Motionly logo gradient on interaction and primary actions. */
+  .btn:hover {
+    border-color: rgba(138, 180, 255, 0.3);
+    background: linear-gradient(135deg, rgba(138, 180, 255, 0.16), rgba(124, 247, 197, 0.09));
+    color: #f5f8f7;
+  }
+  .btn-primary,
+  .btn-primary:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: linear-gradient(135deg, #8ab4ff 0%, #7cf7c5 100%);
+    color: #fff;
+  }
 
 </style>
