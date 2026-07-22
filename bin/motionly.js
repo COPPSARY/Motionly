@@ -26,6 +26,7 @@ const PROVIDERS = {
   gemini: '.gemini/skills/motionly/SKILL.md',
   opencode: '.opencode/skills/motionly/SKILL.md',
   kiro: '.kiro/skills/motionly/SKILL.md',
+  rayu: '.rayu/skills/motionly/SKILL.md',
 };
 
 const AGENT_LABELS = {
@@ -34,6 +35,7 @@ const AGENT_LABELS = {
   gemini: 'Gemini CLI',
   opencode: 'opencode',
   kiro: 'Kiro',
+  rayu: 'RAYU',
 };
 
 const MIME = {
@@ -434,7 +436,7 @@ function printHelp() {
   npx @coppsary/motionly init <folder> --skip-skills      Create a project without agent skills
   npx @coppsary/motionly skills add                       Install agent skills into an existing project
   npx @coppsary/motionly skills add --all
-  npx @coppsary/motionly skills add --provider <codex|claude|gemini|opencode|kiro>
+  npx @coppsary/motionly skills add --provider <codex|claude|gemini|opencode|kiro|rayu>
   npx @coppsary/motionly dev [project-folder]             Reopen and edit a local project
 
 Options: --scope <project|global>, --port <number>, --no-open`);
