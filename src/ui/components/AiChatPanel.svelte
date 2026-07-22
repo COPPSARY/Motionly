@@ -508,9 +508,9 @@
     margin-bottom: 3px;
     border: 1px solid rgba(255,255,255,.09);
     border-radius: 9px;
-    background: linear-gradient(180deg, #222226, #18181b);
+    background: #1d1d20;
     color: #78a8ff;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    box-shadow: none;
   }
   .assistant-empty-state > span:not(.assistant-empty-icon) { max-width: 240px; color: #777780; font-size: 11px; line-height: 1.5; }
   .assistant-guide-link { color: #91b5f4; font-size: 10px; text-decoration: none; }
@@ -531,9 +531,9 @@
     padding: 0 7px;
     border-color: rgba(255,255,255,.09);
     border-radius: 7px;
-    background: linear-gradient(180deg, #222226 0%, #19191c 100%);
+    background: #1d1d20;
     color: #9a9aa2;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 1px 2px rgba(0,0,0,.24);
+    box-shadow: none;
     font-size: 9.5px;
     font-weight: 500;
     text-overflow: ellipsis;
@@ -541,7 +541,7 @@
   }
   .suggestion-chips button:hover {
     border-color: rgba(255,255,255,.15);
-    background: linear-gradient(180deg, #2b2b30, #202024);
+    background: #252529;
     color: #e5e5e8;
   }
   .composer {
@@ -549,12 +549,12 @@
     padding: 6px 7px 6px 10px;
     border-color: rgba(255,255,255,.11);
     border-radius: 9px;
-    background: linear-gradient(180deg, #222226 0%, #19191c 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.065), 0 1px 2px rgba(0,0,0,.28);
+    background: #1b1b1e;
+    box-shadow: none;
   }
   .composer:focus-within {
     border-color: rgba(120,168,255,.52);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(120,168,255,.08);
+    box-shadow: none;
   }
   .command-mark { width: 18px; color: #73737c; }
   .composer textarea {
@@ -573,17 +573,32 @@
     height: 34px;
     border: 1px solid rgba(255,255,255,.14);
     border-radius: 8px;
-    background: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+    background: #0a84ff;
     color: #fff;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.32);
+    box-shadow: none;
   }
-  .composer .send-button:hover:not(:disabled) { background: linear-gradient(135deg, #6d9bf0, #59bd9c); }
+  .composer .send-button:hover:not(:disabled) { background: #2997ff; }
   .composer .send-button:disabled {
     border-color: rgba(255,255,255,.07);
-    background: linear-gradient(180deg, #26262a, #1c1c1f);
+    background: #242428;
     color: #56565e;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    box-shadow: none;
   }
   .composer-hint { margin-top: 7px; color: #55555d; font-size: 9px; }
+
+  /* Flat assistant surfaces with logo-gradient interaction states. */
+  .icon-button:hover,
+  .icon-button.active,
+  .suggestion-chips button:hover {
+    border-color: rgba(138, 180, 255, 0.3);
+    background: linear-gradient(135deg, rgba(138, 180, 255, 0.16), rgba(124, 247, 197, 0.09));
+    color: #eef7f4;
+  }
+  .composer .send-button,
+  .composer .send-button:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: linear-gradient(135deg, #8ab4ff 0%, #7cf7c5 100%);
+    color: #fff;
+  }
 
 </style>

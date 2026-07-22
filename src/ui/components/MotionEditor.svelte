@@ -42,6 +42,8 @@
   import AiChatPanel from './AiChatPanel.svelte';
   import AiConfigPanel from './AiConfigPanel.svelte';
   import BrandConfigPanel from './BrandConfigPanel.svelte';
+  import ColorPicker from './ColorPicker.svelte';
+  import RotationDial from './RotationDial.svelte';
 
   export let code = '';
   export let onSave: () => void | Promise<void> = () => undefined;
@@ -1120,6 +1122,51 @@
     code = serializeProgram(ast);
   }
 
+  function selectedVisualProperty(key: string, fallback: number): number {
+    return numericProperty(selectedElement ?? selectedClipElement, key, fallback);
+  }
+
+  function handlePropertyScrubKey(event: KeyboardEvent, key: string, fallback: number, minimum = Number.NEGATIVE_INFINITY) {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    const direction = event.key === 'ArrowUp' ? 1 : -1;
+    const step = event.shiftKey ? 10 : 1;
+    updateElementProperty(key, Math.max(minimum, Math.round(selectedVisualProperty(key, fallback) + direction * step)));
+  }
+
+  function beginPropertyScrub(event: PointerEvent, key: string, fallback: number, minimum = Number.NEGATIVE_INFINITY) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const target = event.currentTarget as HTMLElement;
+    const startY = event.clientY;
+    const startValue = selectedVisualProperty(key, fallback);
+    const previousCursor = document.body.style.cursor;
+    const previousSelection = document.body.style.userSelect;
+    let lastValue = startValue;
+    target.setPointerCapture?.(event.pointerId);
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const sensitivity = moveEvent.shiftKey ? 0.1 : 0.5;
+      const nextValue = Math.max(minimum, Math.round(startValue + (startY - moveEvent.clientY) * sensitivity));
+      if (nextValue === lastValue) return;
+      lastValue = nextValue;
+      updateElementProperty(key, nextValue);
+    };
+    const finishScrub = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishScrub);
+      window.removeEventListener('pointercancel', finishScrub);
+      if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousSelection;
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishScrub);
+    window.addEventListener('pointercancel', finishScrub);
+  }
+
   function ensureAssetElement(assetName: string): ElementNode | null {
     if (!ast) return null;
     const existing = ast.body.find(
@@ -1273,13 +1320,12 @@
   }
 
   function alignSelected(alignment: Alignment) {
-    if (!scene || !selectedElement) return;
-    const bounds = elementBounds(selectedElement);
+    const visual = selectedElement ?? selectedClipElement;
+    if (!scene || !visual) return;
+    const bounds = elementBounds(visual);
     const aligned = alignRect(bounds, scene.canvas, alignment);
-    updateElementProperties(selectedElement.id, {
-      x: Math.round(numericProperty(selectedElement, 'x', 0) + aligned.x - bounds.x),
-      y: Math.round(numericProperty(selectedElement, 'y', 0) + aligned.y - bounds.y),
-    });
+    updateElementProperty('x', Math.round(numericProperty(visual, 'x', 0) + aligned.x - bounds.x));
+    updateElementProperty('y', Math.round(numericProperty(visual, 'y', 0) + aligned.y - bounds.y));
   }
 
   function pointerToCanvas(event: PointerEvent): { x: number; y: number } {
@@ -3177,6 +3223,49 @@
         </div>
 
         <div class="primary-properties" aria-label="Primary properties">
+          {#if selectedElement.kind === 'asset' || selectedElement.kind === 'text'}
+          <div class="property-group primary-align-group">
+            <div class="property-label">Align to canvas</div>
+            <div class="property-align-actions flat-align-actions" aria-label="Align selected layer to canvas">
+              <button type="button" on:click={() => alignSelected('left')} title="Align left" aria-label="Align left" data-tooltip="Align left"><AlignHorizontalJustifyStart size={15} /></button>
+              <button type="button" on:click={() => alignSelected('center-x')} title="Align horizontal center" aria-label="Align horizontal center" data-tooltip="Center horizontally"><AlignHorizontalJustifyCenter size={15} /></button>
+              <button type="button" on:click={() => alignSelected('right')} title="Align right" aria-label="Align right" data-tooltip="Align right"><AlignHorizontalJustifyEnd size={15} /></button>
+              <button type="button" on:click={() => alignSelected('top')} title="Align top" aria-label="Align top" data-tooltip="Align top"><AlignVerticalJustifyStart size={15} /></button>
+              <button type="button" on:click={() => alignSelected('center-y')} title="Align vertical center" aria-label="Align vertical center" data-tooltip="Center vertically"><AlignVerticalJustifyCenter size={15} /></button>
+              <button type="button" on:click={() => alignSelected('bottom')} title="Align bottom" aria-label="Align bottom" data-tooltip="Align bottom"><AlignVerticalJustifyEnd size={15} /></button>
+            </div>
+          </div>
+          {/if}
+          <div class="property-group">
+            <div class="property-label">Position</div>
+            <div class="property-row">
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" value={selectedVisualProperty('x', 0)} on:input={(event) => updateElementProperty('x', Number(event.currentTarget.value))} />
+                <button type="button" class="input-suffix scrubbable-suffix" on:pointerdown={(event) => beginPropertyScrub(event, 'x', 0)} on:keydown={(event) => handlePropertyScrubKey(event, 'x', 0)} aria-label="X position: drag up or down to adjust" title="Drag up or down to adjust X position">x</button>
+              </div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" value={selectedVisualProperty('y', 0)} on:input={(event) => updateElementProperty('y', Number(event.currentTarget.value))} />
+                <button type="button" class="input-suffix scrubbable-suffix" on:pointerdown={(event) => beginPropertyScrub(event, 'y', 0)} on:keydown={(event) => handlePropertyScrubKey(event, 'y', 0)} aria-label="Y position: drag up or down to adjust" title="Drag up or down to adjust Y position">y</button>
+              </div>
+            </div>
+          </div>
+          <div class="property-group rotation-property">
+            <div class="property-label">Rotation</div>
+            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => updateElementProperty('rotation', angle)} />
+          </div>
+          {#if selectedElement.kind === 'text'}
+            <div class="property-group">
+              <div class="property-label">Text</div>
+              <textarea class="text-input" rows="3" value={stringProperty(selectedElement, 'value', '')} on:input={(event) => updateElementProperty('value', event.currentTarget.value)}></textarea>
+            </div>
+            <div class="property-group">
+              <div class="property-label">Font Size</div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="1" value={numericProperty(selectedElement, 'size', 72)} on:input={(event) => updateElementProperty('size', Number(event.currentTarget.value))} />
+                <button type="button" class="input-suffix scrubbable-suffix" on:pointerdown={(event) => beginPropertyScrub(event, 'size', 72, 1)} on:keydown={(event) => handlePropertyScrubKey(event, 'size', 72, 1)} aria-label="Font size: drag up or down to adjust" title="Drag up or down to adjust font size">px</button>
+              </div>
+            </div>
+          {/if}
           <div class="property-group">
             <div class="property-label">Scale</div>
             <div class="slider-control">
@@ -3194,9 +3283,17 @@
           <div class="property-group">
             <div class="property-label">Color</div>
             {#if selectedElement.kind === 'text'}
-              <input class="color-input" type="color" value={stringProperty(selectedElement, 'color', '#ffffff')} on:input={(event) => updateElementProperty('color', event.currentTarget.value)} aria-label="Text color" />
+              <ColorPicker
+                value={stringProperty(selectedElement, 'color', '#ffffff')}
+                ariaLabel="Text color"
+                onChange={(color) => updateElementProperty('color', color)}
+              />
             {:else if selectedElement.kind === 'overlay' || selectedElement.asset?.type === 'svg'}
-              <input class="color-input" type="color" value={stringProperty(selectedElement, 'fill', '#ffffff')} on:input={(event) => updateElementProperty('fill', event.currentTarget.value)} aria-label="Layer color" />
+              <ColorPicker
+                value={stringProperty(selectedElement, 'fill', '#ffffff')}
+                ariaLabel="Layer color"
+                onChange={(color) => updateElementProperty('fill', color)}
+              />
             {:else}
               <div class="property-unavailable">Uses source media colors</div>
             {/if}
@@ -3222,35 +3319,6 @@
         <details class="more-options" bind:open={moreOptionsOpen}>
           <summary>More Options</summary>
           <div class="more-options-content">
-        {#if selectedElement.kind === 'asset' || selectedElement.kind === 'text'}
-          <div class="property-align-toolbar">
-            <span class="property-align-label">Align to canvas</span>
-            <div class="property-align-actions" aria-label="Align selected layer to canvas">
-              <button type="button" on:click={() => alignSelected('left')} title="Align left" aria-label="Align left"><AlignHorizontalJustifyStart size={15} /></button>
-              <button type="button" on:click={() => alignSelected('center-x')} title="Align horizontal center" aria-label="Align horizontal center"><AlignHorizontalJustifyCenter size={15} /></button>
-              <button type="button" on:click={() => alignSelected('right')} title="Align right" aria-label="Align right"><AlignHorizontalJustifyEnd size={15} /></button>
-              <span class="align-divider"></span>
-              <button type="button" on:click={() => alignSelected('top')} title="Align top" aria-label="Align top"><AlignVerticalJustifyStart size={15} /></button>
-              <button type="button" on:click={() => alignSelected('center-y')} title="Align vertical center" aria-label="Align vertical center"><AlignVerticalJustifyCenter size={15} /></button>
-              <button type="button" on:click={() => alignSelected('bottom')} title="Align bottom" aria-label="Align bottom"><AlignVerticalJustifyEnd size={15} /></button>
-            </div>
-          </div>
-        {/if}
-        
-        <div class="property-group">
-          <div class="property-label">Position</div>
-          <div class="property-row">
-            <div class="number-input-wrapper">
-              <input class="number-input" type="number" value={numericProperty(selectedElement, 'x', 0)} on:input={(e) => updateElementProperty('x', Number(e.currentTarget.value))} />
-              <span class="input-suffix">x</span>
-            </div>
-            <div class="number-input-wrapper">
-              <input class="number-input" type="number" value={numericProperty(selectedElement, 'y', 0)} on:input={(e) => updateElementProperty('y', Number(e.currentTarget.value))} />
-              <span class="input-suffix">y</span>
-            </div>
-          </div>
-        </div>
-
         {#if selectedElement.kind === 'asset'}
           <div class="property-group">
             <div class="property-label-row">
@@ -3263,29 +3331,6 @@
             </div>
           </div>
         {/if}
-
-        <div class="property-group">
-          <div class="property-label">Rotation</div>
-          <div class="slider-control">
-            <input 
-              class="custom-slider" 
-              type="range" 
-              min="-180" 
-              max="180" 
-              step="1" 
-              value={numericProperty(selectedElement, 'rotation', 0)} 
-              on:input={(e) => updateElementProperty('rotation', Number(e.currentTarget.value))} 
-            />
-            <input 
-              class="slider-value-input" 
-              type="number" 
-              min="-180" 
-              max="180" 
-              value={numericProperty(selectedElement, 'rotation', 0)} 
-              on:input={(e) => updateElementProperty('rotation', Number(e.currentTarget.value))} 
-            />
-          </div>
-        </div>
 
         {#if selectedElement.kind === 'asset'}
           <div class="property-group">
@@ -3319,23 +3364,13 @@
           {#if selectedElement.asset?.type === 'svg' && !assets.get(selectedElement.assetName ?? '')?.motionlySvg?.animated}
             <div class="property-group">
               <div class="property-label">SVG Stroke Override</div>
-              <input class="color-input" type="color" value={stringProperty(selectedElement, 'stroke', '#ffffff')} on:input={(e) => updateElementProperty('stroke', e.currentTarget.value)} />
+              <ColorPicker
+                value={stringProperty(selectedElement, 'stroke', '#ffffff')}
+                ariaLabel="SVG stroke color"
+                onChange={(color) => updateElementProperty('stroke', color)}
+              />
             </div>
           {/if}
-        {/if}
-
-        {#if selectedElement.kind === 'text'}
-          <div class="property-group">
-          <div class="property-label">Text</div>
-            <textarea class="text-input" rows="3" value={stringProperty(selectedElement, 'value', '')} on:input={(e) => updateElementProperty('value', e.currentTarget.value)}></textarea>
-          </div>
-          <div class="property-group">
-          <div class="property-label">Font Size</div>
-            <div class="number-input-wrapper">
-              <input class="number-input" type="number" min="1" value={numericProperty(selectedElement, 'size', 72)} on:input={(e) => updateElementProperty('size', Number(e.currentTarget.value))} />
-              <span class="input-suffix">px</span>
-            </div>
-          </div>
         {/if}
 
         <div class="section-title">Layer Mask</div>
@@ -3363,32 +3398,34 @@
           </label>
         {/if}
 
-        <div class="section-title">Adjustments</div>
-        {#each adjustmentControls as control}
-          <div class="property-group">
-            <div class="property-label">{control.label}</div>
-            <div class="slider-control">
-              <input
-                class="custom-slider"
-                type="range"
-                min={control.min}
-                max={control.max}
-                step={control.step}
-                value={numericProperty(selectedElement, control.property, control.fallback)}
-                on:input={(event) => updateElementProperty(control.property, Number(event.currentTarget.value))}
-              />
-              <input
-                class="slider-value-input"
-                type="number"
-                min={control.min}
-                max={control.max}
-                step={control.step}
-                value={numericProperty(selectedElement, control.property, control.fallback)}
-                on:input={(event) => updateElementProperty(control.property, Number(event.currentTarget.value))}
-              />
+        {#if selectedElement.kind === 'asset'}
+          <div class="section-title">Adjustments</div>
+          {#each adjustmentControls as control}
+            <div class="property-group">
+              <div class="property-label">{control.label}</div>
+              <div class="slider-control">
+                <input
+                  class="custom-slider"
+                  type="range"
+                  min={control.min}
+                  max={control.max}
+                  step={control.step}
+                  value={numericProperty(selectedElement, control.property, control.fallback)}
+                  on:input={(event) => updateElementProperty(control.property, Number(event.currentTarget.value))}
+                />
+                <input
+                  class="slider-value-input"
+                  type="number"
+                  min={control.min}
+                  max={control.max}
+                  step={control.step}
+                  value={numericProperty(selectedElement, control.property, control.fallback)}
+                  on:input={(event) => updateElementProperty(control.property, Number(event.currentTarget.value))}
+                />
+              </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+        {/if}
 
         <div class="section-title">Keyframes</div>
         <div class="property-group keyframe-controls">
@@ -3540,6 +3577,34 @@
           <span><strong>{selectedClip.assetName}</strong><small>Timeline clip</small></span>
         </div>
         <div class="primary-properties" aria-label="Primary properties">
+          <div class="property-group primary-align-group">
+            <div class="property-label">Align to canvas</div>
+            <div class="property-align-actions flat-align-actions" aria-label="Align selected layer to canvas">
+              <button type="button" on:click={() => alignSelected('left')} title="Align left" aria-label="Align left" data-tooltip="Align left"><AlignHorizontalJustifyStart size={15} /></button>
+              <button type="button" on:click={() => alignSelected('center-x')} title="Align horizontal center" aria-label="Align horizontal center" data-tooltip="Center horizontally"><AlignHorizontalJustifyCenter size={15} /></button>
+              <button type="button" on:click={() => alignSelected('right')} title="Align right" aria-label="Align right" data-tooltip="Align right"><AlignHorizontalJustifyEnd size={15} /></button>
+              <button type="button" on:click={() => alignSelected('top')} title="Align top" aria-label="Align top" data-tooltip="Align top"><AlignVerticalJustifyStart size={15} /></button>
+              <button type="button" on:click={() => alignSelected('center-y')} title="Align vertical center" aria-label="Align vertical center" data-tooltip="Center vertically"><AlignVerticalJustifyCenter size={15} /></button>
+              <button type="button" on:click={() => alignSelected('bottom')} title="Align bottom" aria-label="Align bottom" data-tooltip="Align bottom"><AlignVerticalJustifyEnd size={15} /></button>
+            </div>
+          </div>
+          <div class="property-group">
+            <div class="property-label">Position</div>
+            <div class="property-row">
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" value={selectedVisualProperty('x', 0)} on:input={(event) => updateElementProperty('x', Number(event.currentTarget.value))} />
+                <button type="button" class="input-suffix scrubbable-suffix" on:pointerdown={(event) => beginPropertyScrub(event, 'x', 0)} on:keydown={(event) => handlePropertyScrubKey(event, 'x', 0)} aria-label="X position: drag up or down to adjust" title="Drag up or down to adjust X position">x</button>
+              </div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" value={selectedVisualProperty('y', 0)} on:input={(event) => updateElementProperty('y', Number(event.currentTarget.value))} />
+                <button type="button" class="input-suffix scrubbable-suffix" on:pointerdown={(event) => beginPropertyScrub(event, 'y', 0)} on:keydown={(event) => handlePropertyScrubKey(event, 'y', 0)} aria-label="Y position: drag up or down to adjust" title="Drag up or down to adjust Y position">y</button>
+              </div>
+            </div>
+          </div>
+          <div class="property-group rotation-property">
+            <div class="property-label">Rotation</div>
+            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => updateElementProperty('rotation', angle)} />
+          </div>
           <p class="shared-property-note">Visual changes apply to every clip using this source asset.</p>
           <div class="property-group">
             <div class="property-label">Scale</div>
@@ -3558,7 +3623,11 @@
           <div class="property-group">
             <div class="property-label">Color</div>
             {#if selectedClipElement?.asset?.type === 'svg'}
-              <input class="color-input" type="color" value={stringProperty(selectedClipElement, 'fill', '#ffffff')} on:input={(event) => updateElementProperty('fill', event.currentTarget.value)} aria-label="Clip color" />
+              <ColorPicker
+                value={stringProperty(selectedClipElement, 'fill', '#ffffff')}
+                ariaLabel="Clip color"
+                onChange={(color) => updateElementProperty('fill', color)}
+              />
             {:else}
               <div class="property-unavailable">Uses source media colors</div>
             {/if}
@@ -4879,24 +4948,6 @@
     position: relative;
   }
 
-  .property-align-toolbar {
-    margin: 0 14px 14px;
-    padding: 10px;
-    border: 1px solid #292d33;
-    border-radius: 6px;
-    background: #111317;
-  }
-
-  .property-align-label {
-    display: block;
-    margin-bottom: 8px;
-    color: #7f8791;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
   .property-align-actions {
     display: grid;
     grid-template-columns: repeat(3, 1fr) 1px repeat(3, 1fr);
@@ -4921,13 +4972,6 @@
 
   .property-align-actions button:last-child { border-right: 0; }
   .property-align-actions button:hover { background: #282d34; color: #0a84ff; }
-
-  .align-divider {
-    width: 1px;
-    height: 30px;
-    justify-self: center;
-    background: #30353c;
-  }
 
   .canvas-shell {
     position: relative;
@@ -5264,28 +5308,6 @@
   .text-input:focus {
     border-color: #0a84ff;
     background: #1a1c20;
-    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
-  }
-
-  /* Color Input */
-  .color-input {
-    width: 100%;
-    height: 36px;
-    box-sizing: border-box;
-    border: 1px solid #2a2d33;
-    border-radius: 6px;
-    background: #17191c;
-    padding: 4px;
-    cursor: pointer;
-    transition: all 0.12s ease;
-  }
-
-  .color-input:hover {
-    border-color: #363d4b;
-  }
-
-  .color-input:focus {
-    border-color: #0a84ff;
     box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
   }
 
@@ -6323,7 +6345,6 @@
   .more-options[open] summary::before { color: var(--accent); transform: rotate(90deg); }
   .more-options-content { padding: 6px 0 4px; animation: options-reveal .18s ease both; }
   @keyframes options-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-  .more-options-content .property-align-toolbar { margin-right: 0; margin-left: 0; }
   .properties-empty { min-height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; color: #696970; }
   .properties-empty :global(svg) { color: #4e4e55; }
   .properties-empty strong { color: #aaaab1; font-size: 12px; }
@@ -6531,8 +6552,7 @@
   .asset-card,
   .preset-card,
   .effect-item,
-  .selection-summary,
-  .property-align-toolbar {
+  .selection-summary {
     border-color: var(--hairline);
     background: transparent;
     box-shadow: none;
@@ -6585,8 +6605,8 @@
   .assistant-expand,
   .import-media-button {
     border-color: rgba(255,255,255,.1);
-    background: linear-gradient(180deg, #242428 0%, #1a1a1d 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.075), 0 1px 2px rgba(0,0,0,.28);
+    background: #1b1b1e;
+    box-shadow: none;
   }
   .header-icon-btn:hover,
   .meta-btn:hover,
@@ -6597,8 +6617,8 @@
   .assistant-expand:hover,
   .import-media-button:hover {
     border-color: rgba(255,255,255,.16);
-    background: linear-gradient(180deg, #2c2c31 0%, #202024 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 2px rgba(0,0,0,.34);
+    background: #242428;
+    box-shadow: none;
   }
   .header-icon-btn:active,
   .meta-btn:active,
@@ -6609,31 +6629,31 @@
   .assistant-expand:active,
   .import-media-button:active {
     background: #171719;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,.45);
-    transform: translateY(1px);
+    box-shadow: none;
+    transform: none;
   }
   .nav-item.active {
     border: 1px solid rgba(255,255,255,.16);
-    background: var(--accent-gradient);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.34);
+    background: #0a84ff;
+    box-shadow: none;
   }
   .icon-btn.active,
   .preset-option.active,
   .easing-option.active {
     border-color: rgba(120,168,255,.42);
-    background: linear-gradient(180deg, rgba(120,168,255,.2), rgba(112,221,184,.09));
-    color: #dce9ff;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    background: rgba(10,132,255,.14);
+    color: #8fc5ff;
+    box-shadow: none;
   }
   .layer-row.selected {
     border-color: rgba(120,168,255,.34);
-    background: linear-gradient(90deg, rgba(120,168,255,.13), rgba(112,221,184,.045));
+    background: rgba(10,132,255,.1);
     box-shadow: inset 2px 0 0 #78a8ff;
   }
   .play-btn {
     border-color: rgba(255,255,255,.2);
-    background: linear-gradient(180deg, #ffffff 0%, #d9d9dd 100%);
-    box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(0,0,0,.45);
+    background: #eeeeef;
+    box-shadow: none;
   }
   .library-empty-state {
     position: absolute;
@@ -6650,31 +6670,227 @@
     text-align: center;
   }
   .library-empty-icon {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     display: grid;
     place-items: center;
     margin-bottom: 4px;
     border: 1px solid rgba(255,255,255,.09);
     border-radius: 9px;
-    background: linear-gradient(180deg, #202024, #171719);
-    color: #85858e;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+    background: #1d1d20;
+    color: #8c8c95;
+    box-shadow: none;
   }
-  .library-empty-state strong { color: #d9d9dd; font-size: 12px; font-weight: 600; letter-spacing: -.01em; }
-  .library-empty-state > span:not(.library-empty-icon) { max-width: 190px; color: #74747d; font-size: 11px; line-height: 1.45; }
-  .library-empty-state small { max-width: 205px; color: #55555d; font-size: 9.5px; line-height: 1.4; }
+  .library-empty-state strong { color: #e0e0e4; font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+  .library-empty-state > span:not(.library-empty-icon) { max-width: 205px; color: #7d7d86; font-size: 11.5px; line-height: 1.5; }
+  .library-empty-state small { max-width: 220px; color: #5d5d65; font-size: 10px; line-height: 1.4; }
   .library-empty-state .import-media-button {
     align-self: center;
-    margin: 5px 0 2px;
-    padding: 0 12px;
-    color: #e8e8eb;
-    font-size: 11px;
+    min-width: 128px;
+    height: 34px;
+    margin: 7px 0 3px;
+    padding: 0 18px;
+    border-radius: 7px;
+    background: #242428;
+    color: #ededf0;
+    font-size: 11.5px;
     font-weight: 600;
   }
   .media-dropzone { position: relative; height: 100%; padding: 0 4px; }
-  .media-dropzone.drag-active .library-empty-state { background: linear-gradient(180deg, rgba(120,168,255,.06), rgba(112,221,184,.025)); }
+  .media-dropzone.drag-active .library-empty-state { background: rgba(10,132,255,.045); }
 
   .workbench.chat-open { grid-template-columns: 60px 260px 360px minmax(0, 1fr) 300px; }
+
+  /* Quiet workspace grid, refined property controls, and logo-gradient interactions. */
+  .stage {
+    background-color: #0f0f11;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .number-input,
+  .slider-value-input {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .number-input::-webkit-inner-spin-button,
+  .number-input::-webkit-outer-spin-button,
+  .slider-value-input::-webkit-inner-spin-button,
+  .slider-value-input::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
+  .custom-slider {
+    height: 18px;
+    cursor: pointer;
+  }
+  .custom-slider::-webkit-slider-track {
+    width: 100%;
+    height: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.045);
+    border-radius: 999px;
+    background: #34343a;
+  }
+  .custom-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.045);
+    border-radius: 999px;
+    background: #34343a;
+  }
+  .custom-slider::-moz-range-progress {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--accent-gradient);
+  }
+  .custom-slider::-webkit-slider-thumb {
+    width: 14px;
+    height: 14px;
+    margin-top: -6px;
+    border: 2px solid #171719;
+    background: var(--accent-gradient);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+  .custom-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #171719;
+    background: var(--accent-gradient);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+  .custom-slider:hover::-webkit-slider-thumb,
+  .custom-slider:hover::-moz-range-thumb {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px rgba(138, 180, 255, 0.12);
+  }
+  .header-icon-btn:hover,
+  .meta-btn:hover,
+  .icon-btn:hover,
+  .control-btn:hover,
+  .timeline-command:hover,
+  .property-align-actions button:hover,
+  .assistant-expand:hover,
+  .import-media-button:hover {
+    border-color: rgba(138, 180, 255, 0.3);
+    background: linear-gradient(135deg, rgba(138, 180, 255, 0.16), rgba(124, 247, 197, 0.09));
+    color: #f5f8f7;
+  }
+  .nav-item.active,
+  .icon-btn.active,
+  .preset-option.active,
+  .easing-option.active {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--accent-gradient);
+    color: #0d1618;
+    box-shadow: none;
+  }
+  .layer-row.selected {
+    border-color: rgba(138, 180, 255, 0.34);
+    background: linear-gradient(90deg, rgba(138, 180, 255, 0.15), rgba(124, 247, 197, 0.07));
+    box-shadow: inset 2px 0 0 #8ab4ff;
+  }
+  .media-dropzone.drag-active .library-empty-state {
+    background: linear-gradient(135deg, rgba(138, 180, 255, 0.06), rgba(124, 247, 197, 0.025));
+  }
+
+  /* Native range-track name in Chromium; keep selected glyphs white. */
+  .custom-slider {
+    height: 18px;
+    background: linear-gradient(#3a3a41, #3a3a41) center / 100% 4px no-repeat;
+  }
+  .custom-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+  }
+  .custom-slider::-webkit-slider-thumb {
+    margin-top: -5px;
+  }
+  .number-input[type='number'],
+  .slider-value-input[type='number'] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+  }
+  .number-input[type='number']::-webkit-inner-spin-button,
+  .number-input[type='number']::-webkit-outer-spin-button,
+  .slider-value-input[type='number']::-webkit-inner-spin-button,
+  .slider-value-input[type='number']::-webkit-outer-spin-button {
+    display: none;
+    margin: 0;
+    -webkit-appearance: none !important;
+  }
+  .scrubbable-suffix {
+    width: auto;
+    height: 24px;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: #71717a;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 550;
+    line-height: 24px;
+    pointer-events: auto;
+    cursor: ns-resize;
+    user-select: none;
+  }
+  .scrubbable-suffix:hover,
+  .scrubbable-suffix:focus-visible {
+    color: #a9d8f0;
+    outline: none;
+  }
+  .nav-item.active,
+  .icon-btn.active,
+  .preset-option.active,
+  .easing-option.active {
+    color: #fff;
+  }
+  .primary-align-group { margin-bottom: 14px; }
+  .flat-align-actions {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .flat-align-actions button {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    background: #1b1b1e;
+  }
+  .flat-align-actions button::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    z-index: 90;
+    padding: 5px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    background: #29292d;
+    color: #f1f1f3;
+    font-size: 9.5px;
+    font-weight: 550;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 3px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .flat-align-actions button:hover::after,
+  .flat-align-actions button:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  .rotation-property { padding-top: 2px; }
 
 </style>
