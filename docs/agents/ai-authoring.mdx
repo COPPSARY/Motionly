@@ -50,10 +50,10 @@ Agents that work directly inside a project folder can use Motionly's installed s
 From your project, install the skill and its reference library for your agent:
 
 ```bash
-npx @coppsary/motionly skills add --all        # or --provider codex|claude|gemini|opencode|kiro
+npx @coppsary/motionly skills add --all        # or --provider codex|claude|gemini|opencode|kiro|rayu
 ```
 
-`init` installs it too (it asks which agent). Each install writes, under your agent's skills folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), or Kiro (`.kiro/`):
+`init` installs it too (it asks which agent). Each install writes, under your agent's skills folder — Codex (`.agents/`), Claude Code (`.claude/`), Gemini CLI (`.gemini/`), opencode (`.opencode/`), Kiro (`.kiro/`), or RAYU (`.rayu/`):
 
 - `SKILL.md` — the quick `.motion` contract.
 - `references/llms.txt` — a discovery index for the focused skills.
