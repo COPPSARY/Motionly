@@ -306,12 +306,12 @@ animate title {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background: #09090a;
+    background: #0e0e10;
   }
 
   :global(body) {
     font-family:
-      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   }
 
   .app {
@@ -320,7 +320,7 @@ animate title {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #09090a;
+    background: #0e0e10;
   }
 
   .app :global(.motion-editor) {
@@ -335,8 +335,8 @@ animate title {
     justify-content: space-between;
     gap: 18px;
     padding: 10px 18px;
-    background: #101113;
-    border-bottom: 1px solid #24262a;
+    background: rgba(20, 20, 23, 0.92);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
   }
 
@@ -444,16 +444,16 @@ animate title {
   }
 
   .btn-primary {
-    background: #e6e8ec;
-    border-color: #e6e8ec;
-    color: #09090a;
+    background: #0a84ff;
+    border-color: #0a84ff;
+    color: #ffffff;
     font-weight: 600;
   }
 
   .btn-primary:hover {
-    background: #ffffff;
-    border-color: #ffffff;
-    color: #050506;
+    background: #2997ff;
+    border-color: #2997ff;
+    color: #ffffff;
   }
 
   .github-btn {
@@ -540,4 +540,68 @@ animate title {
       padding: 0 8px;
     }
   }
+
+  .app { background: linear-gradient(180deg, #111113 0%, #0e0e10 30%, #0e0e10 100%); }
+  .top-bar { min-height: 52px; padding: 8px 14px; backdrop-filter: blur(18px); box-shadow: none; }
+  .logo-shell, .btn { border-color: rgba(255,255,255,.08); background: rgba(255,255,255,.045); }
+  .btn { border-radius: 8px; }
+  .btn:hover { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.08); }
+  .btn-primary, .btn-primary:hover { background: #0a84ff; border-color: #0a84ff; color: #fff; }
+  .file-info { position: absolute; left: 50%; transform: translateX(-50%); }
+
+
+  /* Calm native-feeling app chrome. */
+  .app { background: linear-gradient(180deg, #101012 0%, #0e0e10 34%, #0d0d0f 100%); }
+  .top-bar {
+    min-height: 50px;
+    padding: 7px 14px;
+    background: #141416;
+    border-bottom-color: rgba(255,255,255,.08);
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  .logo-shell { border-color: rgba(255,255,255,.08); border-radius: 8px; background: #19191c; box-shadow: none; }
+  .btn {
+    height: 32px;
+    padding: 0 10px;
+    border-color: rgba(255,255,255,.08);
+    border-radius: 7px;
+    background: #1b1b1e;
+    color: #b8b8bf;
+    box-shadow: none;
+  }
+  .btn:hover { border-color: rgba(255,255,255,.13); background: #242428; color: #f2f2f4; }
+  .btn:active { background: #151517; }
+  .btn-primary { border-color: #0a84ff; background: #0a84ff; color: #fff; }
+  .btn-primary:hover { border-color: #218df7; background: #218df7; color: #fff; }
+  .product-hunt-badge { opacity: .48; filter: grayscale(1); transition: opacity .16s ease; }
+  .product-hunt-badge:hover { opacity: .78; }
+
+
+  /* Subtly illuminated buttons with the Motionly logo palette. */
+  .btn {
+    border-color: rgba(255,255,255,.1);
+    background: linear-gradient(180deg, #242428 0%, #19191c 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.075), 0 1px 2px rgba(0,0,0,.3);
+    font-weight: 520;
+  }
+  .btn:hover {
+    border-color: rgba(255,255,255,.16);
+    background: linear-gradient(180deg, #2d2d32 0%, #202024 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 2px rgba(0,0,0,.35);
+  }
+  .btn:active {
+    background: #171719;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
+    transform: translateY(1px);
+  }
+  .btn-primary,
+  .btn-primary:hover {
+    border-color: rgba(255,255,255,.16);
+    background: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 3px rgba(0,0,0,.38);
+  }
+  .btn-primary:hover { background: linear-gradient(135deg, #6d9bf0, #59bd9c); }
+
 </style>

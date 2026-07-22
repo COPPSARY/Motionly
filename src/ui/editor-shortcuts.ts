@@ -1,6 +1,7 @@
 export type EditorShortcut =
   | 'clear-selection'
   | 'delete-selection'
+  | 'duplicate-selection'
   | 'nudge-down'
   | 'nudge-left'
   | 'nudge-right'
@@ -20,6 +21,8 @@ export function editorShortcut(event: ShortcutEvent, interactive = false): Edito
 
   if (command) {
     if (!event.altKey && !event.shiftKey && key === 's') return 'save';
+    if (!event.altKey && !event.shiftKey && !interactive && key === 'd')
+      return 'duplicate-selection';
     if (!event.altKey && !interactive && key === 'z') return event.shiftKey ? 'redo' : 'undo';
     return null;
   }

@@ -113,7 +113,7 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .config-nav button.active { color: #f1f2f4; border-bottom-color: #7cf7c5; }
+  .config-nav button.active { color: #f1f2f4; border-bottom-color: #0a84ff; }
   .config-nav button:hover { color: #dce1e6; }
 
   .config-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
@@ -129,7 +129,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #7cf7c5;
+    color: #0a84ff;
     font-size: 11px;
     cursor: pointer;
   }
@@ -141,7 +141,7 @@
   .skill-name { font-size: 12px; font-weight: 600; color: #f1f2f4; }
   .skill-desc { margin: 0; font-size: 11px; line-height: 1.5; color: #8e939b; }
   .skill-detail { display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: #b8bec6; }
-  .skill-detail code { color: #7cf7c5; word-break: break-all; }
+  .skill-detail code { color: #0a84ff; word-break: break-all; }
   .skill-detail pre {
     margin: 0;
     padding: 10px;

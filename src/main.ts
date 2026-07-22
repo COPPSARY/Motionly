@@ -2,6 +2,7 @@
  * Main application entry point - Svelte 5
  */
 
+import '@fontsource-variable/inter';
 import { inject } from '@vercel/analytics';
 import { mount } from 'svelte';
 import { appUrl, initialRoute, ONBOARDING_COMPLETE_KEY, relativeAppPath } from './app/routing';

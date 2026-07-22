@@ -1,7 +1,15 @@
 :root {
   color-scheme: dark;
-  font-family: Inter, 'SF Pro Text', 'Segoe UI', Arial, sans-serif;
-  background: #07080b;
+  font-family:
+    'Inter Variable',
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Text',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  background: #0e0e10;
   color: #f4f6fa;
 }
 
@@ -16,7 +24,7 @@ body {
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #07080b;
+  background: #0e0e10;
 }
 
 body {
@@ -46,9 +54,9 @@ button {
 }
 
 button.primary {
-  border-color: rgba(124, 247, 197, 0.34);
-  background: rgba(124, 247, 197, 0.16);
-  color: #dfffee;
+  border-color: rgba(10, 132, 255, 0.34);
+  background: rgba(10, 132, 255, 0.16);
+  color: #d9ecff;
 }
 
 button:disabled {
