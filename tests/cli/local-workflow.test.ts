@@ -38,6 +38,7 @@ describe('local CLI workflow', () => {
       '.agents/skills/motionly/SKILL.md',
       '.gemini/skills/motionly/SKILL.md',
       '.kiro/skills/motionly/SKILL.md',
+      '.rayu/skills/motionly/SKILL.md',
     ]) {
       expect((await stat(join(workspace, path))).isFile()).toBe(true);
     }
@@ -71,6 +72,7 @@ describe('local CLI workflow', () => {
       '.agents/skills/motionly/SKILL.md',
       '.gemini/skills/motionly/SKILL.md',
       '.kiro/skills/motionly/SKILL.md',
+      '.rayu/skills/motionly/SKILL.md',
     ]) {
       expect((await stat(join(home, path))).isFile()).toBe(true);
     }

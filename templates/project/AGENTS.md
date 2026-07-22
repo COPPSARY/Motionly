@@ -7,7 +7,7 @@ Read the installed `motionly` skill before creating or substantially editing `pr
 ## Agent Skill
 
 Installing the skill placed it at `.<agent>/skills/motionly/SKILL.md` (Codex uses
-`.agents/`, plus `.claude/`, `.gemini/`, `.opencode/`, or `.kiro/`). That file is the
+`.agents/`, plus `.claude/`, `.gemini/`, `.opencode/`, `.kiro/`, or `.rayu/`). That file is the
 quick contract; a full reference library sits beside it under `references/` (`llms.txt`
 index plus focused skills: `motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`,
 `typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`).
