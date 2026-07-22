@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Bot, Eye, EyeOff, FileImage, Layers3, Magnet, Maximize2, Minus, Music2, Pause, Play, Plus, Redo2, Scissors, Settings, SkipBack, Sparkles, Square, Trash2, Type, Upload, Video, Volume2, VolumeX, Undo2, X, FolderOpen, Headphones, Wand2 } from 'lucide-svelte';
+  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Bot, Copy, Ellipsis, Eye, EyeOff, FileImage, Layers3, Magnet, Maximize2, Minus, Music2, Pause, Play, Plus, Redo2, Scissors, Settings, SkipBack, Sparkles, Square, Trash2, Type, Upload, Video, Volume2, VolumeX, Undo2, X, FolderOpen, Headphones, Wand2 } from 'lucide-svelte';
   import { parseMotion } from '../../language/parser';
   import { buildSceneGraph } from '../../scene/scene-graph';
   import { evaluateScene } from '../../animation/evaluator';
@@ -17,7 +17,7 @@
   import type { AssetIdentity } from '../../assets/asset-resolution';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
   import { canExport, exportVideo } from '../../export/exporter';
-  import type { AnimationNode, AudioNode, CameraNode, ClipNode, ElementNode, ProgramNode, TrackNode } from '../../types/parser';
+  import type { AnimationNode, AudioNode, CameraNode, ClipNode, ElementNode, ImportNode, ProgramNode, TrackNode } from '../../types/parser';
   import { serializeProgram } from '../../language/serializer';
   import type { Asset, Clip, Element, EvaluatedElement, EvaluatedScene, Scene, Track } from '../../types/scene';
   import { combinePersistentTrackRows, packClipTrackLanes, packTimelineLanes, type TimelineLane } from '../timeline-lanes';
@@ -34,6 +34,7 @@
   import { restoreEmbeddedAssetPaths } from '../../ai/chat';
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
   import { editorShortcut } from '../editor-shortcuts';
+  import { cloneClipInProgram, cloneElementInProgram } from '../duplicate-cloning';
   import { extractAudioPeaks, waveformBucketCount, waveformPath } from '../audio-waveform';
   import { moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
   import { anchoredTimelineScroll, clampTimelineZoom, playbackTimeFromClock, quantizeTimelineTime as quantizeFrameTime } from '../timeline-viewport';
@@ -84,6 +85,7 @@
       }
     | null = null;
   let selectedKeyframeOffset: number | null = null;
+  let moreOptionsOpen = false;
   let showCodeEditor = false;
   let selectedElementId = '';
   let zoom = 0.42;
@@ -126,8 +128,13 @@
   let editorHistory = createEditorHistory(code);
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
-  let snapEnabled = false;
+  let snapEnabled = true;
+  let timelineSnapGuide: number | null = null;
   let historyGestureBase: string | null = null;
+  let deleteToast = '';
+  let deleteToastTimer: ReturnType<typeof setTimeout> | null = null;
+  let deleteUndoSource: string | null = null;
+  let deleteResultSource: string | null = null;
 
   interface AnimationPresetDef {
     name: string;
@@ -221,6 +228,9 @@
         case 'delete-selection':
           deleteSelectedElement();
           break;
+        case 'duplicate-selection':
+          duplicateSelected();
+          break;
         case 'nudge-left':
           nudgeSelectedElement(-nudge, 0);
           break;
@@ -258,6 +268,7 @@
       audioLoadId += 1;
       audioWaveformLoadId += 1;
       if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (deleteToastTimer) clearTimeout(deleteToastTimer);
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
@@ -278,6 +289,7 @@
   }
 
   function undoEditor() {
+    clearDeleteToast();
     const previous = undoEditorSource(editorHistory);
     if (previous === editorHistory) return;
     pause();
@@ -286,6 +298,7 @@
   }
 
   function redoEditor() {
+    clearDeleteToast();
     const next = redoEditorSource(editorHistory);
     if (next === editorHistory) return;
     pause();
@@ -341,6 +354,7 @@
   }
 
   $: if (code) {
+    if (deleteResultSource && code !== deleteResultSource) clearDeleteToast();
     if (code !== editorHistory.present) {
       editorHistory = historyGestureBase === null
         ? recordEditorSource(editorHistory, code)
@@ -494,7 +508,7 @@
     const handleSize = 10 / zoom;
     ctx.save();
     ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
-    ctx.strokeStyle = '#7cf7c5';
+    ctx.strokeStyle = '#0a84ff';
     ctx.lineWidth = 2 / zoom;
     ctx.setLineDash([8 / zoom, 5 / zoom]);
     ctx.strokeRect(left + inset, top + inset, right - left - inset * 2, bottom - top - inset * 2);
@@ -542,6 +556,9 @@
       assetsReady = true;
       renderFrame(currentTime, true);
     } catch (error) {
+      if (loadId !== assetLoadId) return;
+      assetsReady = true;
+      assetError = error instanceof Error ? `Loading assets failed: ${error.message}` : 'Loading assets failed.';
       console.warn('Asset load failed:', error);
     }
   }
@@ -943,19 +960,83 @@
     }
   }
 
+  function clearDeleteToast() {
+    if (deleteToastTimer) clearTimeout(deleteToastTimer);
+    deleteToast = '';
+    deleteToastTimer = null;
+    deleteUndoSource = null;
+    deleteResultSource = null;
+  }
+
+  function showDeletedToast(label: string, previousSource: string, resultSource: string) {
+    if (deleteToastTimer) clearTimeout(deleteToastTimer);
+    deleteToast = label;
+    deleteUndoSource = previousSource;
+    deleteResultSource = resultSource;
+    deleteToastTimer = setTimeout(clearDeleteToast, 5000);
+  }
+
+  function undoDelete() {
+    const source = deleteUndoSource;
+    if (!source) return;
+    clearDeleteToast();
+    pause();
+    editorHistory = recordEditorSource(editorHistory, source);
+    code = source;
+  }
+
+  function duplicateSelected() {
+    const clip = scene?.clips.find((candidate) => candidate.id === selectedElementId);
+    if (clip) duplicateClip(clip.id);
+    else if (selectedElementId) duplicateElement(selectedElementId);
+  }
+
+  function duplicateElement(id: string) {
+    if (!ast) return;
+    const result = cloneElementInProgram(ast, id);
+    if (!result) return;
+    ast = result.program;
+    selectedElementId = result.id;
+    code = serializeProgram(ast);
+  }
+
+  function duplicateClip(clipId: string) {
+    if (!ast || !scene) return;
+    const sceneIndex = scene.clips.findIndex((clip) => clip.id === clipId);
+    const sourceClip = scene.clips[sceneIndex];
+    if (!sourceClip) return;
+    const result = cloneClipInProgram(
+      ast,
+      sceneIndex,
+      sourceClip,
+      totalDuration,
+      1 / scene.canvas.fps
+    );
+    if (!result) return;
+    ast = result.program;
+    selectedElementId = result.id;
+    code = serializeProgram(ast);
+  }
+
+  function deleteElement(id: string) {
+    if (!ast) return;
+    const previousSource = code;
+    ast.body = ast.body.filter(
+      (node) =>
+        !(node.type === 'Element' && node.name === id) &&
+        !(node.type === 'Animation' && node.target === id)
+    );
+    selectedElementId = '';
+    const resultSource = serializeProgram(ast);
+    code = resultSource;
+    showDeletedToast('Layer removed', previousSource, resultSource);
+  }
+
   function deleteSelectedElement() {
     if (!ast || !selectedElementId) return;
     const id = selectedElementId;
-    if (selectedClip) {
-      deleteClip(id);
-      return;
-    }
-    ast.body = ast.body.filter((node) =>
-      !(node.type === 'Element' && node.name === id) &&
-      !(node.type === 'Animation' && node.target === id)
-    );
-    selectedElementId = '';
-    code = serializeProgram(ast);
+    if (scene?.clips.some((clip) => clip.id === id)) deleteClip(id);
+    else deleteElement(id);
   }
 
   function trimElement(event: PointerEvent, id: string, edge: 'start' | 'end') {
@@ -970,6 +1051,7 @@
       setClipBoundary(id, edge, snapTimelineTime(raw, rect.width, id));
     };
     const stop = () => {
+      timelineSnapGuide = null;
       endHistoryGesture();
       window.removeEventListener('pointermove', update);
       window.removeEventListener('pointerup', stop);
@@ -1173,7 +1255,7 @@
       .filter((candidate) => candidate.id !== element.id && !candidate.id.includes('__'))
       .filter((candidate) => candidate.kind === 'asset' || candidate.kind === 'text')
       .map(elementBounds);
-    const snapped = event.altKey
+    const snapped = event.altKey || !snapEnabled
       ? { rect: proposedBounds, guides: { vertical: null, horizontal: null } }
       : snapRect(proposedBounds, others, scene.canvas, 6 / Math.max(zoom, 0.01));
     snapGuides = snapped.guides;
@@ -1224,11 +1306,19 @@
   }
 
   function selectElement(id: string, seekToElement = true) {
-    if (id !== selectedElementId) selectedKeyframeOffset = null;
+    if (id !== selectedElementId) {
+      selectedKeyframeOffset = null;
+      moreOptionsOpen = false;
+    }
     selectedTransitionIds = null;
     selectedElementId = id;
     if (seekToElement) setTime(firstVisibleTime(id));
     else renderFrame(currentTime);
+  }
+
+  function showMoreOptions(id: string) {
+    selectElement(id, false);
+    moreOptionsOpen = true;
   }
 
   function previewAssetOnly(asset: Asset) {
@@ -1342,7 +1432,7 @@
         continue;
       }
       const matchingImports = program.body.filter(
-        (node) => node.type === 'Import' && assetFilename(node.path) === file.name
+        (node): node is ImportNode => node.type === 'Import' && assetFilename(node.path) === file.name
       );
       if (matchingImports.length) {
         const existing = matchingImports
@@ -1544,6 +1634,7 @@
 
   function deleteClip(clipId: string) {
     if (!ast || !scene) return;
+    const previousSource = code;
     const node = clipNodeAt(scene.clips.findIndex((clip) => clip.id === clipId));
     if (!node) return;
     detachClipTransitions(clipId);
@@ -1551,7 +1642,9 @@
     writeClipLayout(next, false);
     ast.body.splice(ast.body.indexOf(node), 1);
     if (selectedElementId === clipId) selectedElementId = '';
-    code = serializeProgram(ast);
+    const resultSource = serializeProgram(ast);
+    code = resultSource;
+    showDeletedToast('Clip removed', previousSource, resultSource);
   }
 
   function firstVisibleTime(id: string): number {
@@ -1859,6 +1952,7 @@
   function commitClipDrag() {
     const drag = clipDrag;
     clipDrag = null;
+    timelineSnapGuide = null;
     if (!drag || !scene || !drag.moved || !drag.valid) return;
     if (drag.kind === 'audio') {
       const node = ast?.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
@@ -2024,6 +2118,7 @@
       writeClipLayout(next);
     };
     const stop = () => {
+      timelineSnapGuide = null;
       endHistoryGesture();
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
@@ -2090,7 +2185,10 @@
     const clamped = Math.max(0, Math.min(totalDuration, raw));
     const fps = scene?.canvas.fps ?? 60;
     const frameTime = Math.round(clamped * fps) / fps;
-    if (!snapEnabled) return frameTime;
+    if (!snapEnabled) {
+      timelineSnapGuide = null;
+      return frameTime;
+    }
     const candidates = [0, totalDuration, currentTime];
     for (const clip of scene?.clips ?? []) {
       if (clip.id === excludeClipId) continue;
@@ -2101,7 +2199,9 @@
     }
     const nearest = candidates.reduce((best, value) =>
       Math.abs(value - clamped) < Math.abs(best - clamped) ? value : best, 0);
-    return Math.abs(nearest - clamped) <= (totalDuration * 8) / Math.max(1, width) ? nearest : frameTime;
+    const snapped = Math.abs(nearest - clamped) <= (totalDuration * 8) / Math.max(1, width);
+    timelineSnapGuide = snapped ? nearest : null;
+    return snapped ? nearest : frameTime;
   }
 
   function setTimelineZoom(nextZoom: number, anchorViewportX?: number) {
@@ -2573,6 +2673,8 @@
         class:active={activeNavTab === 'media'}
         on:click={() => activeNavTab = 'media'}
         title="Media / Assets"
+        aria-label="Media / Assets"
+        data-tooltip="Media"
       >
         <FolderOpen size={20} />
       </button>
@@ -2582,6 +2684,8 @@
         class:active={activeNavTab === 'audio'}
         on:click={() => activeNavTab = 'audio'}
         title="Audio"
+        aria-label="Audio"
+        data-tooltip="Audio"
       >
         <Headphones size={20} />
       </button>
@@ -2591,6 +2695,8 @@
         class:active={activeNavTab === 'text'}
         on:click={() => activeNavTab = 'text'}
         title="Text"
+        aria-label="Text"
+        data-tooltip="Text"
       >
         <Type size={20} />
       </button>
@@ -2600,6 +2706,8 @@
         class:active={activeNavTab === 'effects'}
         on:click={() => activeNavTab = 'effects'}
         title="Effects"
+        aria-label="Effects"
+        data-tooltip="Effects"
       >
         <Wand2 size={20} />
       </button>
@@ -2609,6 +2717,8 @@
         class:active={activeNavTab === 'scenes'}
         on:click={() => activeNavTab = 'scenes'}
         title="Scenes"
+        aria-label="Scenes"
+        data-tooltip="Scenes"
       >
         <Layers3 size={20} />
       </button>
@@ -2618,15 +2728,19 @@
         class:active={activeNavTab === 'ai'}
         on:click={() => activeNavTab = 'ai'}
         title="AI Config"
+        aria-label="AI Config"
+        data-tooltip="AI Config"
       >
         <Bot size={20} />
       </button>
       <button 
         type="button" 
-        class="nav-item" 
+        class="nav-item nav-settings"
         class:active={activeNavTab === 'settings'}
         on:click={() => activeNavTab = 'settings'}
         title="Settings"
+        aria-label="Settings"
+        data-tooltip="Settings"
       >
         <Settings size={20} />
       </button>
@@ -2657,6 +2771,9 @@
           {#if mediaSubTab === 'assets'}
             <div class="panel-header-actions">
               <input bind:this={assetInput} class="file-input" type="file" accept="image/*,video/*,.svg,.gif,.mp4,.webm,.mov,.m4v,.lottie" multiple on:change={handleAssetUpload} />
+              <button type="button" class="header-icon-btn" on:click={() => assetInput.click()} title="Import media" aria-label="Import media">
+                <Plus size={15} />
+              </button>
             </div>
           {/if}
         </div>
@@ -2673,14 +2790,18 @@
               on:drop={handleAssetFileDrop}
             >
               {#if assetError}<p class="asset-error">{assetError}</p>{/if}
-              <div class="media-drop-prompt">
-                <button type="button" class="import-media-button" on:click={() => assetInput.click()}>
-                  <Upload size={15} />
-                  Import media
-                </button>
-                <span>or drag & drop from your device</span>
-                <small>Images, animated SVG/GIF, MP4/WebM/MOV, and Lottie</small>
-              </div>
+              {#if !assetsReady}<p class="status-label" role="status"><span></span> Loading media previews…</p>{/if}
+              {#if !scene?.audio && scene?.imports.length === 0}
+                <div class="library-empty-state">
+                  <span class="library-empty-icon"><Upload size={18} /></span>
+                  <strong>Add your first asset</strong>
+                  <span>Drop files here or choose them from your device.</span>
+                  <button type="button" class="import-media-button" on:click={() => assetInput.click()}>
+                    Choose files
+                  </button>
+                  <small>Images, video, SVG, GIF and Lottie</small>
+                </div>
+              {/if}
             <!-- Audio Section -->
             {#if scene?.audio}
               <div class="asset-folder">
@@ -2746,10 +2867,6 @@
               </div>
             {/if}
 
-            <!-- Empty State -->
-            {#if !scene?.audio && scene?.imports.length === 0}
-              <p class="empty-state">Imported media will stay here until you drag it onto the timeline.</p>
-            {/if}
             </div>
           {:else if mediaSubTab === 'presets'}
             <div class="preset-grid">
@@ -2791,14 +2908,6 @@
             on:drop={handleAudioFileDrop}
           >
             {#if audioError}<p class="asset-error">{audioError}</p>{/if}
-            <div class="media-drop-prompt">
-              <button type="button" class="import-media-button" on:click={() => audioInput.click()}>
-                <Upload size={15} />
-                Import audio
-              </button>
-              <span>or drag & drop from your device</span>
-              <small>Audio files up to 50 MB</small>
-            </div>
             {#if audioName}
               <div
                 class="audio-item audio-asset"
@@ -2814,7 +2923,15 @@
                 <button class="icon-btn" on:click={removeAudio} title="Remove audio"><Trash2 size={14} /></button>
               </div>
             {:else}
-              <p class="empty-state">Imported audio will appear on the timeline.</p>
+              <div class="library-empty-state">
+                <span class="library-empty-icon"><Music2 size={18} /></span>
+                <strong>Add an audio track</strong>
+                <span>Drop audio here or choose a file from your device.</span>
+                <button type="button" class="import-media-button" on:click={() => audioInput.click()}>
+                  Choose audio
+                </button>
+                <small>MP3, WAV, M4A, AAC, FLAC, OGG and Opus · 50 MB max</small>
+              </div>
             {/if}
           </div>
         </div>
@@ -2978,6 +3095,7 @@
         </div>
       </div>
       <div bind:this={stage} class="stage">
+        {#if !assetsReady}<div class="stage-status" role="status"><span></span> Preparing project media…</div>{/if}
         <div class="canvas-shell" style={canvasStyle}>
           <canvas
             bind:this={canvas}
@@ -3058,6 +3176,52 @@
           <span><strong>{selectedElement.id}</strong><small>{elementDetail(selectedElement)}</small></span>
         </div>
 
+        <div class="primary-properties" aria-label="Primary properties">
+          <div class="property-group">
+            <div class="property-label">Scale</div>
+            <div class="slider-control">
+              <input class="custom-slider" type="range" min="0" max="3" step="0.01" value={numericProperty(selectedElement, 'scale', 1)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
+              <input class="slider-value-input" type="number" min="0" step="0.01" value={numericProperty(selectedElement, 'scale', 1).toFixed(2)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
+            </div>
+          </div>
+          <div class="property-group">
+            <div class="property-label">Opacity</div>
+            <div class="slider-control">
+              <input class="custom-slider" type="range" min="0" max="1" step="0.01" value={numericProperty(selectedElement, 'opacity', 1)} on:input={(event) => updateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
+              <input class="slider-value-input" type="number" min="0" max="100" value={Math.round(numericProperty(selectedElement, 'opacity', 1) * 100)} on:input={(event) => updateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
+            </div>
+          </div>
+          <div class="property-group">
+            <div class="property-label">Color</div>
+            {#if selectedElement.kind === 'text'}
+              <input class="color-input" type="color" value={stringProperty(selectedElement, 'color', '#ffffff')} on:input={(event) => updateElementProperty('color', event.currentTarget.value)} aria-label="Text color" />
+            {:else if selectedElement.kind === 'overlay' || selectedElement.asset?.type === 'svg'}
+              <input class="color-input" type="color" value={stringProperty(selectedElement, 'fill', '#ffffff')} on:input={(event) => updateElementProperty('fill', event.currentTarget.value)} aria-label="Layer color" />
+            {:else}
+              <div class="property-unavailable">Uses source media colors</div>
+            {/if}
+          </div>
+          <div class="property-row timing-row">
+            <div class="property-group">
+              <div class="property-label">Start Time</div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="0" max={totalDuration} step="0.01" value={timelineRange(selectedElement.id).start} on:change={(event) => setClipBoundary(selectedElement.id, 'start', Number(event.currentTarget.value))} />
+                <span class="input-suffix">s</span>
+              </div>
+            </div>
+            <div class="property-group">
+              <div class="property-label">Duration</div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min={1 / (scene?.canvas.fps ?? 60)} max={totalDuration} step="0.01" value={timelineRange(selectedElement.id).end - timelineRange(selectedElement.id).start} on:change={(event) => setClipBoundary(selectedElement.id, 'end', timelineRange(selectedElement.id).start + Number(event.currentTarget.value))} />
+                <span class="input-suffix">s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <details class="more-options" bind:open={moreOptionsOpen}>
+          <summary>More Options</summary>
+          <div class="more-options-content">
         {#if selectedElement.kind === 'asset' || selectedElement.kind === 'text'}
           <div class="property-align-toolbar">
             <span class="property-align-label">Align to canvas</span>
@@ -3084,29 +3248,6 @@
               <input class="number-input" type="number" value={numericProperty(selectedElement, 'y', 0)} on:input={(e) => updateElementProperty('y', Number(e.currentTarget.value))} />
               <span class="input-suffix">y</span>
             </div>
-          </div>
-        </div>
-
-        <div class="property-group">
-          <div class="property-label">Scale</div>
-          <div class="slider-control">
-            <input 
-              class="custom-slider" 
-              type="range" 
-              min="0" 
-              max="3" 
-              step="0.01" 
-              value={numericProperty(selectedElement, 'scale', 1)} 
-              on:input={(e) => updateElementProperty('scale', Number(e.currentTarget.value))} 
-            />
-            <input 
-              class="slider-value-input" 
-              type="number" 
-              min="0" 
-              step="0.01" 
-              value={numericProperty(selectedElement, 'scale', 1).toFixed(2)} 
-              on:input={(e) => updateElementProperty('scale', Number(e.currentTarget.value))} 
-            />
           </div>
         </div>
 
@@ -3177,44 +3318,10 @@
 
           {#if selectedElement.asset?.type === 'svg' && !assets.get(selectedElement.assetName ?? '')?.motionlySvg?.animated}
             <div class="property-group">
-              <div class="property-label">SVG Fill Override</div>
-              <input class="color-input" type="color" value={stringProperty(selectedElement, 'fill', '#ffffff')} on:input={(e) => updateElementProperty('fill', e.currentTarget.value)} />
-            </div>
-            <div class="property-group">
               <div class="property-label">SVG Stroke Override</div>
               <input class="color-input" type="color" value={stringProperty(selectedElement, 'stroke', '#ffffff')} on:input={(e) => updateElementProperty('stroke', e.currentTarget.value)} />
             </div>
           {/if}
-        {/if}
-
-        <div class="property-group">
-          <div class="property-label">Opacity</div>
-          <div class="slider-control">
-            <input 
-              class="custom-slider" 
-              type="range" 
-              min="0" 
-              max="1" 
-              step="0.01" 
-              value={numericProperty(selectedElement, 'opacity', 1)} 
-              on:input={(e) => updateElementProperty('opacity', Number(e.currentTarget.value))} 
-            />
-            <input 
-              class="slider-value-input" 
-              type="number" 
-              min="0" 
-              max="100" 
-              value={Math.round(numericProperty(selectedElement, 'opacity', 1) * 100)} 
-              on:input={(e) => updateElementProperty('opacity', Number(e.currentTarget.value) / 100)} 
-            />
-          </div>
-        </div>
-
-        {#if selectedElement.kind === 'overlay'}
-          <div class="property-group">
-          <div class="property-label">Background</div>
-            <input class="color-input" type="color" value={stringProperty(selectedElement, 'fill', '#000000')} on:input={(e) => updateElementProperty('fill', e.currentTarget.value)} />
-          </div>
         {/if}
 
         {#if selectedElement.kind === 'text'}
@@ -3228,10 +3335,6 @@
               <input class="number-input" type="number" min="1" value={numericProperty(selectedElement, 'size', 72)} on:input={(e) => updateElementProperty('size', Number(e.currentTarget.value))} />
               <span class="input-suffix">px</span>
             </div>
-          </div>
-          <div class="property-group">
-          <div class="property-label">Color</div>
-            <input class="color-input" type="color" value={stringProperty(selectedElement, 'color', '#ffffff')} on:input={(e) => updateElementProperty('color', e.currentTarget.value)} />
           </div>
         {/if}
 
@@ -3387,7 +3490,7 @@
         </div>
 
         <div class="property-group">
-          <div class="property-label">Duration</div>
+          <div class="property-label">Animation Duration</div>
           <div class="number-input-wrapper">
             <input class="number-input" type="number" min="0.1" step="0.1" value={selectedAnimation?.duration ?? 1} on:input={(e) => updateAnimationProperty('duration', Number(e.currentTarget.value))} />
             <span class="input-suffix">s</span>
@@ -3395,7 +3498,7 @@
         </div>
 
         <div class="property-group">
-          <div class="property-label">Delay</div>
+          <div class="property-label">Animation Delay</div>
           <div class="number-input-wrapper">
             <input class="number-input" type="number" min="0" step="0.1" value={selectedAnimation?.delay ?? 0} on:input={(e) => updateAnimationProperty('delay', Number(e.currentTarget.value))} />
             <span class="input-suffix">s</span>
@@ -3425,6 +3528,8 @@
             aria-label="Custom animation easing"
           />
         </div>
+          </div>
+        </details>
       {:else if selectedClip}
         <div class="selection-summary">
           <span class="layer-icon">
@@ -3434,14 +3539,51 @@
           </span>
           <span><strong>{selectedClip.assetName}</strong><small>Timeline clip</small></span>
         </div>
-        <button type="button" class="timeline-command clip-original-size" on:click={resetElementSize}>Original size</button>
-        <div class="property-group">
-          <div class="property-label">Scale</div>
-          <div class="slider-control">
-            <input class="custom-slider" type="range" min="0.05" max="3" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
-            <input class="slider-value-input" type="number" min="0.05" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1).toFixed(2)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} />
+        <div class="primary-properties" aria-label="Primary properties">
+          <p class="shared-property-note">Visual changes apply to every clip using this source asset.</p>
+          <div class="property-group">
+            <div class="property-label">Scale</div>
+            <div class="slider-control">
+              <input class="custom-slider" type="range" min="0.05" max="3" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
+              <input class="slider-value-input" type="number" min="0.05" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1).toFixed(2)} on:input={(event) => updateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
+            </div>
+          </div>
+          <div class="property-group">
+            <div class="property-label">Opacity</div>
+            <div class="slider-control">
+              <input class="custom-slider" type="range" min="0" max="1" step="0.01" value={numericProperty(selectedClipElement, 'opacity', 1)} on:input={(event) => updateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
+              <input class="slider-value-input" type="number" min="0" max="100" value={Math.round(numericProperty(selectedClipElement, 'opacity', 1) * 100)} on:input={(event) => updateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
+            </div>
+          </div>
+          <div class="property-group">
+            <div class="property-label">Color</div>
+            {#if selectedClipElement?.asset?.type === 'svg'}
+              <input class="color-input" type="color" value={stringProperty(selectedClipElement, 'fill', '#ffffff')} on:input={(event) => updateElementProperty('fill', event.currentTarget.value)} aria-label="Clip color" />
+            {:else}
+              <div class="property-unavailable">Uses source media colors</div>
+            {/if}
+          </div>
+          <div class="property-row timing-row">
+            <div class="property-group">
+              <div class="property-label">Start Time</div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="0" max={totalDuration} step="0.01" value={selectedClip.start} on:change={(event) => moveSelectedClipFromInspector(String(selectedClip.track), Number(event.currentTarget.value))} />
+                <span class="input-suffix">s</span>
+              </div>
+            </div>
+            <div class="property-group">
+              <div class="property-label">Duration</div>
+              <div class="number-input-wrapper">
+                <input class="number-input" type="number" min="0.05" max={totalDuration} step="0.05" value={selectedClip.duration} on:change={(event) => resizeSelectedClipFromInspector(Number(event.currentTarget.value))} />
+                <span class="input-suffix">s</span>
+              </div>
+            </div>
           </div>
         </div>
+        <details class="more-options" bind:open={moreOptionsOpen}>
+          <summary>More Options</summary>
+          <div class="more-options-content">
+        <button type="button" class="timeline-command clip-original-size" on:click={resetElementSize}>Original size</button>
         <div class="property-group">
           <div class="property-label">Width</div>
           <div class="number-input-wrapper">
@@ -3456,20 +3598,6 @@
               <option value={track.id}>{track.label} · {track.role}</option>
             {/each}
           </select>
-        </div>
-        <div class="property-group">
-          <div class="property-label">Start</div>
-          <div class="number-input-wrapper">
-            <input class="number-input" type="number" min="0" max={totalDuration} step="0.01" value={selectedClip.start} on:change={(event) => moveSelectedClipFromInspector(String(selectedClip.track), Number(event.currentTarget.value))} />
-            <span class="input-suffix">s</span>
-          </div>
-        </div>
-        <div class="property-group">
-          <div class="property-label">Duration</div>
-          <div class="number-input-wrapper">
-            <input class="number-input" type="number" min="0.05" max={totalDuration} step="0.05" value={selectedClip.duration} on:change={(event) => resizeSelectedClipFromInspector(Number(event.currentTarget.value))} />
-            <span class="input-suffix">s</span>
-          </div>
         </div>
         <div class="property-group">
           <div class="property-label">Trim In</div>
@@ -3491,8 +3619,10 @@
           disabled={currentTime <= selectedClip.start || currentTime >= selectedClip.start + selectedClip.duration}
           on:click={splitSelectedClip}
         >Split at playhead</button>
+          </div>
+        </details>
       {:else}
-        <p class="empty">No object selected.</p>
+        <div class="properties-empty"><Sparkles size={20} /><strong>Select a layer</strong><span>Choose an object on the canvas or timeline to edit its properties.</span></div>
       {/if}
     </aside>
   </div>
@@ -3532,12 +3662,13 @@
           <button class="timeline-command" on:click={() => audioInput.click()} title="Attach audio"><Upload size={14} /> Audio</button>
         {/if}
         {#if selectedElement || selectedClip}
+          <button class="icon-btn" on:click={duplicateSelected} title="Duplicate selected layer (Ctrl/Cmd+D)" aria-label="Duplicate selected layer"><Copy size={14} /></button>
           <button class="icon-btn danger-btn" on:click={deleteSelectedElement} title="Delete selected layer (Delete)"><Trash2 size={14} /></button>
         {/if}
         <button class="icon-btn" on:click={undoEditor} disabled={editorHistory.past.length === 0} title="Undo (Ctrl/Cmd+Z)"><Undo2 size={14} /></button>
         <button class="icon-btn" on:click={redoEditor} disabled={editorHistory.future.length === 0} title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={14} /></button>
         <button class="icon-btn" on:click={splitSelectedClip} disabled={!((selectedClip && currentTime > selectedClip.start && currentTime < selectedClip.start + selectedClip.duration) || (selectedElement && currentTime > timelineRange(selectedElement.id).start && currentTime < timelineRange(selectedElement.id).end))} title="Split selected clip at playhead (S)"><Scissors size={14} /></button>
-        <button class="icon-btn" class:active={snapEnabled} on:click={() => snapEnabled = !snapEnabled} title={snapEnabled ? 'Disable edge snapping' : 'Enable edge snapping'}><Magnet size={15} /></button>
+        <button class="icon-btn" class:active={snapEnabled} on:click={() => { snapEnabled = !snapEnabled; timelineSnapGuide = null; snapGuides = { vertical: null, horizontal: null }; }} title={snapEnabled ? 'Disable smart snapping' : 'Enable smart snapping'}><Magnet size={15} /></button>
         <button on:click={() => setTimelineZoom(timelineZoom / 1.25)} class="icon-btn" title="Timeline zoom out"><Minus size={15} /></button>
         <span class="timeline-zoom-value">{Math.round(timelineZoom * 100)}%</span>
         <button on:click={() => setTimelineZoom(timelineZoom * 1.25)} class="icon-btn" title="Timeline zoom in"><Plus size={15} /></button>
@@ -3563,6 +3694,9 @@
             <span class="ruler-tick" style={`left: ${timelinePercent(tick)}%`}>{formatTime(tick)}</span>
           {/each}
           <span class="playhead-marker"></span>
+          {#if timelineSnapGuide !== null}
+            <span class="timeline-snap-guide" style={`left: ${timelinePercent(timelineSnapGuide)}%`}></span>
+          {/if}
           {#if dropTargetTime !== null}
             <span class="drop-indicator" style={`left: ${timelinePercent(dropTargetTime)}%`}></span>
           {/if}
@@ -3623,6 +3757,9 @@
                   <span class="clip-color" style={`background: ${stringProperty(item.element, 'fill', '#34404e')}`}></span>
                 {/if}
                 <button type="button" class="clip-select" on:pointerdown={(event) => moveTimelineElement(event, item.element)} on:click={() => selectElement(item.element.id, false)} aria-label={`Select or move ${item.element.id}`}></button>
+                <button type="button" class="clip-action clip-duplicate" on:click|stopPropagation={() => duplicateElement(item.element.id)} title="Duplicate layer (Ctrl/Cmd+D)" aria-label={`Duplicate ${item.element.id}`}><Copy size={11} /></button>
+                <button type="button" class="clip-action clip-more" on:click|stopPropagation={() => showMoreOptions(item.element.id)} title="More options" aria-label={`Show more options for ${item.element.id}`}><Ellipsis size={11} /></button>
+                <button type="button" class="clip-action clip-delete" on:click|stopPropagation={() => deleteElement(item.element.id)} title="Delete layer (Delete)" aria-label={`Delete ${item.element.id}`}><X size={11} /></button>
                 <button type="button" class="trim-handle trim-start" on:pointerdown={(event) => trimElement(event, item.element.id, 'start')} aria-label={`Trim start of ${item.element.id}`}></button>
                 <button type="button" class="trim-handle trim-end" on:pointerdown={(event) => trimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}></button>
               </span>
@@ -3725,6 +3862,9 @@
                     <span class="clip-text">{item.element.id}</span>
                   {/if}
                   <button type="button" class="clip-select" on:pointerdown={(event) => moveTimelineElement(event, item.element)} on:click={() => selectElement(item.element.id, false)} aria-label={`Select or move ${item.element.id}`}></button>
+                <button type="button" class="clip-action clip-duplicate" on:click|stopPropagation={() => duplicateElement(item.element.id)} title="Duplicate layer (Ctrl/Cmd+D)" aria-label={`Duplicate ${item.element.id}`}><Copy size={11} /></button>
+                <button type="button" class="clip-action clip-more" on:click|stopPropagation={() => showMoreOptions(item.element.id)} title="More options" aria-label={`Show more options for ${item.element.id}`}><Ellipsis size={11} /></button>
+                <button type="button" class="clip-action clip-delete" on:click|stopPropagation={() => deleteElement(item.element.id)} title="Delete layer (Delete)" aria-label={`Delete ${item.element.id}`}><X size={11} /></button>
                   <button type="button" class="trim-handle trim-start" on:pointerdown={(event) => trimElement(event, item.element.id, 'start')} aria-label={`Trim start of ${item.element.id}`}></button>
                   <button type="button" class="trim-handle trim-end" on:pointerdown={(event) => trimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}></button>
                 </span>
@@ -3770,9 +3910,11 @@
                     <span class="clip-trim-label">↤ {clip.trimIn.toFixed(2)}s · {clip.trimOut.toFixed(2)}s ↦</span>
                   {/if}
                   <button type="button" class="clip-select" on:pointerdown={(event) => moveTimelineClip(event, clip)} on:click={() => selectElement(clip.id, false)} aria-label={`Select ${clip.assetName} clip`}></button>
+                  <button type="button" class="clip-action clip-duplicate" on:click|stopPropagation={() => duplicateClip(clip.id)} title="Duplicate clip (Ctrl/Cmd+D)" aria-label={`Duplicate ${clip.assetName} clip`}><Copy size={11} /></button>
+                  <button type="button" class="clip-action clip-more" on:click|stopPropagation={() => showMoreOptions(clip.id)} title="More options" aria-label={`Show more options for ${clip.assetName} clip`}><Ellipsis size={11} /></button>
                   <button type="button" class="trim-handle trim-start" on:pointerdown={(event) => trimTimelineClip(event, clip, 'start')} aria-label={`Trim start of ${clip.assetName}`}></button>
                   <button type="button" class="trim-handle trim-end" on:pointerdown={(event) => trimTimelineClip(event, clip, 'end')} aria-label={`Trim end of ${clip.assetName}`}></button>
-                  <button type="button" class="clip-delete" on:click|stopPropagation={() => deleteClip(clip.id)} title="Delete clip">
+                  <button type="button" class="clip-action clip-delete" on:click|stopPropagation={() => deleteClip(clip.id)} title="Delete clip (Delete)">
                     <X size={12} />
                   </button>
                 </span>
@@ -3798,6 +3940,9 @@
           </div>
       {/each}
 
+      {#if timelineRows.length === 0 && timelineClipTracks.every((track) => track.clips.length === 0 && track.elements.length === 0) && !audioName}
+        <div class="timeline-empty"><Layers3 size={16} /><span>No timeline layers yet. Add text or drag media here to begin.</span></div>
+      {/if}
     </div>
 
     <audio bind:this={audioElement} on:loadedmetadata={() => (audioDuration = audioElement.duration)}></audio>
@@ -3833,6 +3978,14 @@
     </div>
   {/if}
 </div>
+
+{#if deleteToast}
+  <div class="delete-toast" role="status" aria-live="polite">
+    <span>{deleteToast}</span>
+    <span class="toast-separator" aria-hidden="true">·</span>
+    <button type="button" on:click={undoDelete}>Undo</button>
+  </div>
+{/if}
 
 <!-- Confirmation Dialog -->
 {#if showConfirmDialog}
@@ -3924,10 +4077,10 @@
     display: grid;
     place-items: center;
     padding: 0;
-    border: 1px solid #355e4f;
+    border: 1px solid #244f78;
     border-radius: 6px;
-    background: #17231f;
-    color: #7cf7c5;
+    background: #111f2c;
+    color: #0a84ff;
     cursor: pointer;
   }
 
@@ -3961,9 +4114,9 @@
   }
 
   .nav-item.active {
-    background: #1a2f28;
-    color: #7cf7c5;
-    box-shadow: inset 2px 0 0 #7cf7c5;
+    background: #10263a;
+    color: #0a84ff;
+    box-shadow: inset 2px 0 0 #0a84ff;
   }
 
   /* Content Panel (Assets, Audio, Text, etc.) */
@@ -4027,13 +4180,6 @@
     scrollbar-color: #34373d #111214;
   }
 
-  .empty-state {
-    color: #6b7280;
-    font-size: 12px;
-    text-align: center;
-    padding: 24px 16px;
-  }
-
   .asset-error {
     margin: 0 0 12px;
     color: #f09b9b;
@@ -4052,17 +4198,9 @@
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   }
 
-  .media-drop-prompt {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 7px;
-    margin-bottom: 16px;
-  }
-
   .media-dropzone.drag-active {
-    border-color: #79e4bb;
-    background: rgba(77, 140, 117, 0.16);
+    border-color: #4aa3ff;
+    background: rgba(10, 132, 255, 0.1);
     animation: upload-pulse 0.8s ease-in-out infinite alternate;
   }
 
@@ -4074,16 +4212,7 @@
   }
 
   .media-dropzone:has(.import-media-button:hover) {
-    border-color: #4d8c75;
-  }
-
-  .media-drop-prompt span,
-  .media-drop-prompt small {
-    font-size: 11px;
-  }
-
-  .media-drop-prompt small {
-    color: #777b88;
+    border-color: #0a84ff;
   }
 
   .import-media-button {
@@ -4093,17 +4222,17 @@
     gap: 7px;
     width: 100%;
     padding: 9px 12px;
-    border: 1px solid #4d8c75;
+    border: 1px solid #0a84ff;
     border-radius: 6px;
-    background: #1a3b30;
-    color: #9af8d1;
+    background: #10345a;
+    color: #66b5ff;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
   }
 
   .import-media-button:hover {
-    background: #1a3028;
+    background: #102a42;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -4185,7 +4314,7 @@
     background: #17191c;
     border: 1px solid #2a2d33;
     border-radius: 6px;
-    color: #7cf7c5;
+    color: #0a84ff;
   }
 
   .asset-item-info {
@@ -4313,8 +4442,8 @@
   }
 
   .panel-tab.active {
-    color: #7cf7c5;
-    border-bottom-color: #7cf7c5;
+    color: #0a84ff;
+    border-bottom-color: #0a84ff;
   }
 
   /* Preset Grid */
@@ -4338,7 +4467,7 @@
 
   .preset-card:hover {
     background: #17191c;
-    border-color: #33584d;
+    border-color: #245d91;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
@@ -4434,8 +4563,8 @@
   }
 
   .transition-effect-item {
-    border-color: #315449;
-    background: linear-gradient(135deg, rgba(124, 247, 197, 0.12), rgba(124, 247, 197, 0.03));
+    border-color: #245d91;
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.12), rgba(10, 132, 255, 0.03));
     cursor: grab;
   }
 
@@ -4604,8 +4733,8 @@
 
   .layer-row.selected {
     background: #18201e;
-    border-color: #33584d;
-    box-shadow: inset 2px 0 #7cf7c5;
+    border-color: #245d91;
+    box-shadow: inset 2px 0 #0a84ff;
   }
   .layer-icon {
     width: 28px;
@@ -4630,8 +4759,8 @@
 
   .selected .layer-icon,
   .selection-summary .layer-icon {
-    color: #7cf7c5;
-    border-color: #33584d;
+    color: #0a84ff;
+    border-color: #245d91;
   }
 
   .layer-copy,
@@ -4791,7 +4920,7 @@
   }
 
   .property-align-actions button:last-child { border-right: 0; }
-  .property-align-actions button:hover { background: #282d34; color: #7cf7c5; }
+  .property-align-actions button:hover { background: #282d34; color: #0a84ff; }
 
   .align-divider {
     width: 1px;
@@ -4917,12 +5046,12 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #7cf7c5;
+    color: #0a84ff;
     font-size: 10px;
     cursor: pointer;
   }
 
-  .property-action:hover { color: #b8ffe4; text-decoration: underline; }
+  .property-action:hover { color: #b9ddff; text-decoration: underline; }
 
   .clip-original-size { width: 100%; margin-bottom: 14px; }
 
@@ -4947,7 +5076,7 @@
 
   .transition-pair-copy small { color: #727983; font-size: 9px; text-transform: uppercase; }
   .transition-pair-copy strong { overflow: hidden; color: #e8ebef; font-size: 11px; text-overflow: ellipsis; }
-  .transition-pair-arrow { color: #7cf7c5; }
+  .transition-pair-arrow { color: #0a84ff; }
   .transition-remove { width: 100%; color: #ff9d9d; }
 
   .property-row {
@@ -4985,9 +5114,9 @@
   }
 
   .number-input:focus {
-    border-color: #7cf7c5;
+    border-color: #0a84ff;
     background: #1a1c20;
-    box-shadow: 0 0 0 2px rgba(124, 247, 197, 0.12);
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
   }
 
   .input-suffix {
@@ -5022,8 +5151,8 @@
     height: 3px;
     background: linear-gradient(
       to right,
-      #7cf7c5 0%,
-      #7cf7c5 var(--slider-progress, 50%),
+      #0a84ff 0%,
+      #0a84ff var(--slider-progress, 50%),
       #2a2d33 var(--slider-progress, 50%),
       #2a2d33 100%
     );
@@ -5039,7 +5168,7 @@
 
   .custom-slider::-moz-range-progress {
     height: 3px;
-    background: #7cf7c5;
+    background: #0a84ff;
     border-radius: 2px;
   }
 
@@ -5049,7 +5178,7 @@
     width: 12px;
     height: 12px;
     background: #e4e6ea;
-    border: 2px solid #7cf7c5;
+    border: 2px solid #0a84ff;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -5060,7 +5189,7 @@
     width: 12px;
     height: 12px;
     background: #e4e6ea;
-    border: 2px solid #7cf7c5;
+    border: 2px solid #0a84ff;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -5069,12 +5198,12 @@
 
   .custom-slider:hover::-webkit-slider-thumb {
     transform: scale(1.15);
-    box-shadow: 0 2px 6px rgba(124, 247, 197, 0.3), 0 0 0 4px rgba(124, 247, 197, 0.1);
+    box-shadow: 0 2px 6px rgba(10, 132, 255, 0.3), 0 0 0 4px rgba(10, 132, 255, 0.1);
   }
 
   .custom-slider:hover::-moz-range-thumb {
     transform: scale(1.15);
-    box-shadow: 0 2px 6px rgba(124, 247, 197, 0.3), 0 0 0 4px rgba(124, 247, 197, 0.1);
+    box-shadow: 0 2px 6px rgba(10, 132, 255, 0.3), 0 0 0 4px rgba(10, 132, 255, 0.1);
   }
 
   .custom-slider:active::-webkit-slider-thumb {
@@ -5106,8 +5235,8 @@
   }
 
   .slider-value-input:focus {
-    border-color: #7cf7c5;
-    box-shadow: 0 0 0 2px rgba(124, 247, 197, 0.12);
+    border-color: #0a84ff;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
   }
 
   /* Text Input & Textarea */
@@ -5133,9 +5262,9 @@
   }
 
   .text-input:focus {
-    border-color: #7cf7c5;
+    border-color: #0a84ff;
     background: #1a1c20;
-    box-shadow: 0 0 0 2px rgba(124, 247, 197, 0.12);
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
   }
 
   /* Color Input */
@@ -5156,8 +5285,8 @@
   }
 
   .color-input:focus {
-    border-color: #7cf7c5;
-    box-shadow: 0 0 0 2px rgba(124, 247, 197, 0.12);
+    border-color: #0a84ff;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
   }
 
   /* Preset Cards */
@@ -5188,10 +5317,10 @@
   }
 
   .preset-option.active {
-    background: #1a2f28;
-    border-color: #33584d;
-    color: #7cf7c5;
-    box-shadow: inset 0 0 0 1px rgba(124, 247, 197, 0.2);
+    background: #10263a;
+    border-color: #245d91;
+    color: #0a84ff;
+    box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.2);
   }
 
   /* Easing Options */
@@ -5224,14 +5353,9 @@
   }
 
   .easing-option.active {
-    background: #1a2f28;
-    border-color: #33584d;
-    color: #7cf7c5;
-  }
-
-  .empty {
-    color: #858a92;
-    font-size: 13px;
+    background: #10263a;
+    border-color: #245d91;
+    color: #0a84ff;
   }
 
   .timeline-panel {
@@ -5265,7 +5389,7 @@
 
   .timeline-resizer:hover span,
   .timeline-resizer:focus-visible span {
-    background: #7cf7c5;
+    background: #0a84ff;
   }
 
   .timeline-toolbar {
@@ -5424,7 +5548,7 @@
 
   .timeline-row.selected .track-label {
     color: #f1f2f4;
-    box-shadow: inset 2px 0 #7cf7c5;
+    box-shadow: inset 2px 0 #0a84ff;
   }
 
   .track-label {
@@ -5554,10 +5678,10 @@
     top: 0;
     bottom: -1px;
     width: 3px;
-    background: #7cf7c5;
+    background: #0a84ff;
     transform: translateX(-50%);
     pointer-events: none;
-    box-shadow: 0 0 8px rgba(124, 247, 197, 0.6);
+    box-shadow: 0 0 8px rgba(10, 132, 255, 0.6);
   }
 
   .drop-indicator::before {
@@ -5567,14 +5691,14 @@
     left: 50%;
     width: 0;
     height: 0;
-    border-top: 8px solid #7cf7c5;
+    border-top: 8px solid #0a84ff;
     border-right: 7px solid transparent;
     border-left: 7px solid transparent;
     transform: translateX(-50%);
   }
 
   .timeline-scroll.drop-target {
-    background: rgba(124, 247, 197, 0.05);
+    background: rgba(10, 132, 255, 0.05);
   }
 
   /* Timeline Clip Styles */
@@ -5583,8 +5707,8 @@
   }
 
   .timeline-clip {
-    border: 2px solid #7cf7c5;
-    background: rgba(124, 247, 197, 0.1);
+    border: 2px solid #0a84ff;
+    background: rgba(10, 132, 255, 0.1);
   }
 
   .clip-trim-label {
@@ -5604,7 +5728,7 @@
 
   .timeline-clip.selected-clip {
     border-color: #f1f2f4;
-    box-shadow: 0 0 0 1px #7cf7c5;
+    box-shadow: 0 0 0 1px #0a84ff;
   }
 
   .transition-cut {
@@ -5626,9 +5750,9 @@
   }
 
   .transition-cut.has-transition {
-    border-color: #7cf7c5;
-    background: #1c4a3d;
-    color: #ecfff7;
+    border-color: #0a84ff;
+    background: #0f4777;
+    color: #eef7ff;
     box-shadow: 0 0 0 2px rgba(13, 14, 16, 0.85);
   }
 
@@ -5636,15 +5760,15 @@
     width: 22px;
     height: 22px;
     top: 7px;
-    border-color: #7cf7c5;
-    background: #243d35;
+    border-color: #0a84ff;
+    background: #163a59;
     color: #fff;
-    box-shadow: 0 0 12px rgba(124, 247, 197, 0.65);
+    box-shadow: 0 0 12px rgba(10, 132, 255, 0.65);
   }
 
   .transition-cut.selected-transition {
     border-color: #fff;
-    box-shadow: 0 0 0 2px #7cf7c5, 0 0 12px rgba(124, 247, 197, 0.55);
+    box-shadow: 0 0 0 2px #0a84ff, 0 0 12px rgba(10, 132, 255, 0.55);
   }
 
   .clip-delete {
@@ -5723,8 +5847,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #15241f, #17202b);
-    color: #7cf7c5;
+    background: #182433;
+    color: #0a84ff;
   }
 
   .clip-color {
@@ -5758,9 +5882,9 @@
     z-index: 3;
     top: 6px;
     height: 27px;
-    border: 1px dashed #7cf7c5;
+    border: 1px dashed #0a84ff;
     border-radius: 3px;
-    background: rgba(124, 247, 197, 0.14);
+    background: rgba(10, 132, 255, 0.14);
     pointer-events: none;
   }
   .clip-ghost.invalid {
@@ -5799,8 +5923,8 @@
   }
 
   .element-clip.selected-clip {
-    border-color: #69cda9;
-    background: #31594d;
+    border-color: #0a84ff;
+    background: #163b60;
   }
 
   .audio-clip {
@@ -5872,7 +5996,7 @@
     cursor: pointer;
   }
 
-  .toggle-row input { accent-color: #7cf7c5; }
+  .toggle-row input { accent-color: #0a84ff; }
 
   .keyframe-marker {
     position: absolute;
@@ -5907,10 +6031,10 @@
     padding: 0;
     display: grid;
     place-items: center;
-    border: 1px solid #2f6d59;
+    border: 1px solid #1e69a8;
     border-radius: 50%;
-    background: #17362d;
-    color: #b8ffe4;
+    background: #102e4b;
+    color: #b9ddff;
     font-size: 12px;
     line-height: 1;
     transform: translate(-50%, -50%);
@@ -5921,7 +6045,7 @@
   .timeline-row.selected .keyframe-add {
     opacity: 1;
   }
-  .keyframe-add:hover { background: #1d4538; }
+  .keyframe-add:hover { background: #123b62; }
 
   .keyframe-controls {
     display: flex;
@@ -6108,4 +6232,449 @@
       display: none;
     }
   }
+
+  /* Premium editor surface */
+  .motion-editor {
+    --accent: #0a84ff;
+    --hairline: rgba(255, 255, 255, 0.08);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(180deg, #111113 0%, #0e0e10 24%, #0e0e10 100%);
+  }
+
+  .workbench,
+  .timeline-panel { border-color: var(--hairline); }
+
+  .workbench { grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px; }
+  .workbench.chat-open { grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px; }
+
+  .nav-rail {
+    position: relative;
+    z-index: 30;
+    width: 60px;
+    padding: 10px;
+    gap: 6px;
+    background: rgba(18, 18, 20, 0.96);
+    border-right: 1px solid var(--hairline);
+  }
+
+  .nav-item { position: relative; width: 40px; height: 40px; border-radius: 10px; }
+  .nav-item:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+  .nav-item.active { color: var(--accent); background: rgba(10, 132, 255, 0.14); box-shadow: inset 2px 0 0 var(--accent); }
+  .nav-settings { margin-top: auto; }
+  .nav-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 12px);
+    z-index: 100;
+    padding: 6px 9px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: #242428;
+    color: #f7f7f8;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(4px, -50%);
+    transition: opacity .14s ease, transform .14s ease;
+  }
+  .nav-item:hover::after, .nav-item:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
+
+  .content-panel, .properties-panel, .timeline-toolbar, .panel-header, .stage-meta {
+    background: rgba(20, 20, 23, .92);
+    border-color: var(--hairline);
+  }
+  .chat-drawer, .preview-container { background: linear-gradient(180deg, #111114 0%, #0e0e10 42%, #0c0c0e 100%); }
+  .panel-header, .stage-meta, .timeline-toolbar, .timeline-resizer, .track-label, .ruler, .track-lane, .selection-summary { border-color: var(--hairline); }
+  .properties-panel { padding: 16px; }
+  .panel-title { color: #f5f5f7; font-size: 12px; text-transform: none; }
+  .primary-properties { padding-top: 2px; }
+  .timing-row .property-group { min-width: 0; }
+  .property-unavailable {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    color: #77777f;
+    background: rgba(255, 255, 255, .025);
+    font-size: 11px;
+  }
+  .more-options { margin: 4px 0 20px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .more-options summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 2px;
+    color: #aaaab1;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    list-style: none;
+  }
+  .more-options summary::-webkit-details-marker { display: none; }
+  .more-options summary::before { content: '›'; color: #72727a; font-size: 16px; line-height: 1; transform: rotate(0deg); transition: transform .18s ease, color .18s ease; }
+  .more-options summary:hover { color: #fff; }
+  .more-options[open] summary { color: var(--accent); }
+  .more-options[open] summary::before { color: var(--accent); transform: rotate(90deg); }
+  .more-options-content { padding: 6px 0 4px; animation: options-reveal .18s ease both; }
+  @keyframes options-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .more-options-content .property-align-toolbar { margin-right: 0; margin-left: 0; }
+  .properties-empty { min-height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; color: #696970; }
+  .properties-empty :global(svg) { color: #4e4e55; }
+  .properties-empty strong { color: #aaaab1; font-size: 12px; }
+  .properties-empty span { max-width: 210px; font-size: 11px; line-height: 1.45; }
+
+  .status-label, .stage-status { display: inline-flex; align-items: center; gap: 7px; color: #8d8d95; font-size: 11px; }
+  .status-label { margin: 0 0 12px; }
+  .status-label span, .stage-status span { width: 8px; height: 8px; border: 1.5px solid rgba(255,255,255,.22); border-top-color: var(--accent); border-radius: 50%; animation: status-spin .8s linear infinite; }
+  .stage-status { position: absolute; top: 14px; left: 50%; z-index: 12; padding: 7px 10px; border: 1px solid var(--hairline); border-radius: 999px; background: rgba(18,18,20,.88); transform: translateX(-50%); backdrop-filter: blur(12px); }
+  @keyframes status-spin { to { transform: rotate(360deg); } }
+
+  .timeline-empty { order: 1000000; min-width: var(--timeline-content-width, 820px); min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #686870; font-size: 11px; border-bottom: 1px solid var(--hairline); }
+  .clip-duplicate {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 7;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px;
+    background: rgba(14,14,16,.9);
+    color: #aeb0b7;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity .14s ease, color .14s ease, background .14s ease;
+  }
+  .clip:hover .clip-duplicate, .clip-duplicate:focus-visible { opacity: 1; }
+  .clip-duplicate:hover { color: #fff; background: var(--accent); }
+  .timeline-clip .clip-duplicate { right: 23px; }
+
+  .delete-toast {
+    position: fixed;
+    right: 20px;
+    bottom: calc(var(--timeline-height, 230px) + 20px);
+    z-index: 1200;
+    min-width: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px 11px 10px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    background: rgba(34, 34, 38, .96);
+    color: #ececf0;
+    box-shadow: 0 16px 42px rgba(0,0,0,.45);
+    backdrop-filter: blur(18px);
+    font-size: 12px;
+  }
+  .delete-toast button { height: 28px; padding: 0 9px; border: 0; border-radius: 6px; background: rgba(10,132,255,.14); color: var(--accent); font-weight: 700; cursor: pointer; }
+  .delete-toast button:hover { background: rgba(10,132,255,.24); }
+
+  .shared-property-note { margin: -2px 0 14px; color: #696970; font-size: 10px; line-height: 1.4; }
+  .timeline-snap-guide { position: absolute; z-index: 6; top: 0; bottom: -100vh; width: 1px; background: var(--accent); opacity: .72; transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 8px rgba(10,132,255,.42); }
+  .clip-action { position: absolute; top: 3px; z-index: 8; width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; background: rgba(14,14,16,.92); color: #b8bac1; opacity: 0; cursor: pointer; transition: opacity .14s ease, color .14s ease, background .14s ease; }
+  .clip:hover .clip-action, .clip-action:focus-visible { opacity: 1; }
+  .clip-duplicate { right: 45px; }
+  .clip-more { right: 24px; }
+  .clip-delete { right: 3px; }
+  .clip-duplicate:hover, .clip-more:hover { color: #fff; background: var(--accent); }
+  .clip-delete:hover { color: #fff; background: #c43b45; }
+  .toast-separator { color: #77777f; margin-left: auto; }
+  .delete-toast { gap: 8px; }
+
+
+  /* Final matte refinement and strict rail/panel containment. */
+  .workbench,
+  .workbench.chat-open {
+    grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px;
+    overflow: hidden;
+    isolation: isolate;
+    background: #0e0e10;
+  }
+  .workbench.chat-open { grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px; }
+  .nav-rail {
+    grid-column: 1;
+    box-sizing: border-box;
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
+    overflow: visible;
+    background: #111113;
+    border-right: 1px solid var(--hairline);
+  }
+  .content-panel {
+    grid-column: 2;
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 260px;
+    contain: paint;
+    background: #151517;
+    border-right: 1px solid var(--hairline);
+  }
+  .panel-header {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    padding: 12px 14px;
+    background: #151517;
+  }
+  .panel-tabs { min-width: 0; margin: 0; padding: 0; gap: 10px; }
+  .panel-tab {
+    height: 30px;
+    padding: 0 1px;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    color: #77777f;
+    background: transparent;
+    transition: color .16s ease, border-color .16s ease;
+  }
+  .panel-tab:hover { color: #c9c9ce; background: transparent; }
+  .panel-tab.active { color: #f1f1f3; border-bottom-color: var(--accent); }
+
+  .motion-editor { background: linear-gradient(180deg, #101012 0%, #0e0e10 28%, #0d0d0f 100%); }
+  .chat-drawer,
+  .preview-container { background: linear-gradient(180deg, #111113 0%, #0e0e10 100%); }
+  .content-panel,
+  .properties-panel,
+  .timeline-toolbar,
+  .panel-header,
+  .stage-meta { backdrop-filter: none; }
+  .chat-drawer :global(.ai-chat-panel),
+  .preview-canvas,
+  .dialog,
+  .preset-card:hover,
+  .delete-toast,
+  .stage-status { box-shadow: none; }
+  .preview-canvas { box-shadow: 0 0 0 1px var(--hairline); }
+  .assistant-expand {
+    border-color: var(--hairline);
+    background: #1a1a1d;
+    color: #a9a9b0;
+  }
+  .assistant-expand:hover { background: #212125; color: #fff; }
+  .nav-item { border-radius: 8px; transition: color .16s ease, background .16s ease; }
+  .nav-item.active { color: #fff; background: var(--accent); box-shadow: none; }
+  .nav-item::after {
+    border-radius: 6px;
+    background: #242427;
+    box-shadow: none;
+  }
+  .header-icon-btn,
+  .meta-btn,
+  .icon-btn,
+  .control-btn,
+  .timeline-command,
+  .property-align-actions button,
+  .clip-action {
+    border-color: var(--hairline);
+    background: #1b1b1e;
+    color: #aaaab1;
+    box-shadow: none;
+    transition: background .16s ease, border-color .16s ease, color .16s ease;
+  }
+  .header-icon-btn:hover,
+  .meta-btn:hover,
+  .icon-btn:hover,
+  .control-btn:hover,
+  .timeline-command:hover,
+  .property-align-actions button:hover {
+    border-color: rgba(255,255,255,.12);
+    background: #232327;
+    color: #f4f4f5;
+  }
+  .header-icon-btn:active,
+  .meta-btn:active,
+  .icon-btn:active,
+  .control-btn:active,
+  .timeline-command:active { background: #151517; }
+  .play-btn { border-color: var(--hairline); background: #eeeeef; color: #111113; }
+  .play-btn:hover { border-color: #fff; background: #fff; color: #09090a; }
+  .icon-btn.active { border-color: rgba(10,132,255,.42); background: rgba(10,132,255,.12); color: #73baff; }
+
+  .media-dropzone {
+    min-height: 100%;
+    padding: 14px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #8d8d95;
+    text-align: left;
+    transition: background .16s ease;
+  }
+  .media-dropzone.drag-active { background: rgba(255,255,255,.035); animation: none; }
+  .media-dropzone:has(.import-media-button:hover) { border-color: transparent; }
+  .import-media-button {
+    width: auto;
+    align-self: flex-start;
+    border-color: var(--hairline);
+    background: #1c1c1f;
+    color: #ededf0;
+  }
+  .import-media-button:hover { border-color: rgba(255,255,255,.14); background: #252529; }
+  .asset-item,
+  .audio-item,
+  .asset-card,
+  .preset-card,
+  .effect-item,
+  .selection-summary,
+  .property-align-toolbar {
+    border-color: var(--hairline);
+    background: transparent;
+    box-shadow: none;
+  }
+  .asset-card:hover,
+  .preset-card:hover,
+  .asset-item:hover,
+  .effect-item:hover { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.035); transform: none; }
+  .asset-thumbnail { background: #19191c; }
+  .folder-count { background: #1d1d20; }
+  .layer-row.selected { border-color: rgba(10,132,255,.3); background: rgba(10,132,255,.09); box-shadow: inset 2px 0 0 var(--accent); }
+
+  .snap-guide,
+  .timeline-snap-guide,
+  .drop-indicator,
+  .playhead-marker { box-shadow: none; }
+  .status-label span,
+  .stage-status span { animation-duration: 1s; }
+  .stage-status { border-radius: 7px; background: #1b1b1e; backdrop-filter: none; }
+  .delete-toast { border-radius: 8px; background: #222225; backdrop-filter: none; }
+  .transition-cut.drop-ready,
+  .transition-cut.selected-transition { box-shadow: none; }
+  .preset-option.active,
+  .easing-option.active { box-shadow: none; }
+  .custom-slider:hover::-webkit-slider-thumb,
+  .custom-slider:hover::-moz-range-thumb { box-shadow: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .more-options-content,
+    .status-label span,
+    .stage-status span { animation: none; }
+  }
+
+
+  /* Illuminated matte controls and Motionly-native accent system. */
+  .motion-editor {
+    --accent: #78a8ff;
+    --accent-mint: #70ddb8;
+    --accent-gradient: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+    font-family: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  .header-icon-btn,
+  .meta-btn,
+  .icon-btn,
+  .control-btn,
+  .timeline-command,
+  .property-align-actions button,
+  .clip-action,
+  .assistant-expand,
+  .import-media-button {
+    border-color: rgba(255,255,255,.1);
+    background: linear-gradient(180deg, #242428 0%, #1a1a1d 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.075), 0 1px 2px rgba(0,0,0,.28);
+  }
+  .header-icon-btn:hover,
+  .meta-btn:hover,
+  .icon-btn:hover,
+  .control-btn:hover,
+  .timeline-command:hover,
+  .property-align-actions button:hover,
+  .assistant-expand:hover,
+  .import-media-button:hover {
+    border-color: rgba(255,255,255,.16);
+    background: linear-gradient(180deg, #2c2c31 0%, #202024 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 2px rgba(0,0,0,.34);
+  }
+  .header-icon-btn:active,
+  .meta-btn:active,
+  .icon-btn:active,
+  .control-btn:active,
+  .timeline-command:active,
+  .property-align-actions button:active,
+  .assistant-expand:active,
+  .import-media-button:active {
+    background: #171719;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.45);
+    transform: translateY(1px);
+  }
+  .nav-item.active {
+    border: 1px solid rgba(255,255,255,.16);
+    background: var(--accent-gradient);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.34);
+  }
+  .icon-btn.active,
+  .preset-option.active,
+  .easing-option.active {
+    border-color: rgba(120,168,255,.42);
+    background: linear-gradient(180deg, rgba(120,168,255,.2), rgba(112,221,184,.09));
+    color: #dce9ff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .layer-row.selected {
+    border-color: rgba(120,168,255,.34);
+    background: linear-gradient(90deg, rgba(120,168,255,.13), rgba(112,221,184,.045));
+    box-shadow: inset 2px 0 0 #78a8ff;
+  }
+  .play-btn {
+    border-color: rgba(255,255,255,.2);
+    background: linear-gradient(180deg, #ffffff 0%, #d9d9dd 100%);
+    box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(0,0,0,.45);
+  }
+  .library-empty-state {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 28px 12px;
+    text-align: center;
+  }
+  .library-empty-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 9px;
+    background: linear-gradient(180deg, #202024, #171719);
+    color: #85858e;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+  }
+  .library-empty-state strong { color: #d9d9dd; font-size: 12px; font-weight: 600; letter-spacing: -.01em; }
+  .library-empty-state > span:not(.library-empty-icon) { max-width: 190px; color: #74747d; font-size: 11px; line-height: 1.45; }
+  .library-empty-state small { max-width: 205px; color: #55555d; font-size: 9.5px; line-height: 1.4; }
+  .library-empty-state .import-media-button {
+    align-self: center;
+    margin: 5px 0 2px;
+    padding: 0 12px;
+    color: #e8e8eb;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .media-dropzone { position: relative; height: 100%; padding: 0 4px; }
+  .media-dropzone.drag-active .library-empty-state { background: linear-gradient(180deg, rgba(120,168,255,.06), rgba(112,221,184,.025)); }
+
+  .workbench.chat-open { grid-template-columns: 60px 260px 360px minmax(0, 1fr) 300px; }
+
 </style>

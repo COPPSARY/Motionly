@@ -261,7 +261,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #7cf7c5;
+    color: #0a84ff;
     font-size: 11px;
     cursor: pointer;
   }

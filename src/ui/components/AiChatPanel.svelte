@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Bot, Eye, EyeOff, PanelLeftClose, Send, Settings, Trash2 } from 'lucide-svelte';
+  import { Bot, Eye, EyeOff, PanelLeftClose, Send, Settings, Sparkles, Trash2 } from 'lucide-svelte';
   import {
     detectProvider,
     AI_HISTORY_KEY,
@@ -39,6 +39,12 @@
   let promptCopied = false;
   let composerInput: HTMLTextAreaElement;
   let messageList: HTMLDivElement;
+
+  const promptSuggestions = [
+    'Product intro',
+    'Soft text reveal',
+    'Scene transition',
+  ];
 
   $: detectedProvider = detectProvider(apiKey);
   $: isKiroKey = apiKey.trim().startsWith('ksk_');
@@ -200,6 +206,12 @@
     });
   }
 
+  function useSuggestion(suggestion: string) {
+    draft = suggestion;
+    resizeComposer();
+    requestAnimationFrame(() => composerInput?.focus());
+  }
+
   function handleComposerKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -322,15 +334,11 @@
   {:else}
     <div bind:this={messageList} class="message-list" aria-live="polite">
       {#if messages.length === 0}
-        <div class="empty-state">
-          <strong>What are we making today?</strong>
-          <span>
-            See the <a href="https://motionly.mintlify.app/agents/ai-authoring" target="_blank" rel="noreferrer">prompt guide</a>
-            for templates and an introduction to the <code>write-motionly</code> skill.
-          </span>
-          <button type="button" class="copy-prompt-button" on:click={copyPromptTemplate}>
-            {promptCopied ? 'Prompt Template Copied' : 'Copy Prompt Template'}
-          </button>
+        <div class="empty-state assistant-empty-state">
+          <span class="assistant-empty-icon"><Sparkles size={18} /></span>
+          <strong>Start with an idea</strong>
+          <span>Describe a scene, animation, or change. Every result stays editable in Motionly.</span>
+          <a class="assistant-guide-link" href="https://motionly.mintlify.app/agents/ai-authoring" target="_blank" rel="noreferrer">View prompting guide</a>
         </div>
       {:else}
         {#each messages as message (message.id)}
@@ -354,10 +362,17 @@
 
     <div class="composer-wrap">
       {#if error}<p class="error-message">{error}</p>{/if}
-      <div class="composer">
-        <textarea bind:this={composerInput} rows="1" bind:value={draft} on:input={resizeComposer} on:keydown={handleComposerKeydown} placeholder="Describe the animation you want..." aria-label="Message Motionly Assistant"></textarea>
-        <button type="button" on:click={sendMessage} disabled={!draft.trim() || sending} title="Send message"><Send size={15} /></button>
+      <div class="suggestion-chips" aria-label="Prompt suggestions">
+        {#each promptSuggestions as suggestion}
+          <button type="button" on:click={() => useSuggestion(suggestion)}>{suggestion}</button>
+        {/each}
       </div>
+      <div class="composer" class:has-draft={Boolean(draft.trim())}>
+        <span class="command-mark"><Sparkles size={15} /></span>
+        <textarea bind:this={composerInput} rows="1" bind:value={draft} on:input={resizeComposer} on:keydown={handleComposerKeydown} placeholder="Ask Motionly to create or refine…" aria-label="Message Motionly Assistant"></textarea>
+        <button type="button" class="send-button" on:click={sendMessage} disabled={!draft.trim() || sending} title="Send prompt (Enter)" aria-label="Send prompt"><Send size={15} /></button>
+      </div>
+      <span class="composer-hint">Enter to send · Shift+Enter for a new line</span>
     </div>
   {/if}
 </section>
@@ -367,10 +382,10 @@
   .chat-header { min-height: 57px; padding: 0 14px 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1c1d20; background: #0d0e10; }
   .chat-title, .header-actions { display: flex; align-items: center; gap: 8px; }
   .chat-title { font-size: 13px; font-weight: 600; }
-  .chat-title :global(svg) { color: #7cf7c5; }
+  .chat-title :global(svg) { color: #0a84ff; }
   button { font: inherit; }
   .icon-button { width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border: 1px solid #2a2d33; border-radius: 6px; color: #8e939b; background: #17191c; cursor: pointer; }
-  .icon-button:hover, .icon-button.active { color: #7cf7c5; border-color: #355e4f; }
+  .icon-button:hover, .icon-button.active { color: #0a84ff; border-color: #244f78; }
   .settings-view { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #34383e transparent; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
   h3 { margin: 0 0 6px; font-size: 14px; }
   .settings-view > div > p { margin: 0; color: #8e939b; font-size: 12px; line-height: 1.5; }
@@ -381,27 +396,26 @@
   .field small { color: #6b7280; font-size: 10px; line-height: 1.35; }
   input, select, textarea { box-sizing: border-box; width: 100%; border: 1px solid #2a2d33; border-radius: 7px; outline: none; background: #17191c; color: #e4e6ea; }
   input { height: 36px; padding: 0 10px; font-size: 12px; }
-  input:focus, select:focus, textarea:focus { border-color: #437263; }
+  input:focus, select:focus, textarea:focus { border-color: #0a84ff; }
   .key-input { position: relative; }
   .key-input input { padding-right: 38px; }
   .key-input button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #8e939b; cursor: pointer; }
-  .provider-chip { width: auto; height: 28px; padding: 0 26px 0 9px; border-color: #355e4f; border-radius: 999px; color: #9af8d1; font-size: 11px; }
+  .provider-chip { width: auto; height: 28px; padding: 0 26px 0 9px; border-color: #244f78; border-radius: 999px; color: #66b5ff; font-size: 11px; }
   .custom-toggle { display: flex; align-items: center; gap: 8px; color: #b6bac1; font-size: 12px; }
-  .custom-toggle input { width: 14px; height: 14px; accent-color: #7cf7c5; }
+  .custom-toggle input { width: 14px; height: 14px; accent-color: #0a84ff; }
   .privacy-note { margin: 0; color: #777d86; font-size: 11px; line-height: 1.45; }
   .provider-warning { margin: 0; padding: 9px; border: 1px solid #55452b; border-radius: 6px; background: #241f17; color: #d9bd85; font-size: 11px; line-height: 1.45; }
-  .provider-note { margin: 0; padding: 9px; border: 1px solid #29483d; border-radius: 6px; background: #17231f; color: #9bcbb9; font-size: 11px; line-height: 1.45; }
+  .provider-note { margin: 0; padding: 9px; border: 1px solid #1e4e76; border-radius: 6px; background: #111f2c; color: #9bcfff; font-size: 11px; line-height: 1.45; }
   .guide-note { margin: 0; color: #777d86; font-size: 11px; line-height: 1.45; }
-  .guide-note a { color: #7cf7c5; text-decoration: none; }
+  .guide-note a { color: #0a84ff; text-decoration: none; }
   .guide-note a:hover { text-decoration: underline; }
   .guide-note code { color: #a9b0b9; font-size: 10px; }
-  .copy-prompt-button { align-self: flex-start; padding: 7px 10px; border: 1px solid #355e4f; border-radius: 6px; background: #17231f; color: #9af8d1; cursor: pointer; font-size: 11px; font-weight: 600; }
-  .copy-prompt-button:hover { border-color: #4d8c75; background: #1a3028; }
-  .empty-state .copy-prompt-button { align-self: center; }
+  .copy-prompt-button { align-self: flex-start; padding: 7px 10px; border: 1px solid #244f78; border-radius: 6px; background: #111f2c; color: #66b5ff; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .copy-prompt-button:hover { border-color: #0a84ff; background: #102a42; }
   .error-message { margin: 0; color: #f09b9b; font-size: 11px; line-height: 1.4; }
   .settings-actions { margin-top: auto; display: flex; justify-content: flex-end; gap: 8px; }
   .primary-button, .secondary-button, .load-button, .repair-button { padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; }
-  .primary-button, .load-button { border: 1px solid #4d8c75; background: #1a3b30; color: #9af8d1; }
+  .primary-button, .load-button { border: 1px solid #0a84ff; background: #10345a; color: #66b5ff; }
   .secondary-button { border: 1px solid #2a2d33; background: #17191c; color: #a5aab2; }
   .repair-button { margin-left: 6px; border: 1px solid #59472c; background: #251f17; color: #d9bd85; }
   .secondary-button.danger { margin-right: auto; color: #dc9494; }
@@ -414,22 +428,162 @@
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #6f747c; font-size: 11px; line-height: 1.5; text-align: center; }
   .empty-state strong { color: #8e939b; font-size: 12px; font-weight: 500; }
   .empty-state span { max-width: 230px; }
-  .empty-state a { color: #7cf7c5; text-decoration: none; }
+  .empty-state a { color: #0a84ff; text-decoration: none; }
   .empty-state a:hover { text-decoration: underline; }
-  .empty-state code { color: #a9b0b9; font-size: 10px; }
   .message { align-self: stretch; padding: 11px; border: 1px solid #24262a; border-radius: 9px; background: #151619; }
-  .message.user { align-self: flex-end; max-width: 86%; background: #19221f; border-color: #293d36; }
-  .message-role { margin-bottom: 6px; color: #7cf7c5; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .message.user { align-self: flex-end; max-width: 86%; background: #101e2c; border-color: #183a5c; }
+  .message-role { margin-bottom: 6px; color: #0a84ff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .message.user .message-role { color: #9ca3af; }
   .message p { margin: 0; color: #c8cbd0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
-  pre { margin: 9px 0; padding: 10px; overflow: visible; border: 1px solid #25282d; border-radius: 6px; background: #0d0e10; color: #b9e8d7; font: 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+  pre { margin: 9px 0; padding: 10px; overflow: visible; border: 1px solid #25282d; border-radius: 6px; background: #0d0e10; color: #a8d5ff; font: 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
   .thinking { color: #777d86; font-size: 11px; }
   .composer-wrap { padding: 10px 12px 12px; border-top: 1px solid #1c1d20; background: #0d0e10; }
   .composer-wrap .error-message { margin-bottom: 8px; }
   .composer { display: flex; align-items: flex-end; gap: 7px; padding: 7px; border: 1px solid #2a2d33; border-radius: 10px; background: #17191c; }
   textarea { min-height: 38px; max-height: 120px; padding: 4px; resize: none; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: #34383e transparent; border: 0; background: transparent; font-size: 12px; line-height: 1.4; }
-  .composer button { flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #9af8d1; cursor: pointer; transition: color .15s ease, background .15s ease, transform .15s ease; }
-  .composer button:hover:not(:disabled) { background: rgba(124, 247, 197, .1); color: #c4ffe7; transform: translateY(-1px); }
-  .composer button:focus-visible { outline: 2px solid #437263; outline-offset: 1px; }
+  .composer button { flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #66b5ff; cursor: pointer; transition: color .15s ease, background .15s ease, transform .15s ease; }
+  .composer button:hover:not(:disabled) { background: rgba(10, 132, 255, .1); color: #d8ecff; transform: translateY(-1px); }
+  .composer button:focus-visible { outline: 2px solid #0a84ff; outline-offset: 1px; }
   .composer button:disabled { border: 0; background: transparent; color: #4c5158; cursor: default; }
+
+  .ai-chat-panel { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; background: rgba(20,20,23,.96); }
+  .chat-header, .composer-wrap { background: rgba(14,14,16,.96); border-color: rgba(255,255,255,.08); }
+  .suggestion-chips { display: flex; gap: 6px; padding-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
+  .suggestion-chips::-webkit-scrollbar { display: none; }
+  .suggestion-chips button { flex: 0 0 auto; height: 26px; padding: 0 9px; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; background: rgba(255,255,255,.04); color: #9999a1; font-size: 10px; cursor: pointer; }
+  .suggestion-chips button:hover { border-color: rgba(10,132,255,.42); color: #dceeff; background: rgba(10,132,255,.1); }
+  .composer { align-items: center; min-height: 48px; padding: 5px 6px 5px 10px; border-color: rgba(255,255,255,.1); border-radius: 12px; background: #19191c; box-shadow: 0 8px 24px rgba(0,0,0,.18); transition: border-color .15s ease, box-shadow .15s ease; }
+  .composer:focus-within { border-color: rgba(10,132,255,.7); box-shadow: 0 0 0 3px rgba(10,132,255,.1), 0 10px 30px rgba(0,0,0,.22); }
+  .command-mark { flex: 0 0 auto; width: 20px; color: #6d6d75; font-size: 13px; font-weight: 700; }
+  .composer textarea { min-height: 34px; padding: 7px 2px; color: #f2f2f5; }
+  .composer .send-button { width: 32px; height: 32px; border-radius: 8px; background: #0a84ff; color: #fff; }
+  .composer .send-button:hover:not(:disabled) { background: #2997ff; color: #fff; transform: none; }
+  .composer .send-button:disabled { background: rgba(255,255,255,.05); color: #55555c; }
+  .composer-hint { display: block; margin-top: 6px; color: #5f5f67; font-size: 9px; text-align: right; }
+  .empty-state strong { color: #d4d4d8; font-size: 13px; }
+  .message { border-color: rgba(255,255,255,.08); background: rgba(255,255,255,.035); }
+
+  /* Matte command surface: tonal depth, no glow or floating elevation. */
+  .ai-chat-panel { background: #151517; }
+  .chat-header,
+  .composer-wrap { background: #131315; backdrop-filter: none; }
+  .icon-button,
+  .secondary-button,
+  .copy-prompt-button {
+    border-color: rgba(255,255,255,.08);
+    background: #1b1b1e;
+    color: #aaaab1;
+  }
+  .icon-button:hover,
+  .icon-button.active,
+  .copy-prompt-button:hover { border-color: rgba(255,255,255,.13); background: #232327; color: #f2f2f4; }
+  .provider-chip { border-color: rgba(255,255,255,.1); background: #1a1a1d; color: #b9b9c0; }
+  .message,
+  .message.user { border-color: rgba(255,255,255,.08); background: #1a1a1d; }
+  .suggestion-chips button { border-radius: 7px; background: #1a1a1d; }
+  .suggestion-chips button:hover { border-color: rgba(255,255,255,.13); background: #222226; color: #ededf0; }
+  .composer {
+    min-height: 46px;
+    border-radius: 8px;
+    border-color: rgba(255,255,255,.1);
+    background: #1b1b1e;
+    box-shadow: none;
+  }
+  .composer:focus-within { border-color: rgba(10,132,255,.65); box-shadow: none; }
+  .composer button:hover:not(:disabled) { transform: none; }
+  .composer .send-button { border-radius: 7px; }
+
+
+  /* Inter command bar with compact, fully visible suggestions. */
+  .ai-chat-panel {
+    font-family: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  .assistant-empty-state { gap: 9px; padding: 24px; }
+  .assistant-empty-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 3px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 9px;
+    background: linear-gradient(180deg, #222226, #18181b);
+    color: #78a8ff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .assistant-empty-state > span:not(.assistant-empty-icon) { max-width: 240px; color: #777780; font-size: 11px; line-height: 1.5; }
+  .assistant-guide-link { color: #91b5f4; font-size: 10px; text-decoration: none; }
+  .assistant-guide-link:hover { color: #b6cef7; text-decoration: underline; }
+  .composer-wrap { padding: 11px 12px 12px; }
+  .suggestion-chips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    overflow: visible;
+    padding-bottom: 8px;
+  }
+  .suggestion-chips button {
+    min-width: 0;
+    width: 100%;
+    height: 27px;
+    overflow: hidden;
+    padding: 0 7px;
+    border-color: rgba(255,255,255,.09);
+    border-radius: 7px;
+    background: linear-gradient(180deg, #222226 0%, #19191c 100%);
+    color: #9a9aa2;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 1px 2px rgba(0,0,0,.24);
+    font-size: 9.5px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .suggestion-chips button:hover {
+    border-color: rgba(255,255,255,.15);
+    background: linear-gradient(180deg, #2b2b30, #202024);
+    color: #e5e5e8;
+  }
+  .composer {
+    min-height: 52px;
+    padding: 6px 7px 6px 10px;
+    border-color: rgba(255,255,255,.11);
+    border-radius: 9px;
+    background: linear-gradient(180deg, #222226 0%, #19191c 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.065), 0 1px 2px rgba(0,0,0,.28);
+  }
+  .composer:focus-within {
+    border-color: rgba(120,168,255,.52);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(120,168,255,.08);
+  }
+  .command-mark { width: 18px; color: #73737c; }
+  .composer textarea {
+    min-width: 0;
+    min-height: 38px;
+    padding: 8px 3px;
+    font-family: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11.5px;
+    font-weight: 450;
+    line-height: 1.45;
+    letter-spacing: -.01em;
+  }
+  .composer textarea::placeholder { color: #777780; opacity: 1; }
+  .composer .send-button {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 8px;
+    background: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.32);
+  }
+  .composer .send-button:hover:not(:disabled) { background: linear-gradient(135deg, #6d9bf0, #59bd9c); }
+  .composer .send-button:disabled {
+    border-color: rgba(255,255,255,.07);
+    background: linear-gradient(180deg, #26262a, #1c1c1f);
+    color: #56565e;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .composer-hint { margin-top: 7px; color: #55555d; font-size: 9px; }
+
 </style>
