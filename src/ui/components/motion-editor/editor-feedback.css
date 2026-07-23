@@ -1,0 +1,104 @@
+.motion-editor-scope .me-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.motion-editor-scope .me-dialog {
+  width: 90%;
+  max-width: 440px;
+  background: #17191c;
+  border: 1px solid #2a2d33;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.motion-editor-scope .me-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #24262a;
+}
+
+.motion-editor-scope .me-dialog-header h3 {
+  margin: 0;
+  color: #e4e6ea;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.motion-editor-scope .me-dialog-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.motion-editor-scope .me-dialog-close:hover {
+  background: #24262a;
+  color: #e4e6ea;
+}
+
+.motion-editor-scope .me-dialog-body {
+  padding: 20px;
+}
+
+.motion-editor-scope .me-dialog-body p {
+  margin: 0;
+  color: #d8dce2;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.motion-editor-scope .me-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #24262a;
+  background: #111214;
+}
+
+.motion-editor-scope .me-dialog-btn {
+  padding: 8px 16px;
+  border: 1px solid #2a2d33;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.motion-editor-scope .me-dialog-btn.me-secondary {
+  background: transparent;
+  color: #d8dce2;
+}
+
+.motion-editor-scope .me-dialog-btn.me-secondary:hover {
+  background: #24262a;
+}
+
+.motion-editor-scope .me-dialog-btn.me-danger {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.motion-editor-scope .me-dialog-btn.me-danger:hover {
+  background: #dc2626;
+}

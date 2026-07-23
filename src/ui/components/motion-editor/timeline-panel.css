@@ -1,0 +1,780 @@
+.motion-editor-scope .me-timeline-panel {
+  flex: 0 0 var(--timeline-height);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d0e10;
+  border-top: 1px solid #24262a;
+}
+
+.motion-editor-scope .me-timeline-resizer {
+  flex: 0 0 7px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #24262a;
+  background: #0d0e10;
+  cursor: ns-resize;
+}
+
+.motion-editor-scope .me-timeline-resizer span {
+  width: 34px;
+  height: 2px;
+  border-radius: 1px;
+  background: #3b4047;
+}
+
+.motion-editor-scope .me-timeline-resizer:hover span,
+.motion-editor-scope .me-timeline-resizer:focus-visible span {
+  background: #70ddb8;
+}
+
+.motion-editor-scope .me-timeline-toolbar {
+  flex: 0 0 46px;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto minmax(280px, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  border-bottom: 1px solid #24262a;
+  background: #111214;
+}
+
+.motion-editor-scope .me-playback-controls,
+.motion-editor-scope .me-timeline-actions,
+.motion-editor-scope .me-timeline-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.motion-editor-scope .me-timeline-actions {
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.motion-editor-scope .me-timeline-context {
+  min-width: 0;
+  color: #858a92;
+  font-size: 11px;
+}
+
+.motion-editor-scope .me-timeline-context span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-control-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #2c3035;
+  border-radius: 5px;
+  background: #17191c;
+  color: white;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-control-btn:hover {
+  background: #202328;
+  border-color: #3a3f46;
+}
+
+.motion-editor-scope .me-play-btn {
+  border: none;
+  background: #e6e8ec;
+  color: #09090a;
+}
+
+.motion-editor-scope .me-timecode {
+  min-width: 50px;
+  color: #f1f2f4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.motion-editor-scope .me-framecode {
+  color: #777d86;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.motion-editor-scope .me-timeline-command,
+.motion-editor-scope .me-audio-chip {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2c3035;
+  border-radius: 5px;
+  background: #17191c;
+  color: #d8dce2;
+  padding: 0 9px;
+  font-size: 11px;
+}
+
+.motion-editor-scope .me-timeline-command {
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-timeline-command:hover {
+  background: #202328;
+}
+
+.motion-editor-scope .me-audio-chip {
+  max-width: 170px;
+  overflow: hidden;
+  color: #cdb5e5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-file-input,
+.motion-editor-scope .me-timeline-panel audio {
+  display: none;
+}
+
+.motion-editor-scope .me-timeline-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #34373d #0d0e10;
+}
+
+.motion-editor-scope .me-ruler-row,
+.motion-editor-scope .me-timeline-row {
+  width: 100%;
+  min-width: var(--timeline-content-width, 820px);
+  display: grid;
+  grid-template-columns: 220px minmax(600px, 1fr);
+}
+
+.motion-editor-scope .me-ruler-row {
+  position: sticky;
+  order: -10000;
+  top: 0;
+  z-index: 4;
+  height: 30px;
+  background: #111214;
+}
+
+.motion-editor-scope .me-timeline-row {
+  min-height: 42px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #d8dce2;
+  text-align: left;
+}
+
+.motion-editor-scope .me-timeline-row:hover,
+.motion-editor-scope .me-timeline-row.me-selected {
+  background: #151719;
+}
+
+.motion-editor-scope .me-timeline-row.me-selected .me-track-label {
+  color: #f1f2f4;
+  box-shadow: inset 2px 0 #70ddb8;
+}
+
+.motion-editor-scope .me-track-label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border-right: 1px solid #24262a;
+  border-bottom: 1px solid #1d1f22;
+  color: #a8adb5;
+  border-top: 0;
+  border-left: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: default;
+}
+
+.motion-editor-scope .me-track-label strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-track-thumb {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #2c3138;
+  border-radius: 3px;
+  background: #111419;
+  color: #858c95;
+}
+
+.motion-editor-scope .me-track-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.motion-editor-scope .me-track-copy small {
+  max-width: 82px;
+  overflow: hidden;
+  color: #676d75;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-track-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.motion-editor-scope .me-track-control {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #737a83;
+  cursor: pointer;
+}
+.motion-editor-scope .me-track-control:hover {
+  color: #dce1e6;
+  background: #202329;
+}
+.motion-editor-scope .me-track-control.me-active {
+  color: #f0b26d;
+}
+.motion-editor-scope .me-track-label.me-track-hidden .me-track-copy {
+  opacity: 0.55;
+}
+
+.motion-editor-scope .me-track-time {
+  margin-left: auto;
+  color: #676d75;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-ruler-label {
+  color: #777d86;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.motion-editor-scope .me-ruler,
+.motion-editor-scope .me-track-lane {
+  position: relative;
+  border-bottom: 1px solid #1d1f22;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 59px,
+    rgba(255, 255, 255, 0.035) 60px
+  );
+}
+
+.motion-editor-scope .me-ruler-tick {
+  position: absolute;
+  top: 8px;
+  color: #676d75;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-playhead-marker {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: -1px;
+  left: var(--playhead-position);
+  width: 2px;
+  background: #f1f2f4;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-playhead-marker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 7px solid #f1f2f4;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  transform: translateX(-50%);
+}
+
+/* Drop Indicator */
+.motion-editor-scope .me-drop-indicator {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: -1px;
+  width: 3px;
+  background: #70ddb8;
+  transform: translateX(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(112, 221, 184, 0.42);
+}
+
+.motion-editor-scope .me-drop-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 8px solid #70ddb8;
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+  transform: translateX(-50%);
+}
+
+.motion-editor-scope .me-timeline-scroll.me-drop-target {
+  background: rgba(112, 221, 184, 0.05);
+}
+
+/* Timeline Clip Styles */
+.motion-editor-scope .me-clip-row .me-track-label {
+  background: #0d0e10;
+}
+
+.motion-editor-scope .me-timeline-clip {
+  border: 2px solid #70ddb8;
+  background: rgba(112, 221, 184, 0.1);
+}
+
+.motion-editor-scope .me-clip-trim-label {
+  position: absolute;
+  z-index: 1;
+  right: 22px;
+  bottom: 2px;
+  left: 4px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 8px;
+  line-height: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-timeline-clip.me-selected-clip {
+  border-color: #f1f2f4;
+  box-shadow: 0 0 0 1px #70ddb8;
+}
+
+.motion-editor-scope .me-transition-cut {
+  position: absolute;
+  z-index: 6;
+  top: 10px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid #515860;
+  border-radius: 4px;
+  background: #15181c;
+  color: #9ba1a9;
+  font-size: 12px;
+  line-height: 14px;
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.motion-editor-scope .me-transition-cut.me-has-transition {
+  border-color: #70ddb8;
+  background: #24594a;
+  color: #effff9;
+  box-shadow: 0 0 0 2px rgba(13, 14, 16, 0.85);
+}
+
+.motion-editor-scope .me-transition-cut.me-drop-ready {
+  width: 22px;
+  height: 22px;
+  top: 7px;
+  border-color: #70ddb8;
+  background: #244b40;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(112, 221, 184, 0.45);
+}
+
+.motion-editor-scope .me-transition-cut.me-selected-transition {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 2px #70ddb8,
+    0 0 12px rgba(112, 221, 184, 0.4);
+}
+
+.motion-editor-scope .me-clip-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+
+.motion-editor-scope .me-timeline-clip:hover .me-clip-delete {
+  opacity: 1;
+}
+
+.motion-editor-scope .me-clip-delete:hover {
+  background: #dc2626;
+}
+
+.motion-editor-scope .me-timeline-scrubber {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+
+.motion-editor-scope .me-track-lane {
+  min-height: 41px;
+}
+
+.motion-editor-scope .me-clip {
+  position: absolute;
+  top: 7px;
+  height: 27px;
+  min-width: 5px;
+  border: 1px solid #5b626a;
+  border-radius: 3px;
+  background: #34383d;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.motion-editor-scope .me-clip-media,
+.motion-editor-scope .me-clip-color,
+.motion-editor-scope .me-clip-text {
+  position: absolute;
+  inset: 1px;
+  overflow: hidden;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-clip-media {
+  background-color: #11151a;
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-size: auto 100%;
+  opacity: 0.8;
+}
+
+.motion-editor-scope .me-video-clip-media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1d2225;
+  color: #70ddb8;
+}
+
+.motion-editor-scope .me-clip-color {
+  opacity: 0.8;
+}
+
+.motion-editor-scope .me-clip-text {
+  padding: 5px 8px;
+  color: rgba(244, 247, 249, 0.9);
+  font-size: 10px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-editor-scope .me-clip-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.motion-editor-scope .me-clip-select:active {
+  cursor: grabbing;
+}
+
+.motion-editor-scope .me-clip-ghost {
+  position: absolute;
+  z-index: 3;
+  top: 6px;
+  height: 27px;
+  border: 1px dashed #70ddb8;
+  border-radius: 3px;
+  background: rgba(112, 221, 184, 0.12);
+  pointer-events: none;
+}
+.motion-editor-scope .me-clip-ghost.me-invalid {
+  border-color: #ff6b74;
+  background: rgba(255, 107, 116, 0.14);
+}
+
+.motion-editor-scope .me-trim-handle {
+  position: absolute;
+  z-index: 2;
+  top: -2px;
+  bottom: -2px;
+  width: min(8px, 30%);
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: #c7d0d9;
+  opacity: 0;
+  pointer-events: none;
+  cursor: ew-resize;
+}
+
+.motion-editor-scope .me-trim-start {
+  left: -1px;
+}
+
+.motion-editor-scope .me-trim-end {
+  right: -1px;
+}
+
+.motion-editor-scope .me-timeline-row:hover .me-trim-handle,
+.motion-editor-scope .me-timeline-row.me-selected .me-trim-handle,
+.motion-editor-scope .me-trim-handle:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.motion-editor-scope .me-element-clip.me-selected-clip {
+  border-color: #70ddb8;
+  background: #26473d;
+}
+
+.motion-editor-scope .me-audio-clip {
+  border-color: #725d86;
+  background: #4e405d;
+  overflow: hidden;
+}
+
+.motion-editor-scope .me-audio-waveform {
+  position: absolute;
+  inset: 2px;
+  color: rgba(224, 196, 255, 0.72);
+  opacity: 0.9;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-audio-waveform::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.24;
+}
+
+.motion-editor-scope .me-audio-waveform svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.motion-editor-scope .me-audio-waveform path {
+  fill: currentColor;
+}
+
+.motion-editor-scope .me-audio-waveform.me-loading {
+  animation: waveform-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.motion-editor-scope .me-audio-clip.me-muted .me-audio-waveform {
+  opacity: 0.28;
+}
+
+.motion-editor-scope .me-audio-clip-label {
+  z-index: 1;
+  text-shadow: 0 1px 3px rgba(24, 16, 32, 0.95);
+}
+
+@keyframes waveform-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+.motion-editor-scope .me-mask-select {
+  min-height: 34px;
+  width: 100%;
+}
+
+.motion-editor-scope .me-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 10px;
+  color: #b6bbc2;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-toggle-row input {
+  accent-color: #70ddb8;
+}
+
+.motion-editor-scope .me-keyframe-marker {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid #111318;
+  border-radius: 1px;
+  background: #f4b860;
+  box-shadow: 0 0 0 1px rgba(244, 184, 96, 0.22);
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.motion-editor-scope .me-keyframe-marker:hover,
+.motion-editor-scope .me-keyframe-marker.me-selected-keyframe {
+  background: #fff1c9;
+  box-shadow: 0 0 0 2px #f4b860;
+}
+
+.motion-editor-scope .me-drag-keyframe {
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-keyframe-add {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid #c58c3d;
+  border-radius: 50%;
+  background: #3b2b16;
+  color: #ffe2aa;
+  font-size: 12px;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  opacity: 0;
+}
+.motion-editor-scope .me-timeline-row:hover .me-keyframe-add,
+.motion-editor-scope .me-timeline-row.me-selected .me-keyframe-add {
+  opacity: 1;
+}
+.motion-editor-scope .me-keyframe-add:hover {
+  background: #4a3519;
+}
+
+.motion-editor-scope .me-keyframe-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.motion-editor-scope .me-keyframe-controls .me-timeline-command {
+  flex: 1;
+}
+.motion-editor-scope .me-keyframe-controls .me-number-input-wrapper {
+  width: 84px;
+}
+.motion-editor-scope .me-easing-input {
+  margin-top: 8px;
+  min-height: 32px;
+}
+
+.motion-editor-scope .me-track-lane::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: var(--playhead-position);
+  width: 1px;
+  background: #f1f2f4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.motion-editor-scope .me-danger-btn:hover {
+  border-color: #714044;
+  background: #2b1719;
+  color: #ff9da5;
+}
+
+/* Timeline-local palette: neutral tracks with mint interaction feedback. */
+.motion-editor-scope .me-timeline-panel .me-timeline-snap-guide {
+  background: #70ddb8;
+  box-shadow: 0 0 8px rgba(112, 221, 184, 0.32);
+}
+
+.motion-editor-scope .me-timeline-panel .me-icon-btn.me-active {
+  border-color: rgba(112, 221, 184, 0.38);
+  background: rgba(112, 221, 184, 0.12);
+  color: #91e8ca;
+}

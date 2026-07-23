@@ -1,0 +1,990 @@
+/* Shared visual-system overrides. All selectors use the me- namespace so they cannot style nested child components accidentally. */
+.motion-editor-scope .me-motion-editor {
+  --accent: #0a84ff;
+  --hairline: rgba(255, 255, 255, 0.08);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial,
+    sans-serif;
+  background: linear-gradient(180deg, #111113 0%, #0e0e10 24%, #0e0e10 100%);
+}
+
+.motion-editor-scope .me-workbench,
+.motion-editor-scope .me-timeline-panel {
+  border-color: var(--hairline);
+}
+
+.motion-editor-scope .me-workbench {
+  grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px;
+}
+.motion-editor-scope .me-workbench.me-chat-open {
+  grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px;
+}
+
+.motion-editor-scope .me-nav-rail {
+  position: relative;
+  z-index: 30;
+  width: 60px;
+  padding: 10px;
+  gap: 6px;
+  background: rgba(18, 18, 20, 0.96);
+  border-right: 1px solid var(--hairline);
+}
+
+.motion-editor-scope .me-nav-item {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.motion-editor-scope .me-nav-item:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+.motion-editor-scope .me-nav-item.me-active {
+  color: var(--accent);
+  background: rgba(10, 132, 255, 0.14);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.motion-editor-scope .me-nav-settings {
+  margin-top: auto;
+}
+.motion-editor-scope .me-nav-item::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  z-index: 100;
+  padding: 6px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: #242428;
+  color: #f7f7f8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+.motion-editor-scope .me-nav-item:hover::after,
+.motion-editor-scope .me-nav-item:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.motion-editor-scope .me-content-panel,
+.motion-editor-scope .me-properties-panel,
+.motion-editor-scope .me-timeline-toolbar,
+.motion-editor-scope .me-panel-header,
+.motion-editor-scope .me-stage-meta {
+  background: rgba(20, 20, 23, 0.92);
+  border-color: var(--hairline);
+}
+.motion-editor-scope .me-chat-drawer,
+.motion-editor-scope .me-preview-container {
+  background: linear-gradient(180deg, #111114 0%, #0e0e10 42%, #0c0c0e 100%);
+}
+.motion-editor-scope .me-panel-header,
+.motion-editor-scope .me-stage-meta,
+.motion-editor-scope .me-timeline-toolbar,
+.motion-editor-scope .me-timeline-resizer,
+.motion-editor-scope .me-track-label,
+.motion-editor-scope .me-ruler,
+.motion-editor-scope .me-track-lane,
+.motion-editor-scope .me-selection-summary {
+  border-color: var(--hairline);
+}
+.motion-editor-scope .me-properties-panel {
+  padding: 16px;
+}
+.motion-editor-scope .me-panel-title {
+  color: #f5f5f7;
+  font-size: 12px;
+  text-transform: none;
+}
+.motion-editor-scope .me-primary-properties {
+  padding-top: 2px;
+}
+.motion-editor-scope .me-timing-row .me-property-group {
+  min-width: 0;
+}
+.motion-editor-scope .me-property-unavailable {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  color: #77777f;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+}
+.motion-editor-scope .me-more-options {
+  margin: 4px 0 20px;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.motion-editor-scope .me-more-options summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 2px;
+  color: #aaaab1;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.motion-editor-scope .me-more-options summary::-webkit-details-marker {
+  display: none;
+}
+.motion-editor-scope .me-more-options summary::before {
+  content: '›';
+  color: #72727a;
+  font-size: 16px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition:
+    transform 0.18s ease,
+    color 0.18s ease;
+}
+.motion-editor-scope .me-more-options summary:hover {
+  color: #fff;
+}
+.motion-editor-scope .me-more-options[open] summary {
+  color: var(--accent);
+}
+.motion-editor-scope .me-more-options[open] summary::before {
+  color: var(--accent);
+  transform: rotate(90deg);
+}
+.motion-editor-scope .me-more-options-content {
+  padding: 6px 0 4px;
+  animation: options-reveal 0.18s ease both;
+}
+@keyframes options-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.motion-editor-scope .me-properties-empty {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  color: #696970;
+}
+.motion-editor-scope .me-properties-empty svg {
+  color: #4e4e55;
+}
+.motion-editor-scope .me-properties-empty strong {
+  color: #aaaab1;
+  font-size: 12px;
+}
+.motion-editor-scope .me-properties-empty span {
+  max-width: 210px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.motion-editor-scope .me-status-label,
+.motion-editor-scope .me-stage-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #8d8d95;
+  font-size: 11px;
+}
+.motion-editor-scope .me-status-label {
+  margin: 0 0 12px;
+}
+.motion-editor-scope .me-status-label span,
+.motion-editor-scope .me-stage-status span {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: status-spin 0.8s linear infinite;
+}
+.motion-editor-scope .me-stage-status {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 12;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(18, 18, 20, 0.88);
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.motion-editor-scope .me-timeline-empty {
+  order: 1000000;
+  min-width: var(--timeline-content-width, 820px);
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #686870;
+  font-size: 11px;
+  border-bottom: 1px solid var(--hairline);
+}
+.motion-editor-scope .me-clip-duplicate {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 7;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(14, 14, 16, 0.9);
+  color: #aeb0b7;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.14s ease,
+    color 0.14s ease,
+    background 0.14s ease;
+}
+.motion-editor-scope .me-clip:hover .me-clip-duplicate,
+.motion-editor-scope .me-clip-duplicate:focus-visible {
+  opacity: 1;
+}
+.motion-editor-scope .me-clip-duplicate:hover {
+  color: #fff;
+  background: var(--accent);
+}
+.motion-editor-scope .me-timeline-clip .me-clip-duplicate {
+  right: 23px;
+}
+
+.motion-editor-scope .me-delete-toast {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--timeline-height, 230px) + 20px);
+  z-index: 1200;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 11px 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: rgba(34, 34, 38, 0.96);
+  color: #ececf0;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(18px);
+  font-size: 12px;
+}
+.motion-editor-scope .me-delete-toast button {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(10, 132, 255, 0.14);
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+.motion-editor-scope .me-delete-toast button:hover {
+  background: rgba(10, 132, 255, 0.24);
+}
+
+.motion-editor-scope .me-shared-property-note {
+  margin: -2px 0 14px;
+  color: #696970;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.motion-editor-scope .me-timeline-snap-guide {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  bottom: -100vh;
+  width: 1px;
+  background: var(--accent);
+  opacity: 0.72;
+  transform: translateX(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(10, 132, 255, 0.42);
+}
+.motion-editor-scope .me-clip-action {
+  position: absolute;
+  top: 3px;
+  z-index: 8;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(14, 14, 16, 0.92);
+  color: #b8bac1;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.14s ease,
+    color 0.14s ease,
+    background 0.14s ease;
+}
+.motion-editor-scope .me-clip:hover .me-clip-action,
+.motion-editor-scope .me-clip-action:focus-visible {
+  opacity: 1;
+}
+.motion-editor-scope .me-clip-duplicate {
+  right: 45px;
+}
+.motion-editor-scope .me-clip-more {
+  right: 24px;
+}
+.motion-editor-scope .me-clip-delete {
+  right: 3px;
+}
+.motion-editor-scope .me-clip-duplicate:hover,
+.motion-editor-scope .me-clip-more:hover {
+  color: #fff;
+  background: var(--accent);
+}
+.motion-editor-scope .me-clip-delete:hover {
+  color: #fff;
+  background: #c43b45;
+}
+.motion-editor-scope .me-toast-separator {
+  color: #77777f;
+  margin-left: auto;
+}
+.motion-editor-scope .me-delete-toast {
+  gap: 8px;
+}
+
+/* Final matte refinement and strict rail/panel containment. */
+.motion-editor-scope .me-workbench,
+.motion-editor-scope .me-workbench.me-chat-open {
+  grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0e0e10;
+}
+.motion-editor-scope .me-workbench.me-chat-open {
+  grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px;
+}
+.motion-editor-scope .me-nav-rail {
+  grid-column: 1;
+  box-sizing: border-box;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  overflow: visible;
+  background: #111113;
+  border-right: 1px solid var(--hairline);
+}
+.motion-editor-scope .me-content-panel {
+  grid-column: 2;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 260px;
+  contain: paint;
+  background: #151517;
+  border-right: 1px solid var(--hairline);
+}
+.motion-editor-scope .me-panel-header {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px 14px;
+  background: #151517;
+}
+.motion-editor-scope .me-panel-tabs {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: 10px;
+}
+.motion-editor-scope .me-panel-tab {
+  height: 30px;
+  padding: 0 1px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  color: #77777f;
+  background: transparent;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+.motion-editor-scope .me-panel-tab:hover {
+  color: #c9c9ce;
+  background: transparent;
+}
+.motion-editor-scope .me-panel-tab.me-active {
+  color: #f1f1f3;
+  border-bottom-color: var(--accent);
+}
+
+.motion-editor-scope .me-motion-editor {
+  background: linear-gradient(180deg, #101012 0%, #0e0e10 28%, #0d0d0f 100%);
+}
+.motion-editor-scope .me-chat-drawer,
+.motion-editor-scope .me-preview-container {
+  background: linear-gradient(180deg, #111113 0%, #0e0e10 100%);
+}
+.motion-editor-scope .me-content-panel,
+.motion-editor-scope .me-properties-panel,
+.motion-editor-scope .me-timeline-toolbar,
+.motion-editor-scope .me-panel-header,
+.motion-editor-scope .me-stage-meta {
+  backdrop-filter: none;
+}
+.motion-editor-scope .me-chat-drawer .ai-chat-panel,
+.motion-editor-scope .me-preview-canvas,
+.motion-editor-scope .me-dialog,
+.motion-editor-scope .me-preset-card:hover,
+.motion-editor-scope .me-delete-toast,
+.motion-editor-scope .me-stage-status {
+  box-shadow: none;
+}
+.motion-editor-scope .me-preview-canvas {
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+.motion-editor-scope .me-assistant-expand {
+  border-color: var(--hairline);
+  background: #1a1a1d;
+  color: #a9a9b0;
+}
+.motion-editor-scope .me-assistant-expand:hover {
+  background: #212125;
+  color: #fff;
+}
+.motion-editor-scope .me-nav-item {
+  border-radius: 8px;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease;
+}
+.motion-editor-scope .me-nav-item.me-active {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: none;
+}
+.motion-editor-scope .me-nav-item::after {
+  border-radius: 6px;
+  background: #242427;
+  box-shadow: none;
+}
+.motion-editor-scope .me-header-icon-btn,
+.motion-editor-scope .me-meta-btn,
+.motion-editor-scope .me-icon-btn,
+.motion-editor-scope .me-control-btn,
+.motion-editor-scope .me-timeline-command,
+.motion-editor-scope .me-property-align-actions button,
+.motion-editor-scope .me-clip-action {
+  border-color: var(--hairline);
+  background: #1b1b1e;
+  color: #aaaab1;
+  box-shadow: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+.motion-editor-scope .me-header-icon-btn:hover,
+.motion-editor-scope .me-meta-btn:hover,
+.motion-editor-scope .me-icon-btn:hover,
+.motion-editor-scope .me-control-btn:hover,
+.motion-editor-scope .me-timeline-command:hover,
+.motion-editor-scope .me-property-align-actions button:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #232327;
+  color: #f4f4f5;
+}
+.motion-editor-scope .me-header-icon-btn:active,
+.motion-editor-scope .me-meta-btn:active,
+.motion-editor-scope .me-icon-btn:active,
+.motion-editor-scope .me-control-btn:active,
+.motion-editor-scope .me-timeline-command:active {
+  background: #151517;
+}
+.motion-editor-scope .me-play-btn {
+  border-color: var(--hairline);
+  background: #eeeeef;
+  color: #111113;
+}
+.motion-editor-scope .me-play-btn:hover {
+  border-color: #fff;
+  background: #fff;
+  color: #09090a;
+}
+.motion-editor-scope .me-icon-btn.me-active {
+  border-color: rgba(10, 132, 255, 0.42);
+  background: rgba(10, 132, 255, 0.12);
+  color: #73baff;
+}
+
+.motion-editor-scope .me-media-dropzone {
+  min-height: 100%;
+  padding: 14px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #8d8d95;
+  text-align: left;
+  transition: background 0.16s ease;
+}
+.motion-editor-scope .me-media-dropzone.me-drag-active {
+  background: rgba(255, 255, 255, 0.035);
+  animation: none;
+}
+.motion-editor-scope .me-media-dropzone:has(.me-import-media-button:hover) {
+  border-color: transparent;
+}
+.motion-editor-scope .me-import-media-button {
+  width: auto;
+  align-self: flex-start;
+  border-color: var(--hairline);
+  background: #1c1c1f;
+  color: #ededf0;
+}
+.motion-editor-scope .me-import-media-button:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: #252529;
+}
+.motion-editor-scope .me-asset-item,
+.motion-editor-scope .me-audio-item,
+.motion-editor-scope .me-asset-card,
+.motion-editor-scope .me-preset-card,
+.motion-editor-scope .me-effect-item,
+.motion-editor-scope .me-selection-summary {
+  border-color: var(--hairline);
+  background: transparent;
+  box-shadow: none;
+}
+.motion-editor-scope .me-asset-card:hover,
+.motion-editor-scope .me-preset-card:hover,
+.motion-editor-scope .me-asset-item:hover,
+.motion-editor-scope .me-effect-item:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  transform: none;
+}
+.motion-editor-scope .me-asset-thumbnail {
+  background: #19191c;
+}
+.motion-editor-scope .me-folder-count {
+  background: #1d1d20;
+}
+.motion-editor-scope .me-layer-row.me-selected {
+  border-color: rgba(10, 132, 255, 0.3);
+  background: rgba(10, 132, 255, 0.09);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.motion-editor-scope .me-snap-guide,
+.motion-editor-scope .me-timeline-snap-guide,
+.motion-editor-scope .me-drop-indicator,
+.motion-editor-scope .me-playhead-marker {
+  box-shadow: none;
+}
+.motion-editor-scope .me-status-label span,
+.motion-editor-scope .me-stage-status span {
+  animation-duration: 1s;
+}
+.motion-editor-scope .me-stage-status {
+  border-radius: 7px;
+  background: #1b1b1e;
+  backdrop-filter: none;
+}
+.motion-editor-scope .me-delete-toast {
+  border-radius: 8px;
+  background: #222225;
+  backdrop-filter: none;
+}
+.motion-editor-scope .me-transition-cut.me-drop-ready,
+.motion-editor-scope .me-transition-cut.me-selected-transition {
+  box-shadow: none;
+}
+.motion-editor-scope .me-preset-option.me-active,
+.motion-editor-scope .me-easing-option.me-active {
+  box-shadow: none;
+}
+.motion-editor-scope .me-custom-slider:hover::-webkit-slider-thumb,
+.motion-editor-scope .me-custom-slider:hover::-moz-range-thumb {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-editor-scope .me-more-options-content,
+  .motion-editor-scope .me-status-label span,
+  .motion-editor-scope .me-stage-status span {
+    animation: none;
+  }
+}
+
+/* Illuminated matte controls and Motionly-native accent system. */
+.motion-editor-scope .me-motion-editor {
+  --accent: #78a8ff;
+  --accent-mint: #70ddb8;
+  --accent-gradient: linear-gradient(135deg, #5f8fe8 0%, #4eb392 100%);
+  font-family:
+    'Inter Variable',
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+.motion-editor-scope .me-header-icon-btn,
+.motion-editor-scope .me-meta-btn,
+.motion-editor-scope .me-icon-btn,
+.motion-editor-scope .me-control-btn,
+.motion-editor-scope .me-timeline-command,
+.motion-editor-scope .me-property-align-actions button,
+.motion-editor-scope .me-clip-action,
+.motion-editor-scope .me-assistant-expand,
+.motion-editor-scope .me-import-media-button {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1b1b1e;
+  box-shadow: none;
+}
+.motion-editor-scope .me-header-icon-btn:hover,
+.motion-editor-scope .me-meta-btn:hover,
+.motion-editor-scope .me-icon-btn:hover,
+.motion-editor-scope .me-control-btn:hover,
+.motion-editor-scope .me-timeline-command:hover,
+.motion-editor-scope .me-property-align-actions button:hover,
+.motion-editor-scope .me-assistant-expand:hover,
+.motion-editor-scope .me-import-media-button:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #242428;
+  box-shadow: none;
+}
+.motion-editor-scope .me-header-icon-btn:active,
+.motion-editor-scope .me-meta-btn:active,
+.motion-editor-scope .me-icon-btn:active,
+.motion-editor-scope .me-control-btn:active,
+.motion-editor-scope .me-timeline-command:active,
+.motion-editor-scope .me-property-align-actions button:active,
+.motion-editor-scope .me-assistant-expand:active,
+.motion-editor-scope .me-import-media-button:active {
+  background: #171719;
+  box-shadow: none;
+  transform: none;
+}
+.motion-editor-scope .me-nav-item.me-active {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #0a84ff;
+  box-shadow: none;
+}
+.motion-editor-scope .me-icon-btn.me-active,
+.motion-editor-scope .me-preset-option.me-active,
+.motion-editor-scope .me-easing-option.me-active {
+  border-color: rgba(120, 168, 255, 0.42);
+  background: rgba(10, 132, 255, 0.14);
+  color: #8fc5ff;
+  box-shadow: none;
+}
+.motion-editor-scope .me-layer-row.me-selected {
+  border-color: rgba(120, 168, 255, 0.34);
+  background: rgba(10, 132, 255, 0.1);
+  box-shadow: inset 2px 0 0 #78a8ff;
+}
+.motion-editor-scope .me-play-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #eeeeef;
+  box-shadow: none;
+}
+.motion-editor-scope .me-library-empty-state {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 12px;
+  text-align: center;
+}
+.motion-editor-scope .me-library-empty-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  background: #1d1d20;
+  color: #8c8c95;
+  box-shadow: none;
+}
+.motion-editor-scope .me-library-empty-state strong {
+  color: #e0e0e4;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.motion-editor-scope .me-library-empty-state > span:not(.me-library-empty-icon) {
+  max-width: 205px;
+  color: #7d7d86;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.motion-editor-scope .me-library-empty-state small {
+  max-width: 220px;
+  color: #5d5d65;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.motion-editor-scope .me-library-empty-state .me-import-media-button {
+  align-self: center;
+  min-width: 128px;
+  height: 34px;
+  margin: 7px 0 3px;
+  padding: 0 18px;
+  border-radius: 7px;
+  background: #242428;
+  color: #ededf0;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.motion-editor-scope .me-media-dropzone {
+  position: relative;
+  height: 100%;
+  padding: 0 4px;
+}
+.motion-editor-scope .me-media-dropzone.me-drag-active .me-library-empty-state {
+  background: rgba(10, 132, 255, 0.045);
+}
+
+.motion-editor-scope .me-workbench.me-chat-open {
+  grid-template-columns: 60px 260px 360px minmax(0, 1fr) 300px;
+}
+
+/* Quiet workspace grid, refined property controls, and logo-gradient interactions. */
+.motion-editor-scope .me-stage {
+  background-color: #0f0f11;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.motion-editor-scope .me-number-input,
+.motion-editor-scope .me-slider-value-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.motion-editor-scope .me-number-input::-webkit-inner-spin-button,
+.motion-editor-scope .me-number-input::-webkit-outer-spin-button,
+.motion-editor-scope .me-slider-value-input::-webkit-inner-spin-button,
+.motion-editor-scope .me-slider-value-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.motion-editor-scope .me-custom-slider {
+  height: 18px;
+  cursor: pointer;
+}
+.motion-editor-scope .me-custom-slider::-webkit-slider-track {
+  width: 100%;
+  height: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 999px;
+  background: #34343a;
+}
+.motion-editor-scope .me-custom-slider::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 999px;
+  background: #34343a;
+}
+.motion-editor-scope .me-custom-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent-gradient);
+}
+.motion-editor-scope .me-custom-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border: 2px solid #171719;
+  background: var(--accent-gradient);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+.motion-editor-scope .me-custom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #171719;
+  background: var(--accent-gradient);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+.motion-editor-scope .me-custom-slider:hover::-webkit-slider-thumb,
+.motion-editor-scope .me-custom-slider:hover::-moz-range-thumb {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(138, 180, 255, 0.12);
+}
+.motion-editor-scope .me-header-icon-btn:hover,
+.motion-editor-scope .me-meta-btn:hover,
+.motion-editor-scope .me-icon-btn:hover,
+.motion-editor-scope .me-control-btn:hover,
+.motion-editor-scope .me-timeline-command:hover,
+.motion-editor-scope .me-property-align-actions button:hover,
+.motion-editor-scope .me-assistant-expand:hover,
+.motion-editor-scope .me-import-media-button:hover {
+  border-color: rgba(138, 180, 255, 0.3);
+  background: linear-gradient(135deg, rgba(138, 180, 255, 0.16), rgba(124, 247, 197, 0.09));
+  color: #f5f8f7;
+}
+.motion-editor-scope .me-nav-item.me-active,
+.motion-editor-scope .me-icon-btn.me-active,
+.motion-editor-scope .me-preset-option.me-active,
+.motion-editor-scope .me-easing-option.me-active {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--accent-gradient);
+  color: #0d1618;
+  box-shadow: none;
+}
+.motion-editor-scope .me-layer-row.me-selected {
+  border-color: rgba(138, 180, 255, 0.34);
+  background: linear-gradient(90deg, rgba(138, 180, 255, 0.15), rgba(124, 247, 197, 0.07));
+  box-shadow: inset 2px 0 0 #8ab4ff;
+}
+.motion-editor-scope .me-media-dropzone.me-drag-active .me-library-empty-state {
+  background: linear-gradient(135deg, rgba(138, 180, 255, 0.06), rgba(124, 247, 197, 0.025));
+}
+
+/* Native range-track name in Chromium; keep selected glyphs white. */
+.motion-editor-scope .me-custom-slider {
+  height: 18px;
+  background: linear-gradient(#3a3a41, #3a3a41) center / 100% 4px no-repeat;
+}
+.motion-editor-scope .me-custom-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+.motion-editor-scope .me-custom-slider::-webkit-slider-thumb {
+  margin-top: -5px;
+}
+.motion-editor-scope .me-number-input[type='number'],
+.motion-editor-scope .me-slider-value-input[type='number'] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+.motion-editor-scope .me-number-input[type='number']::-webkit-inner-spin-button,
+.motion-editor-scope .me-number-input[type='number']::-webkit-outer-spin-button,
+.motion-editor-scope .me-slider-value-input[type='number']::-webkit-inner-spin-button,
+.motion-editor-scope .me-slider-value-input[type='number']::-webkit-outer-spin-button {
+  display: none;
+  margin: 0;
+  -webkit-appearance: none !important;
+}
+.motion-editor-scope .me-scrubbable-suffix {
+  width: auto;
+  height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: #71717a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 24px;
+  pointer-events: auto;
+  cursor: ns-resize;
+  user-select: none;
+}
+.motion-editor-scope .me-scrubbable-suffix:hover,
+.motion-editor-scope .me-scrubbable-suffix:focus-visible {
+  color: #a9d8f0;
+  outline: none;
+}
+.motion-editor-scope .me-nav-item.me-active,
+.motion-editor-scope .me-icon-btn.me-active,
+.motion-editor-scope .me-preset-option.me-active,
+.motion-editor-scope .me-easing-option.me-active {
+  color: #fff;
+}
+.motion-editor-scope .me-primary-align-group {
+  margin-bottom: 14px;
+}
+.motion-editor-scope .me-flat-align-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.motion-editor-scope .me-flat-align-actions button {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: #1b1b1e;
+}
+.motion-editor-scope .me-flat-align-actions button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 90;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: #29292d;
+  color: #f1f1f3;
+  font-size: 9.5px;
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 3px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+.motion-editor-scope .me-flat-align-actions button:hover::after,
+.motion-editor-scope .me-flat-align-actions button:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.motion-editor-scope .me-rotation-property {
+  padding-top: 2px;
+}

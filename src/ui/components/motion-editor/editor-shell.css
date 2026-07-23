@@ -1,0 +1,107 @@
+.motion-editor-scope {
+  display: contents;
+}
+.motion-editor-scope .me-motion-editor {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #09090a;
+  color: #f1f2f4;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.motion-editor-scope .me-motion-editor.me-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.motion-editor-scope .me-workbench {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 52px 260px 50px minmax(0, 1fr) 300px;
+}
+
+.motion-editor-scope .me-workbench.me-chat-open {
+  grid-template-columns: 52px 260px 324px minmax(0, 1fr) 300px;
+}
+
+.motion-editor-scope .me-chat-drawer {
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px), #0b0c0e;
+  background-size: 32px 32px;
+}
+
+.motion-editor-scope .me-chat-drawer .ai-chat-panel {
+  flex: 1;
+  height: auto;
+  border: 1px solid #2a2d33;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+.motion-editor-scope .me-chat-drawer.me-collapsed {
+  display: flex;
+  justify-content: center;
+  padding-top: 14px;
+}
+
+.motion-editor-scope .me-assistant-expand {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #244f78;
+  border-radius: 6px;
+  background: #111f2c;
+  color: #0a84ff;
+  cursor: pointer;
+}
+
+/* Navigation Rail */
+@media (max-width: 900px) {
+  .motion-editor-scope .me-workbench,
+  .motion-editor-scope .me-workbench.me-chat-open {
+    grid-template-columns: 1fr;
+  }
+
+  .motion-editor-scope .me-nav-rail,
+  .motion-editor-scope .me-content-panel,
+  .motion-editor-scope .me-chat-drawer,
+  .motion-editor-scope .me-chat-drawer.me-collapsed,
+  .motion-editor-scope .me-properties-panel {
+    display: none;
+  }
+
+  .motion-editor-scope .me-source-toggle {
+    right: 16px;
+  }
+
+  .motion-editor-scope .me-timeline-toolbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .motion-editor-scope .me-timeline-context {
+    display: none;
+  }
+
+  .motion-editor-scope .me-timeline-actions .me-audio-chip,
+  .motion-editor-scope .me-framecode {
+    display: none;
+  }
+}
+
+/* Premium editor surface */
