@@ -11,6 +11,12 @@
 </p>
 
 <p align="center">
+  <a href="https://www.producthunt.com/products/motionly">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202670&theme=dark" alt="Motionly on Product Hunt" height="54" />
+  </a>
+</p>
+
+<p align="center">
   <a href="https://www.npmjs.com/package/@coppsary/motionly">
   <img src="https://img.shields.io/npm/dm/%40coppsary%2Fmotionly?style=flat&logo=npm&logoColor=white" alt="npm Downloads">
 </a>
