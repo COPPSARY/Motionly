@@ -11,14 +11,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Svelte-5.56-FF3E00?style=flat&logo=svelte&logoColor=white" alt="Svelte">
-  <img src="https://img.shields.io/badge/Canvas-2D_Renderer-E34F26?style=flat&logo=html5&logoColor=white" alt="Canvas">
-  <img src="https://img.shields.io/badge/GSAP-3.15-0AE448?style=flat&logo=greensock&logoColor=white" alt="GSAP">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat" alt="License"></a>
-  <br>
+  <a href="https://www.npmjs.com/package/@coppsary/motionly">
+  <img src="https://img.shields.io/npm/dm/%40coppsary%2Fmotionly?style=flat&logo=npm&logoColor=white" alt="npm Downloads">
+</a>
   <a href="https://motionly.mintlify.app/"><img src="https://img.shields.io/badge/Docs-Mintlify-7C3AED?style=flat" alt="Documentation"></a>
   <a href="https://github.com/COPPSARY/Motionly"><img src="https://img.shields.io/github/stars/COPPSARY/Motionly?style=flat" alt="GitHub Stars"></a>
+   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat" alt="License"></a>
 </p>
 
 <p align="center">
