@@ -218,16 +218,16 @@ animate title {
       <h1>Motionly</h1>
       <a
         class="product-hunt-badge"
-        href="https://www.producthunt.com/products/motionly?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-motionly"
+        href="https://www.producthunt.com/products/motionly?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-motionly-2"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="View Motionly on Product Hunt"
       >
         <img
-          alt="Motionly - Motionly is an AI-native motion graphics editor. | Product Hunt"
+          alt="Motionly - AI-native motion graphics editor | Product Hunt"
           width="250"
           height="54"
-          src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1197499&amp;theme=dark&amp;t=1784188075155"
+          src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202670&amp;theme=dark&amp;t=1784818211382"
         />
       </a>
     </div>
@@ -574,8 +574,16 @@ animate title {
   .btn:active { background: #151517; }
   .btn-primary { border-color: #0a84ff; background: #0a84ff; color: #fff; }
   .btn-primary:hover { border-color: #218df7; background: #218df7; color: #fff; }
-  .product-hunt-badge { opacity: .48; filter: grayscale(1); transition: opacity .16s ease; }
-  .product-hunt-badge:hover { opacity: .78; }
+  .product-hunt-badge {
+    opacity: 1;
+    filter: none;
+    transition: opacity 0.16s ease;
+  }
+  .product-hunt-badge img {
+    width: 180px;
+    height: 39px;
+  }
+  .product-hunt-badge:hover { opacity: .9; }
 
 
   /* Subtly illuminated buttons with the Motionly logo palette. */

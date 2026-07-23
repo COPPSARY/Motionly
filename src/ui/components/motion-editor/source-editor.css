@@ -1,0 +1,124 @@
+.motion-editor-scope .me-source-toggle {
+  position: absolute;
+  right: 316px;
+  bottom: calc(var(--timeline-height) + 10px);
+  border: 1px solid #2c3035;
+  border-radius: 6px;
+  background: #111214;
+  color: #d8dce2;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-code-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--timeline-height);
+  background: rgba(5, 5, 6, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.motion-editor-scope .me-code-panel {
+  width: 90%;
+  max-width: 1200px;
+  height: 80%;
+  background: #111214;
+  border: 1px solid #2c3035;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.motion-editor-scope .me-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #24262a;
+}
+
+.motion-editor-scope .me-code-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f2f4;
+}
+
+.motion-editor-scope .me-close-btn {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid #2c3035;
+  border-radius: 6px;
+  color: #8e939b;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motion-editor-scope .me-close-btn:hover {
+  background: #202328;
+  color: #fff;
+  border-color: #3a3f46;
+}
+
+.motion-editor-scope .me-code-textarea {
+  flex: 1;
+  padding: 24px;
+  background: #111214;
+  border: none;
+  color: #e6e8ec;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+}
+
+.motion-editor-scope .me-code-textarea::placeholder {
+  color: #6d737c;
+}
+
+.motion-editor-scope .me-error-banner {
+  margin: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.28);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 12px;
+  font-family: monospace;
+}
