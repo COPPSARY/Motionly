@@ -1,0 +1,44 @@
+---
+title: Changelog
+description: New features, updates, and fixes for Motionly.
+---
+
+<Update label="July 24, 2026">
+
+The visual editor lands, along with a refreshed timeline, richer asset workflows, and dependable MP4 export.
+
+## New features
+
+**Visual editor**
+The Svelte-based editor is now the primary workflow, with scene, preview, properties, and timeline panels. Drag to move, use corner handles to scale, and tune position, rotation, opacity, color, timing, and easing without leaving the canvas. See the [UI guide](/editor/ui-guide).
+
+**Left navigation rail**
+A new icon-based rail groups your work into Media, Audio, Text, Effects, Scenes, Adjustments, and Settings tabs so you can jump between panels in one click.
+
+**Timeline clips with drag-and-drop**
+Drag assets from the Assets panel straight onto the timeline to create clips. Clips are persisted as first-class blocks in `.motion` alongside a new audio block for background tracks. See [Sequences](/motion-language/sequences).
+
+**Preset browser**
+Browse animation presets as visual cards with animated GIF thumbnails, then load with a confirmation dialog so nothing gets overwritten by accident. See [Presets](/animation/presets) and [Text presets](/animation/text-presets).
+
+**Organized Assets panel**
+Assets are now sorted into Audio and Images & Graphics folders. Click any asset to preview it without disrupting timeline playback.
+
+**Audio in `.motion`**
+Attach background audio to a project and it's saved directly in the `.motion` file with synchronized preview during playback.
+
+**MP4 export**
+Export MP4 files from the top toolbar with live progress feedback. See [Export overview](/export/overview) and [Formats](/export/formats).
+
+**BYOK AI Chat**
+Generate editable projects from your own API keys. OpenAI, Anthropic, OpenRouter, Google Gemini, Hugging Face, or a custom endpoint — keys stay in local storage. See [AI authoring](/agents/ai-authoring).
+
+## Updates
+
+- **Refreshed timeline styling** — clip blocks, trim handles, thumbnails, and a resizable playhead area for a cleaner editing surface.
+- **Polished properties panel** — custom sliders and styled inputs replace the earlier form controls.
+- **Direct save** — save opened `.motion` files (and the development-server project) in place, no re-export needed.
+- **Fullscreen preview and GitHub Star control** added to the top toolbar.
+- **One-click clip deletion** from the timeline.
+
+</Update>
