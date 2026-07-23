@@ -83,6 +83,12 @@
               "agents/ai-authoring",
               "agents/write-motionly-skill"
             ]
+          },
+          {
+            "group": "Changelog",
+            "pages": [
+              "changelog/overview"
+            ]
           }
         ]
       }
