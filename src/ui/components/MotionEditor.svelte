@@ -22,7 +22,18 @@
   import type { Asset, Clip, Element, EvaluatedElement, EvaluatedScene, Scene, Track } from '../../types/scene';
   import { combinePersistentTrackRows, packClipTrackLanes, packTimelineLanes } from '../timeline-lanes';
   import { alignRect, snapRect, type Alignment, type SnapGuides } from '../canvas-geometry';
-  import { moveKeyframe, removeKeyframe, seedKeyframes, setKeyframeEasing, upsertKeyframe } from '../keyframe-editing';
+  import {
+    animatedProperties,
+    hasKeyframeProperties,
+    keyframeOffsetAtTime,
+    mergeCoincidentKeyframes,
+    moveKeyframe,
+    removeKeyframe,
+    removeKeyframeProperties,
+    seedKeyframes,
+    setKeyframeEasing,
+    upsertKeyframe,
+  } from '../keyframe-editing';
   import { placeMediaClip, splitClip, type ClipTiming } from '../clip-timing';
   import {
     adjacentClipBoundaries,
@@ -59,6 +70,27 @@
   import './motion-editor/editor-shell.css';
   import './motion-editor/editor-theme.css';
 
+  const TIMING_PROPERTIES = new Set([
+    'start',
+    'duration',
+    'delay',
+    'track',
+    'mediaTime',
+    'mediaTrimOut',
+    'mediaVolume',
+  ]);
+  const DEFAULT_KEYFRAME_PROPERTIES = [
+    'x',
+    'y',
+    'scale',
+    'rotation',
+    'opacity',
+    'blur',
+    'size',
+    'color',
+    'fill',
+  ];
+
   export let code = '';
   export let onSave: () => void | Promise<void> = () => undefined;
   let canvas: HTMLCanvasElement;
@@ -80,8 +112,8 @@
   let totalDuration = 5;
   let animationFrameId: number | null = null;
   let dragState:
-    | { mode: 'move'; id: string; offsetX: number; offsetY: number; startX: number; startY: number }
-    | { mode: 'resize'; id: string; centerX: number; centerY: number; startDistance: number; startScale: number }
+    | { mode: 'move'; id: string; visualId: string; offsetX: number; offsetY: number; startX: number; startY: number }
+    | { mode: 'resize'; id: string; visualId: string; centerX: number; centerY: number; startDistance: number; startScale: number }
     | null = null;
   let snapGuides: SnapGuides = { vertical: null, horizontal: null };
   // Live ghost preview for dragging a clip or element layer on the timeline.
@@ -101,6 +133,9 @@
       }
     | null = null;
   let selectedKeyframeOffset: number | null = null;
+  let animatedPropertyNames: string[] = [];
+  let selectedKeyframeMarkerList: { offset: number; easing?: string; properties: string[] }[] = [];
+  let selectedAnimationTargetId = '';
   let moreOptionsOpen = false;
   let showCodeEditor = false;
   let selectedElementId = '';
@@ -151,6 +186,8 @@
   let deleteToastTimer: ReturnType<typeof setTimeout> | null = null;
   let deleteUndoSource: string | null = null;
   let deleteResultSource: string | null = null;
+  let keyframeNotice = '';
+  let keyframeNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 
 
 
@@ -165,7 +202,7 @@
     requestAnimationFrame(fitPreview);
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
+      const target = e.target instanceof Element ? e.target : null;
       const interactive = Boolean(target?.closest(
         'input, textarea, select, button, a, [contenteditable="true"], [role="button"], [role="slider"]'
       ));
@@ -190,7 +227,8 @@
           else play();
           break;
         case 'delete-selection':
-          deleteSelectedElement();
+          if (selectedKeyframeOffset !== null) deleteSelectedKeyframe();
+          else deleteSelectedElement();
           break;
         case 'duplicate-selection':
           duplicateSelected();
@@ -233,6 +271,7 @@
       audioWaveformLoadId += 1;
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (deleteToastTimer) clearTimeout(deleteToastTimer);
+      if (keyframeNoticeTimer) clearTimeout(keyframeNoticeTimer);
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
@@ -335,8 +374,13 @@
       currentFrame?.elements.find((element) => element.id === selectedClip?.id) ??
       null
     : null;
+  $: selectedAnimationTargetId = selectedElement?.id ?? selectedClip?.assetName ?? '';
   $: selectedAnimation =
-    scene?.animations.find((animation) => animation.target === selectedElement?.id) ?? null;
+    scene?.animations.find((animation) => animation.target === selectedAnimationTargetId) ?? null;
+  $: animatedPropertyNames =
+    code && selectedAnimationTargetId ? selectedAnimatedProperties() : [];
+  $: selectedKeyframeMarkerList =
+    code && selectedAnimationTargetId ? selectedKeyframeMarkers() : [];
   $: keyframeDragDelta =
     clipDrag?.kind === 'element' && clipDrag.id === selectedElementId
       ? clipDrag.ghostStart - timelineRange(clipDrag.id).start
@@ -1039,18 +1083,62 @@
 
 
 
+  function selectedAnimationTarget(): string {
+    return selectedAnimationTargetId;
+  }
+
+  function selectedEvaluatedElement(): EvaluatedElement | Element | null {
+    const id = selectedClip?.id ?? selectedElement?.id;
+    return currentFrame?.elements.find((element) => element.id === id) ??
+      selectedElement ??
+      selectedClipElement;
+  }
+
   function updateElementProperty(key: string, value: string | number | boolean) {
+    updateElementProperties(selectedAnimationTarget(), { [key]: value });
+  }
+
+  function updateElementProperties(
+    elementId: string,
+    updates: Record<string, string | number | boolean>
+  ) {
     if (!ast) return;
-    const target = selectedElement?.id ?? selectedClip?.assetName;
-    if (!target) return;
-    const node = ensureAssetElement(target);
-    if (!node) return;
-    node.properties = { ...node.properties, [key]: value };
+    const element = ensureAssetElement(elementId);
+    if (!element) return;
+    const animated = Object.fromEntries(
+      Object.entries(updates).filter(([key]) => isPropertyAnimated([key]))
+    );
+    const staticUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([key]) => !(key in animated))
+    );
+    if (Object.keys(staticUpdates).length) {
+      element.properties = { ...element.properties, ...staticUpdates };
+    }
+    if (Object.keys(animated).length) {
+      const animation = materializeSelectedAnimation();
+      if (animation) {
+        ensureSeededKeyframes(animation);
+        const offset = selectedAnimationOffset(animation);
+        animation.keyframes = upsertKeyframe(
+          animation.keyframes ?? [],
+          offset,
+          animated,
+          selectedKeyframeTolerance(animation)
+        );
+        animation.from = {};
+        animation.to = {};
+        selectedKeyframeOffset = offset;
+      }
+    }
     code = serializeProgram(ast);
   }
 
-  function selectedVisualProperty(key: string, fallback: number): number {
-    return numericProperty(selectedElement ?? selectedClipElement, key, fallback);
+  function selectedVisualProperty(key: string, fallback: number, _time = currentTime): number {
+    return numericProperty(selectedEvaluatedElement(), key, fallback);
+  }
+
+  function selectedVisualStringProperty(key: string, fallback: string): string {
+    return stringProperty(selectedEvaluatedElement(), key, fallback);
   }
 
   function handlePropertyScrubKey(event: KeyboardEvent, key: string, fallback: number, minimum = Number.NEGATIVE_INFINITY) {
@@ -1124,16 +1212,6 @@
     code = serializeProgram(ast);
   }
 
-  function updateElementProperties(elementId: string, updates: Record<string, string | number | boolean>) {
-    if (!ast) return;
-    const node = ast.body.find(
-      (item): item is ElementNode => item.type === 'Element' && item.name === elementId
-    );
-    if (!node) return;
-    node.properties = { ...node.properties, ...updates };
-    code = serializeProgram(ast);
-  }
-
   function nudgeSelectedElement(x: number, y: number) {
     if (!selectedElement) return;
     updateElementProperties(selectedElement.id, {
@@ -1160,9 +1238,11 @@
         if (corners.some(([x, y]) => Math.hypot(point.x - x, point.y - y) <= handleRadius)) {
           const centerX = bounds.x + bounds.width / 2;
           const centerY = bounds.y + bounds.height / 2;
+          const visualId = selectedClip?.id ?? selectedVisual.id;
           dragState = {
             mode: 'resize',
-            id: selectedElement?.id ?? selectedClip?.assetName ?? selectedVisual.id,
+            id: selectedAnimationTarget() || selectedVisual.id,
+            visualId,
             centerX,
             centerY,
             startDistance: Math.max(1, Math.hypot(point.x - centerX, point.y - centerY)),
@@ -1183,12 +1263,16 @@
     pause();
     const targetId = stringProperty(element, 'textGroup', element.id);
     selectElement(targetId, false);
-    const target = scene.elements.find((item) => item.id === targetId);
+    const target =
+      currentFrame?.elements.find((item) => item.id === targetId) ??
+      scene.elements.find((item) => item.id === targetId);
     if (!target) return;
+    const sourceTarget = scene.clips.find((clip) => clip.id === targetId)?.assetName ?? targetId;
     const center = elementCenter(target);
     dragState = {
       mode: 'move',
-      id: targetId,
+      id: sourceTarget,
+      visualId: targetId,
       offsetX: point.x - center.x,
       offsetY: point.y - center.y,
       startX: numericProperty(target, 'x', 0),
@@ -1200,11 +1284,13 @@
   function handleCanvasPointerMove(event: PointerEvent) {
     if (!dragState || !scene) return;
     const point = pointerToCanvas(event);
-    const element = scene.elements.find((item) => item.id === dragState?.id);
+    const element =
+      currentFrame?.elements.find((item) => item.id === dragState?.visualId) ??
+      scene.elements.find((item) => item.id === dragState?.visualId);
     if (!element) return;
     if (dragState.mode === 'resize') {
       const distance = Math.hypot(point.x - dragState.centerX, point.y - dragState.centerY);
-      updateElementProperties(element.id, { scale: Number(Math.max(0.05, dragState.startScale * distance / dragState.startDistance).toFixed(3)) });
+      updateElementProperties(dragState.id, { scale: Number(Math.max(0.05, dragState.startScale * distance / dragState.startDistance).toFixed(3)) });
       return;
     }
     const centered = isCentered(element);
@@ -1235,7 +1321,7 @@
     snapGuides = snapped.guides;
     nextX += snapped.rect.x - proposedBounds.x;
     nextY += snapped.rect.y - proposedBounds.y;
-    updateElementProperties(element.id, { x: Math.round(nextX), y: Math.round(nextY) });
+    updateElementProperties(dragState.id, { x: Math.round(nextX), y: Math.round(nextY) });
   }
 
   function handleCanvasPointerUp(event: PointerEvent) {
@@ -2259,9 +2345,10 @@
   }
 
   function selectedAnimationAst(): AnimationNode | null {
-    if (!ast || !selectedElement) return null;
+    const target = selectedAnimationTarget();
+    if (!ast || !target) return null;
     return ast.body.find(
-      (node): node is AnimationNode => node.type === 'Animation' && node.target === selectedElement.id
+      (node): node is AnimationNode => node.type === 'Animation' && node.target === target
     ) ?? null;
   }
 
@@ -2271,14 +2358,23 @@
   // their real keyframes; preset-driven animations (animation/textAnimation)
   // surface their compiled start/end (or keyframes) so every animated element
   // shows editable keyframes.
-  function selectedKeyframeMarkers(): { offset: number; easing?: string }[] {
+  function selectedKeyframeMarkers(): { offset: number; easing?: string; properties: string[] }[] {
     const node = selectedAnimationAst();
     if (node?.keyframes?.length)
-      return node.keyframes.map((frame) => ({ offset: frame.offset, easing: frame.easing }));
+      return node.keyframes.map((frame) => ({
+        offset: frame.offset,
+        easing: frame.easing,
+        properties: Object.keys(frame.properties),
+      }));
     if (node) {
       const animated =
         Object.keys(node.from ?? {}).length > 0 || Object.keys(node.to ?? {}).length > 0;
-      if (animated) return [{ offset: 0 }, { offset: 1 }];
+      if (animated) {
+        return [
+          { offset: 0, properties: Object.keys(node.from ?? {}) },
+          { offset: 1, properties: Object.keys(node.to ?? {}) },
+        ];
+      }
     }
     // Preset-driven animation compiled into the scene graph.
     if (selectedAnimation) {
@@ -2286,8 +2382,12 @@
         return selectedAnimation.keyframes.map((frame) => ({
           offset: frame.offset,
           easing: frame.easing,
+          properties: Object.keys(frame.properties),
         }));
-      return [{ offset: 0 }, { offset: 1 }];
+      return [
+        { offset: 0, properties: Object.keys(selectedAnimation.from ?? {}) },
+        { offset: 1, properties: Object.keys(selectedAnimation.to ?? {}) },
+      ];
     }
     return [];
   }
@@ -2298,14 +2398,15 @@
    * timing and easing changes persist. Conversion is intentionally best-effort.
    */
   function materializeSelectedAnimation(): AnimationNode | null {
-    if (!ast || !selectedElement) return null;
+    const target = selectedAnimationTarget();
+    if (!ast || !target) return null;
     const existing = selectedAnimationAst();
     if (existing) return existing;
     const compiled = selectedAnimation;
     if (!compiled) return null;
     const created: AnimationNode = {
       type: 'Animation',
-      target: selectedElement.id,
+      target,
       from: { ...(compiled.from ?? {}) },
       to: { ...(compiled.to ?? {}) },
       keyframes: (compiled.keyframes ?? []).map((frame) => ({
@@ -2319,7 +2420,7 @@
     };
     const elementNode = ast.body.find(
       (candidate): candidate is ElementNode =>
-        candidate.type === 'Element' && candidate.name === selectedElement!.id
+        candidate.type === 'Element' && candidate.name === target
     );
     if (elementNode) {
       const props = { ...elementNode.properties };
@@ -2331,9 +2432,109 @@
     return created;
   }
 
+  function createSelectedAnimation(): AnimationNode | null {
+    const target = selectedAnimationTarget();
+    if (!ast || !target) return null;
+    const created: AnimationNode = {
+      type: 'Animation',
+      target,
+      from: {},
+      to: {},
+      keyframes: [],
+      delay: selectedClip?.start ?? 0,
+      duration: selectedClip?.duration ?? totalDuration,
+      easing: 'power3.out',
+    };
+    ast.body.push(created);
+    return created;
+  }
+
+  function selectedAnimationTiming(node: AnimationNode): { delay: number; duration: number } {
+    if (selectedAnimation?.target === node.target) {
+      return { delay: selectedAnimation.delay, duration: selectedAnimation.duration };
+    }
+    const delay = Number.parseFloat(String(node.delay ?? 0));
+    const duration = Number.parseFloat(String(node.duration ?? totalDuration));
+    return {
+      delay: Number.isFinite(delay) ? delay : 0,
+      duration: Number.isFinite(duration) && duration > 0 ? duration : totalDuration,
+    };
+  }
+
+  function selectedAnimationOffset(node: AnimationNode): number {
+    const timing = selectedAnimationTiming(node);
+    return keyframeOffsetAtTime(currentTime, timing.delay, timing.duration);
+  }
+
+  function selectedKeyframeTolerance(node: AnimationNode): number {
+    const { duration } = selectedAnimationTiming(node);
+    return 0.5 / Math.max(1, duration * (scene?.canvas.fps ?? 60));
+  }
+
   /** Convert a from/to animation into explicit keyframes so edits persist. */
   function ensureSeededKeyframes(node: AnimationNode): void {
-    if (!node.keyframes?.length) node.keyframes = seedKeyframes(node.keyframes, node.from, node.to);
+    if (
+      !node.keyframes?.length &&
+      (Object.keys(node.from ?? {}).length || Object.keys(node.to ?? {}).length)
+    ) {
+      node.keyframes = seedKeyframes(node.keyframes, node.from, node.to);
+      node.from = {};
+      node.to = {};
+    }
+  }
+
+  function removeEmptyAnimation(node: AnimationNode) {
+    if (
+      ast &&
+      !node.keyframes?.length &&
+      !Object.keys(node.from ?? {}).length &&
+      !Object.keys(node.to ?? {}).length
+    ) {
+      ast.body = ast.body.filter((candidate) => candidate !== node);
+    }
+  }
+
+  function selectedAnimatedProperties(): string[] {
+    const node = selectedAnimationAst();
+    if (node) {
+      return [...new Set([
+        ...animatedProperties(node.keyframes),
+        ...Object.keys(node.from ?? {}),
+        ...Object.keys(node.to ?? {}),
+      ])];
+    }
+    if (!selectedAnimation) return [];
+    return [...new Set([
+      ...animatedProperties(selectedAnimation.keyframes),
+      ...Object.keys(selectedAnimation.from ?? {}),
+      ...Object.keys(selectedAnimation.to ?? {}),
+    ])];
+  }
+
+  function isPropertyAnimated(properties: string[]): boolean {
+    const animated = new Set(selectedAnimatedProperties());
+    return properties.some((property) => animated.has(property));
+  }
+
+  function hasPropertyKeyframeAtPlayhead(properties: string[]): boolean {
+    const node = selectedAnimationAst();
+    if (!node) return false;
+    const offset = selectedAnimationOffset(node);
+    if (hasKeyframeProperties(node.keyframes, offset, properties, selectedKeyframeTolerance(node))) {
+      return true;
+    }
+    if (Math.abs(offset) < 1e-6) return properties.every((property) => property in (node.from ?? {}));
+    if (Math.abs(offset - 1) < 1e-6) return properties.every((property) => property in (node.to ?? {}));
+    return false;
+  }
+
+  function showKeyframeNotice(message: string) {
+    if (keyframeNoticeTimer) clearTimeout(keyframeNoticeTimer);
+    keyframeNotice = message;
+    keyframeNoticeTimer = setTimeout(() => {
+      keyframeNotice = '';
+      keyframeNoticeTimer = null;
+    }, 1600);
   }
 
   function keyframeEasingAt(offset: number | null): string {
@@ -2355,120 +2556,177 @@
   function deleteKeyframeAt(event: Event, offset: number) {
     event.preventDefault();
     event.stopPropagation();
-    const node = selectedAnimationAst();
-    if (!ast || !node?.keyframes?.length) return;
+    const node = materializeSelectedAnimation();
+    if (!ast || !node) return;
+    ensureSeededKeyframes(node);
+    if (!node.keyframes?.length) return;
     node.keyframes = removeKeyframe(node.keyframes, offset);
+    removeEmptyAnimation(node);
     if (selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - offset) < 1e-6)
       selectedKeyframeOffset = null;
     code = serializeProgram(ast);
+    showKeyframeNotice('Keyframe deleted');
   }
 
   $: selectedKeyframeEasingValue =
     code && selectedKeyframeOffset !== null ? keyframeEasingAt(selectedKeyframeOffset) : '';
 
   function keyframeTime(offset: number): number {
-    return (selectedAnimation?.delay ?? 0) + offset * (selectedAnimation?.duration ?? 1);
+    const node = selectedAnimationAst();
+    const timing = node
+      ? selectedAnimationTiming(node)
+      : { delay: selectedAnimation?.delay ?? 0, duration: selectedAnimation?.duration ?? 1 };
+    return timing.delay + offset * timing.duration;
   }
 
   function capturedKeyframeProperties(keys?: string[]): Record<string, unknown> {
-    const evaluated = currentFrame?.elements.find((element) => element.id === selectedElement?.id);
-    const source = evaluated ? propertiesOf(evaluated) : selectedElement ? propertiesOf(selectedElement) : {};
-    const defaults = ['x', 'y', 'scale', 'rotation', 'opacity', 'blur'];
-    const names = keys?.length ? keys : defaults;
+    const source = selectedEvaluatedElement() ? propertiesOf(selectedEvaluatedElement()!) : {};
+    const element = ast?.body.find(
+      (node): node is ElementNode =>
+        node.type === 'Element' && node.name === selectedAnimationTarget()
+    );
+    const names = keys?.length
+      ? keys
+      : [
+          ...new Set([
+            ...DEFAULT_KEYFRAME_PROPERTIES,
+            ...Object.keys(element?.properties ?? {}),
+            ...selectedAnimatedProperties(),
+          ]),
+        ];
     return Object.fromEntries(
       names
-        .filter((key) => typeof source[key] === 'number' || typeof source[key] === 'string')
+        .filter((key) => {
+          const value = source[key];
+          return (
+            !TIMING_PROPERTIES.has(key) &&
+            (typeof value === 'number' ||
+              (typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgb'))))
+          );
+        })
         .map((key) => [key, source[key]])
     );
   }
 
   function addKeyframeAtPlayhead() {
-    if (!ast || !selectedElement) return;
-    let node = materializeSelectedAnimation();
-    if (!node) {
-      const base = capturedKeyframeProperties();
-      node = {
-        type: 'Animation',
-        target: selectedElement.id,
-        from: {},
-        to: {},
-        keyframes: [
-          { offset: 0, properties: { ...base } },
-          { offset: 1, properties: { ...base } },
-        ],
-        delay: 0,
-        duration: totalDuration,
-        easing: 'power3.out',
-      };
-      ast.body.push(node);
-    } else {
-      node.keyframes = seedKeyframes(node.keyframes, node.from, node.to);
-    }
-    const delay = selectedAnimation?.delay ?? Number(node.delay ?? 0);
-    const duration = selectedAnimation?.duration ?? (Number(node.duration ?? totalDuration) || totalDuration);
-    const offset = Math.min(1, Math.max(0, (currentTime - delay) / Math.max(duration, 1e-6)));
-    const propertyKeys = Array.from(
-      new Set((node.keyframes ?? []).flatMap((frame) => Object.keys(frame.properties)))
-    );
+    if (!ast || !selectedAnimationTarget()) return;
+    const node = materializeSelectedAnimation() ?? createSelectedAnimation();
+    if (!node) return;
+    ensureSeededKeyframes(node);
+    const offset = selectedAnimationOffset(node);
     node.keyframes = upsertKeyframe(
       node.keyframes ?? [],
       offset,
-      capturedKeyframeProperties(propertyKeys)
+      capturedKeyframeProperties(),
+      selectedKeyframeTolerance(node)
     );
     node.from = {};
     node.to = {};
     selectedKeyframeOffset = offset;
     code = serializeProgram(ast);
+    showKeyframeNotice('Keyframe created');
+  }
+
+  function togglePropertyKeyframe(properties: string[]) {
+    if (!ast || !selectedAnimationTarget()) return;
+    const node = materializeSelectedAnimation() ?? createSelectedAnimation();
+    if (!node) return;
+    ensureSeededKeyframes(node);
+    const offset = selectedAnimationOffset(node);
+    const tolerance = selectedKeyframeTolerance(node);
+    if (hasKeyframeProperties(node.keyframes, offset, properties, tolerance)) {
+      node.keyframes = removeKeyframeProperties(node.keyframes ?? [], offset, properties, tolerance);
+      removeEmptyAnimation(node);
+      selectedKeyframeOffset = null;
+      showKeyframeNotice(`${properties.join('/')} keyframe deleted`);
+    } else {
+      node.keyframes = upsertKeyframe(
+        node.keyframes ?? [],
+        offset,
+        capturedKeyframeProperties(properties),
+        tolerance
+      );
+      selectedKeyframeOffset = offset;
+      showKeyframeNotice(`${properties.join('/')} keyframe created`);
+    }
+    node.from = {};
+    node.to = {};
+    removeEmptyAnimation(node);
+    code = serializeProgram(ast);
   }
 
   function deleteSelectedKeyframe() {
-    const node = selectedAnimationAst();
+    const node = materializeSelectedAnimation();
     if (!node || selectedKeyframeOffset === null) return;
+    ensureSeededKeyframes(node);
     node.keyframes = removeKeyframe(node.keyframes ?? [], selectedKeyframeOffset);
+    removeEmptyAnimation(node);
     selectedKeyframeOffset = null;
     code = serializeProgram(ast!);
+    showKeyframeNotice('Keyframe deleted');
   }
 
   function dragKeyframeMarker(event: PointerEvent, offset: number) {
-    if (event.button !== 0 || !selectedAnimation) return;
+    if (event.button !== 0 || !selectedAnimationTarget()) return;
     event.preventDefault();
     event.stopPropagation();
     const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane');
     if (!lane) return;
-    // Materialize preset/from-to animations into real keyframes before editing.
-    const seedNode = materializeSelectedAnimation();
-    if (seedNode && !seedNode.keyframes?.length) {
-      ensureSeededKeyframes(seedNode);
-    }
-    code = serializeProgram(ast!);
     const rect = lane.getBoundingClientRect();
-    const animationDelay = selectedAnimation.delay;
-    const animationDuration = selectedAnimation.duration;
-    let previousOffset = offset;
-    selectedKeyframeOffset = offset;
-    setTime(keyframeTime(offset));
+    const startX = event.clientX;
+    let node: AnimationNode | null = null;
+    let frame: NonNullable<AnimationNode['keyframes']>[number] | null = null;
+    let moved = false;
+    selectKeyframeMarker(offset);
     const move = (pointer: PointerEvent) => {
+      if (!moved && Math.abs(pointer.clientX - startX) < 3) return;
+      if (!moved) {
+        node = materializeSelectedAnimation();
+        if (!node) return;
+        ensureSeededKeyframes(node);
+        frame = node.keyframes?.reduce<typeof frame>(
+          (closest, candidate) =>
+            !closest || Math.abs(candidate.offset - offset) < Math.abs(closest.offset - offset)
+              ? candidate
+              : closest,
+          null
+        ) ?? null;
+        if (!frame) return;
+        moved = true;
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'ew-resize';
+      }
+      if (!node || !frame) return;
+      const timing = selectedAnimationTiming(node);
       const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
       const snappedTime = snapTimelineTime(raw, rect.width);
-      const nextOffset = Math.min(
-        1,
-        Math.max(0, (snappedTime - animationDelay) / Math.max(animationDuration, 1e-6))
-      );
-      const node = selectedAnimationAst();
-      if (!node) return;
-      node.keyframes = moveKeyframe(node.keyframes ?? [], previousOffset, nextOffset);
-      previousOffset = nextOffset;
+      const nextOffset = keyframeOffsetAtTime(snappedTime, timing.delay, timing.duration);
+      frame.offset = nextOffset;
+      node.keyframes = [...(node.keyframes ?? [])].sort((left, right) => left.offset - right.offset);
       selectedKeyframeOffset = nextOffset;
-      code = serializeProgram(ast!);
+      currentTime = quantizeTimelineTime(timing.delay + nextOffset * timing.duration);
     };
     const stop = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
       window.removeEventListener('pointercancel', stop);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      timelineSnapGuide = null;
+      if (moved && node && ast) {
+        node.keyframes = mergeCoincidentKeyframes(node.keyframes ?? []);
+        code = serializeProgram(ast);
+        showKeyframeNotice('Keyframe moved');
+      }
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop);
     window.addEventListener('pointercancel', stop);
+  }
+
+  function selectKeyframeMarker(offset: number) {
+    selectedKeyframeOffset = offset;
+    setTime(keyframeTime(offset));
   }
 
   function updateAnimationProperty(key: keyof AnimationNode, value: string | number) {
@@ -2580,6 +2838,8 @@
     node.keyframes = moveKeyframe(node.keyframes ?? [], selectedKeyframeOffset, next);
     selectedKeyframeOffset = next;
     code = serializeProgram(ast);
+    setTime(keyframeTime(next));
+    showKeyframeNotice('Keyframe moved');
   }
 
   function toggleTimelineSnap() {
@@ -2691,7 +2951,12 @@
       onRemoveTransition={removeSelectedTransition}
       onAlignSelected={alignSelected}
       {selectedVisualProperty}
+      {selectedVisualStringProperty}
+      {animatedPropertyNames}
+      {isPropertyAnimated}
+      {hasPropertyKeyframeAtPlayhead}
       onUpdateElementProperty={updateElementProperty}
+      onTogglePropertyKeyframe={togglePropertyKeyframe}
       onBeginPropertyScrub={beginPropertyScrub}
       onPropertyScrubKey={handlePropertyScrubKey}
       {timelineRange}
@@ -2772,7 +3037,7 @@
     onSeek={seek}
     {timelineTrackDisplayOrder}
     onUpdateTrack={updateTrack}
-    {selectedKeyframeMarkers}
+    selectedKeyframeMarkers={selectedKeyframeMarkerList}
     {keyframeTime}
     onMoveTimelineElement={moveTimelineElement}
     onSelectElement={selectElement}
@@ -2781,6 +3046,7 @@
     onDeleteElement={deleteElement}
     onTrimElement={trimElement}
     onDragKeyframe={dragKeyframeMarker}
+    onSelectKeyframe={selectKeyframeMarker}
     onDeleteKeyframeAt={deleteKeyframeAt}
     onAddKeyframe={addKeyframeAtPlayhead}
     onMoveTimelineAudio={moveTimelineAudio}
@@ -2798,6 +3064,7 @@
 
 <EditorFeedback
   {deleteToast}
+  {keyframeNotice}
   {showConfirmDialog}
   onUndoDelete={undoDelete}
   onCancelPreset={cancelLoadPreset}

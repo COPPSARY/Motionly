@@ -144,6 +144,49 @@
   margin-bottom: 0;
 }
 
+.motion-editor-scope .me-property-keyframe {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #555b64;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-property-keyframe:hover {
+  background: #202329;
+  color: #f4b860;
+}
+
+.motion-editor-scope .me-property-keyframe.me-animated-property {
+  color: #c58c3d;
+}
+
+.motion-editor-scope .me-property-keyframe.me-keyframe-at-playhead {
+  color: #fff1c9;
+  background: #3b2b16;
+}
+
+.motion-editor-scope .me-animated-properties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: -4px 0 10px;
+}
+
+.motion-editor-scope .me-animated-properties span {
+  padding: 3px 6px;
+  border: 1px solid #4b3920;
+  border-radius: 3px;
+  background: #211b13;
+  color: #e5b967;
+  font-size: 10px;
+}
+
 .motion-editor-scope .me-property-action {
   padding: 0;
   border: 0;

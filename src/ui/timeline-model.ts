@@ -1,11 +1,17 @@
 import type { AnimationNode, KeyframeNode } from '../types/parser';
+import {
+  keyframeOffsetAtTime as offsetAtTime,
+  moveKeyframe as moveFrames,
+  removeKeyframe as removeFrame,
+  upsertKeyframe as upsertFrame,
+} from './keyframe-editing';
 
 export const TIMELINE_SNAP_THRESHOLD_PX = 6;
 
 export function keyframeOffsetAtTime(time: number, animation: AnimationNode): number {
   const delay = finite(animation.delay, 0);
   const duration = Math.max(0.001, finite(animation.duration, 1));
-  return clamp((time - delay) / duration, 0, 1);
+  return offsetAtTime(time, delay, duration);
 }
 
 export function upsertKeyframe(
@@ -13,12 +19,7 @@ export function upsertKeyframe(
   offset: number,
   properties: Record<string, unknown>
 ): KeyframeNode[] {
-  const normalized = clamp(offset, 0, 1);
-  const frames = cloneKeyframes(animation.keyframes ?? []);
-  const existing = frames.find((frame) => Math.abs(frame.offset - normalized) < 0.0005);
-  if (existing) existing.properties = { ...existing.properties, ...properties };
-  else frames.push({ offset: normalized, properties: { ...properties } });
-  return sortKeyframes(frames);
+  return upsertFrame(animation.keyframes ?? [], offset, properties);
 }
 
 export function moveKeyframe(
@@ -26,17 +27,11 @@ export function moveKeyframe(
   currentOffset: number,
   nextOffset: number
 ): KeyframeNode[] {
-  const frames = cloneKeyframes(keyframes);
-  const frame = closestKeyframe(frames, currentOffset);
-  if (!frame) return frames;
-  frame.offset = clamp(nextOffset, 0, 1);
-  return sortKeyframes(frames);
+  return moveFrames(keyframes, currentOffset, nextOffset);
 }
 
 export function removeKeyframe(keyframes: KeyframeNode[], offset: number): KeyframeNode[] {
-  const frame = closestKeyframe(keyframes, offset);
-  if (!frame) return cloneKeyframes(keyframes);
-  return cloneKeyframes(keyframes).filter((candidate) => candidate.offset !== frame.offset);
+  return removeFrame(keyframes, offset);
 }
 
 export function snapTimelineTime(options: {
@@ -80,22 +75,6 @@ export function snapClipStart(options: {
     Math.abs(candidate) < Math.abs(best) ? candidate : best
   );
   return Math.abs(delta) <= threshold ? clamp(start + delta, 0, maxStart) : start;
-}
-
-function closestKeyframe(keyframes: KeyframeNode[], offset: number): KeyframeNode | undefined {
-  return keyframes.reduce<KeyframeNode | undefined>(
-    (best, frame) =>
-      !best || Math.abs(frame.offset - offset) < Math.abs(best.offset - offset) ? frame : best,
-    undefined
-  );
-}
-
-function cloneKeyframes(keyframes: KeyframeNode[]): KeyframeNode[] {
-  return keyframes.map((frame) => ({ offset: frame.offset, properties: { ...frame.properties } }));
-}
-
-function sortKeyframes(keyframes: KeyframeNode[]): KeyframeNode[] {
-  return keyframes.sort((left, right) => left.offset - right.offset);
 }
 
 function finite(value: unknown, fallback: number): number {

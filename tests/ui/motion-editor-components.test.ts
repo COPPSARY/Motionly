@@ -114,6 +114,7 @@ describe('motion editor leaf components', () => {
       target: host,
       props: {
         deleteToast: 'Deleted title',
+        keyframeNotice: 'Keyframe created',
         showConfirmDialog: true,
         onUndoDelete,
         onCancelPreset,
@@ -138,6 +139,7 @@ describe('motion editor leaf components', () => {
     expect(onUndoDelete).toHaveBeenCalledOnce();
     expect(onCancelPreset).toHaveBeenCalledOnce();
     expect(onConfirmPreset).toHaveBeenCalledOnce();
+    expect(host.querySelector('.me-keyframe-toast')?.textContent).toBe('Keyframe created');
 
     await unmount(instance);
   });
@@ -153,6 +155,7 @@ describe('MotionEditor integration', () => {
     vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
     vi.stubGlobal('cancelAnimationFrame', () => undefined);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
 
     const host = target();
     const instance = mount(MotionEditor, {
@@ -183,6 +186,113 @@ describe('MotionEditor integration', () => {
     expect(contentPanelCss).toContain('.me-panel-content');
     expect(contentPanelCss).not.toMatch(/(^|[\s,{>+~])\.panel-content\b/m);
     expect(brandPanelSource).toMatch(/\.panel-content\s*\{[^}]*padding:\s*14px/s);
+
+    await unmount(instance);
+  });
+
+  it('creates and updates position keyframes through the visual controls', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title { value "Title" x 0 y 0 }`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('.me-element-clip .me-clip-select'));
+    await tick();
+    click(host.querySelector('.me-keyframe-add'));
+    await tick();
+    expect(host.querySelector('.me-keyframe-add')).toBeNull();
+
+    const scrubber = host.querySelector<HTMLInputElement>('.me-timeline-scrubber');
+    if (!scrubber) throw new Error('Timeline scrubber missing');
+    scrubber.value = '1';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    const scaleInput = host.querySelector<HTMLInputElement>('[aria-label="Scale value"]');
+    if (!scaleInput) throw new Error('Scale input missing');
+    scaleInput.value = '2';
+    scaleInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    expect(host.querySelectorAll('.me-keyframe-marker')).toHaveLength(2);
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const beforeDelete = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(beforeDelete).toContain('50%');
+    expect(beforeDelete).toContain('scale 2');
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+
+    click(host.querySelector('[aria-label="Keyframe at 50 percent"]'));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    await tick();
+    expect(host.querySelectorAll('.me-keyframe-marker')).toHaveLength(1);
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const serialized = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(serialized).toContain('0%');
+    expect(serialized).not.toContain('50%');
+    expect(serialized).not.toContain('scale 2');
+
+    await unmount(instance);
+  });
+
+  it('shows the evaluated scale while the playhead moves between keyframes', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title { value "Title" x 0 y 0 scale 1 }
+animate title {
+  keyframes {
+    0% { scale 1 }
+    100% { scale 2 }
+  }
+  duration 2s
+  easing linear
+}`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('.me-element-clip .me-clip-select'));
+    const scrubber = host.querySelector<HTMLInputElement>('.me-timeline-scrubber');
+    if (!scrubber) throw new Error('Timeline scrubber missing');
+    scrubber.value = '1';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    expect(host.querySelector<HTMLInputElement>('[aria-label="Scale"]')?.value).toBe('1.5');
+    expect(host.querySelector<HTMLInputElement>('[aria-label="Scale value"]')?.value).toBe('1.50');
 
     await unmount(instance);
   });

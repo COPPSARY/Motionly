@@ -282,7 +282,8 @@
   right: 23px;
 }
 
-.motion-editor-scope .me-delete-toast {
+.motion-editor-scope .me-delete-toast,
+.motion-editor-scope .me-keyframe-toast {
   position: fixed;
   right: 20px;
   bottom: calc(var(--timeline-height, 230px) + 20px);
@@ -300,6 +301,10 @@
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(18px);
   font-size: 12px;
+}
+.motion-editor-scope .me-keyframe-toast {
+  min-width: 0;
+  border-color: rgba(244, 184, 96, 0.45);
 }
 .motion-editor-scope .me-delete-toast button {
   height: 28px;
@@ -379,7 +384,8 @@
   color: #77777f;
   margin-left: auto;
 }
-.motion-editor-scope .me-delete-toast {
+.motion-editor-scope .me-delete-toast,
+.motion-editor-scope .me-keyframe-toast {
   gap: 8px;
 }
 

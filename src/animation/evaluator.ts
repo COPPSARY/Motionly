@@ -296,45 +296,32 @@ function applyKeyframes(
 ): PropertyMap {
   if (keyframes.length === 0) return state;
 
-  const firstFrame = keyframes[0];
-  const lastFrame = keyframes[keyframes.length - 1];
-
-  if (!firstFrame || !lastFrame) return state;
-
-  if (progress <= firstFrame.offset) {
-    return { ...state, ...firstFrame.properties };
-  }
-
-  if (progress >= lastFrame.offset) {
-    return { ...state, ...lastFrame.properties };
-  }
-
   const next: PropertyMap = { ...state };
-  let left = firstFrame;
-  let right = lastFrame;
-
-  for (let index = 0; index < keyframes.length - 1; index += 1) {
-    const current = keyframes[index];
-    const nextFrame = keyframes[index + 1];
-
-    if (!current || !nextFrame) continue;
-
-    if (progress >= current.offset && progress <= nextFrame.offset) {
-      left = current;
-      right = nextFrame;
-      break;
-    }
-  }
-
-  const span = right.offset - left.offset || 1;
-  const segmentEasing = right.easing ?? easing;
-  const local = ease((progress - left.offset) / span, segmentEasing);
-  const keys = new Set([...Object.keys(left.properties), ...Object.keys(right.properties)]);
+  const keys = new Set(keyframes.flatMap((frame) => Object.keys(frame.properties)));
 
   for (const key of keys) {
-    const from = left.properties[key] ?? state[key] ?? 0;
-    const to = right.properties[key] ?? state[key] ?? 0;
-    next[key] = interpolateValue(from, to, local);
+    const propertyFrames = keyframes.filter((frame) => key in frame.properties);
+    const first = propertyFrames[0];
+    const last = propertyFrames[propertyFrames.length - 1];
+    if (!first || !last) continue;
+    if (progress <= first.offset || first === last) {
+      next[key] = first.properties[key]!;
+      continue;
+    }
+    if (progress >= last.offset) {
+      next[key] = last.properties[key]!;
+      continue;
+    }
+
+    for (let index = 0; index < propertyFrames.length - 1; index += 1) {
+      const left = propertyFrames[index];
+      const right = propertyFrames[index + 1];
+      if (!left || !right || progress < left.offset || progress > right.offset) continue;
+      const span = right.offset - left.offset || 1;
+      const local = ease((progress - left.offset) / span, right.easing ?? easing);
+      next[key] = interpolateValue(left.properties[key]!, right.properties[key]!, local);
+      break;
+    }
   }
 
   return next;
