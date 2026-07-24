@@ -109,7 +109,7 @@ describe('local CLI workflow', () => {
       const source = await response!.text();
       expect(source).toContain('value "demo"');
 
-      const editor = await fetch(`http://127.0.0.1:${port}/editor`);
+      const editor = await fetch(`http://127.0.0.1:${port}/`);
       const script = (await editor.text()).match(/<script[^>]+src="([^"]+)"/)?.[1];
       expect(script).toBeTruthy();
       const bundle = await fetch(`http://127.0.0.1:${port}${script}`);

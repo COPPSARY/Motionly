@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { CircleHelp, Download, FileText, FolderOpen, Save, Star } from 'lucide-svelte';
+  import { Download, FileText, FolderOpen, Save, Star } from 'lucide-svelte';
   import { appUrl } from '../app/routing';
   import MotionEditor from './components/MotionEditor.svelte';
 
@@ -257,9 +257,6 @@ animate title {
         <Download size={18} />
         <span class="action-label">{isExporting ? `Exporting ${Math.round(exportProgress * 100)}%` : 'Export MP4'}</span>
       </button>
-      <a class="btn welcome-btn" href={`${appUrl()}?welcome=1`} title="View welcome guide" aria-label="View welcome guide">
-        <CircleHelp size={18} />
-      </a>
       <a
         class="btn github-btn"
         href="https://github.com/COPPSARY/Motionly"
@@ -468,13 +465,6 @@ animate title {
     justify-content: center;
     padding: 8px 10px;
     box-sizing: border-box;
-    text-decoration: none;
-  }
-
-  .welcome-btn {
-    width: 36px;
-    justify-content: center;
-    padding: 0;
     text-decoration: none;
   }
 
