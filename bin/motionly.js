@@ -408,7 +408,7 @@ async function serveEditor(argv, projectFolder = null) {
   });
 
   server.listen(port, () => {
-    const url = `http://localhost:${port}${projectRoot ? '/editor' : ''}`;
+    const url = `http://localhost:${port}`;
     console.log(
       `\n  Motionly is running.\n  Open this URL in your browser: ${url}${projectRoot ? `\n  Project: ${projectRoot}` : ''}\n  Press Ctrl+C to stop.\n`
     );
