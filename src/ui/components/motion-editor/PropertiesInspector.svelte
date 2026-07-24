@@ -1,6 +1,6 @@
 <script lang="ts">
   import './properties-inspector.css';
-  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, FileImage, Sparkles, Square, Trash2, Type, Video, Wand2 } from 'lucide-svelte';
+  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Diamond, FileImage, Sparkles, Square, Trash2, Type, Video, Wand2 } from 'lucide-svelte';
   import type { LoadedAsset } from '../../../assets/asset-loader';
   import type { AnimationNode } from '../../../types/parser';
   import type { Animation, Clip, Element, Scene } from '../../../types/scene';
@@ -27,8 +27,13 @@
   export let onApplyTransition: (boundary: ClipTransitionBoundary, duration: number) => void;
   export let onRemoveTransition: () => void;
   export let onAlignSelected: (alignment: Alignment) => void;
-  export let selectedVisualProperty: (key: string, fallback: number) => number;
+  export let selectedVisualProperty: (key: string, fallback: number, time?: number) => number;
+  export let selectedVisualStringProperty: (key: string, fallback: string) => string;
+  export let animatedPropertyNames: string[];
+  export let isPropertyAnimated: (properties: string[]) => boolean;
+  export let hasPropertyKeyframeAtPlayhead: (properties: string[]) => boolean;
   export let onUpdateElementProperty: (key: string, value: string | number | boolean) => void;
+  export let onTogglePropertyKeyframe: (properties: string[]) => void;
   export let onBeginPropertyScrub: (event: PointerEvent, key: string, fallback: number, minimum?: number) => void;
   export let onPropertyScrubKey: (event: KeyboardEvent, key: string, fallback: number, minimum?: number) => void;
   export let timelineRange: (id: string) => { start: number; end: number };
@@ -106,7 +111,10 @@
           </div>
           {/if}
           <div class="me-property-group">
-            <div class="me-property-label">Position</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Position</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['x', 'y'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['x', 'y'])} on:click={() => onTogglePropertyKeyframe(['x', 'y'])} title="Toggle position keyframe at playhead" aria-label="Toggle position keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['x', 'y'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-property-row">
               <div class="me-number-input-wrapper">
                 <input class="me-number-input" type="number" value={selectedVisualProperty('x', 0)} on:input={(event) => onUpdateElementProperty('x', Number(event.currentTarget.value))} />
@@ -119,7 +127,10 @@
             </div>
           </div>
           <div class="me-property-group me-rotation-property">
-            <div class="me-property-label">Rotation</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Rotation</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotation'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotation'])} on:click={() => onTogglePropertyKeyframe(['rotation'])} title="Toggle rotation keyframe at playhead" aria-label="Toggle rotation keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotation'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} />
           </div>
           {#if selectedElement.kind === 'text'}
@@ -128,38 +139,54 @@
               <textarea class="me-text-input" rows="3" value={stringProperty(selectedElement, 'value', '')} on:input={(event) => onUpdateElementProperty('value', event.currentTarget.value)}></textarea>
             </div>
             <div class="me-property-group">
-              <div class="me-property-label">Font Size</div>
+              <div class="me-property-label-row">
+                <div class="me-property-label">Font Size</div>
+                <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['size'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['size'])} on:click={() => onTogglePropertyKeyframe(['size'])} title="Toggle font size keyframe at playhead" aria-label="Toggle font size keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['size'])}><Diamond size={11} fill="currentColor" /></button>
+              </div>
               <div class="me-number-input-wrapper">
-                <input class="me-number-input" type="number" min="1" value={numericProperty(selectedElement, 'size', 72)} on:input={(event) => onUpdateElementProperty('size', Number(event.currentTarget.value))} />
+                <input class="me-number-input" type="number" min="1" value={selectedVisualProperty('size', 72)} on:input={(event) => onUpdateElementProperty('size', Number(event.currentTarget.value))} />
                 <button type="button" class="me-input-suffix me-scrubbable-suffix" on:pointerdown={(event) => onBeginPropertyScrub(event, 'size', 72, 1)} on:keydown={(event) => onPropertyScrubKey(event, 'size', 72, 1)} aria-label="Font size: drag up or down to adjust" title="Drag up or down to adjust font size">px</button>
               </div>
             </div>
           {/if}
           <div class="me-property-group">
-            <div class="me-property-label">Scale</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Scale</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['scale'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['scale'])} on:click={() => onTogglePropertyKeyframe(['scale'])} title="Toggle scale keyframe at playhead" aria-label="Toggle scale keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['scale'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-slider-control">
-              <input class="me-custom-slider" type="range" min="0" max="3" step="0.01" value={numericProperty(selectedElement, 'scale', 1)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
-              <input class="me-slider-value-input" type="number" min="0" step="0.01" value={numericProperty(selectedElement, 'scale', 1).toFixed(2)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
+              <input class="me-custom-slider" type="range" min="0" max="3" step="0.01" value={selectedVisualProperty('scale', 1, currentTime)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
+              <input class="me-slider-value-input" type="number" min="0" step="0.01" value={selectedVisualProperty('scale', 1, currentTime).toFixed(2)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
             </div>
           </div>
           <div class="me-property-group">
-            <div class="me-property-label">Opacity</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Opacity</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['opacity'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['opacity'])} on:click={() => onTogglePropertyKeyframe(['opacity'])} title="Toggle opacity keyframe at playhead" aria-label="Toggle opacity keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['opacity'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-slider-control">
-              <input class="me-custom-slider" type="range" min="0" max="1" step="0.01" value={numericProperty(selectedElement, 'opacity', 1)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
-              <input class="me-slider-value-input" type="number" min="0" max="100" value={Math.round(numericProperty(selectedElement, 'opacity', 1) * 100)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
+              <input class="me-custom-slider" type="range" min="0" max="1" step="0.01" value={selectedVisualProperty('opacity', 1)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
+              <input class="me-slider-value-input" type="number" min="0" max="100" value={Math.round(selectedVisualProperty('opacity', 1) * 100)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
             </div>
           </div>
           <div class="me-property-group">
-            <div class="me-property-label">Color</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Color</div>
+              {#if selectedElement.kind === 'text'}
+                <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['color'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['color'])} on:click={() => onTogglePropertyKeyframe(['color'])} title="Toggle color keyframe at playhead" aria-label="Toggle color keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['color'])}><Diamond size={11} fill="currentColor" /></button>
+              {:else if selectedElement.kind === 'overlay' || selectedElement.asset?.type === 'svg'}
+                <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['fill'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['fill'])} on:click={() => onTogglePropertyKeyframe(['fill'])} title="Toggle color keyframe at playhead" aria-label="Toggle color keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['fill'])}><Diamond size={11} fill="currentColor" /></button>
+              {/if}
+            </div>
             {#if selectedElement.kind === 'text'}
               <ColorPicker
-                value={stringProperty(selectedElement, 'color', '#ffffff')}
+                value={selectedVisualStringProperty('color', '#ffffff')}
                 ariaLabel="Text color"
                 onChange={(color) => onUpdateElementProperty('color', color)}
               />
             {:else if selectedElement.kind === 'overlay' || selectedElement.asset?.type === 'svg'}
               <ColorPicker
-                value={stringProperty(selectedElement, 'fill', '#ffffff')}
+                value={selectedVisualStringProperty('fill', '#ffffff')}
                 ariaLabel="Layer color"
                 onChange={(color) => onUpdateElementProperty('fill', color)}
               />
@@ -271,7 +298,10 @@
           <div class="me-section-title">Adjustments</div>
           {#each ADJUSTMENT_CONTROLS as control}
             <div class="me-property-group">
-              <div class="me-property-label">{control.label}</div>
+              <div class="me-property-label-row">
+                <div class="me-property-label">{control.label}</div>
+                <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated([control.property])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead([control.property])} on:click={() => onTogglePropertyKeyframe([control.property])} title={`Toggle ${control.label.toLowerCase()} keyframe at playhead`} aria-label={`Toggle ${control.label.toLowerCase()} keyframe at playhead`} aria-pressed={hasPropertyKeyframeAtPlayhead([control.property])}><Diamond size={11} fill="currentColor" /></button>
+              </div>
               <div class="me-slider-control">
                 <input
                   class="me-custom-slider"
@@ -279,7 +309,7 @@
                   min={control.min}
                   max={control.max}
                   step={control.step}
-                  value={numericProperty(selectedElement, control.property, control.fallback)}
+                  value={selectedVisualProperty(control.property, control.fallback)}
                   on:input={(event) => onUpdateElementProperty(control.property, Number(event.currentTarget.value))}
                 />
                 <input
@@ -288,7 +318,7 @@
                   min={control.min}
                   max={control.max}
                   step={control.step}
-                  value={numericProperty(selectedElement, control.property, control.fallback)}
+                  value={selectedVisualProperty(control.property, control.fallback)}
                   on:input={(event) => onUpdateElementProperty(control.property, Number(event.currentTarget.value))}
                 />
               </div>
@@ -297,8 +327,15 @@
         {/if}
 
         <div class="me-section-title">Keyframes</div>
+        {#if animatedPropertyNames.length}
+          <div class="me-animated-properties" aria-label="Animated properties">
+            {#each animatedPropertyNames as property}
+              <span>{property}</span>
+            {/each}
+          </div>
+        {/if}
         <div class="me-property-group me-keyframe-controls">
-          <button type="button" class="me-timeline-command" on:click={onAddKeyframe}>◆ Add at playhead</button>
+          <button type="button" class="me-timeline-command" on:click={onAddKeyframe}><Diamond size={12} fill="currentColor" /> Add at playhead</button>
           {#if selectedKeyframeOffset !== null}
             <div class="me-number-input-wrapper">
               <input
@@ -450,7 +487,10 @@
             </div>
           </div>
           <div class="me-property-group">
-            <div class="me-property-label">Position</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Position</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['x', 'y'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['x', 'y'])} on:click={() => onTogglePropertyKeyframe(['x', 'y'])} title="Toggle position keyframe at playhead" aria-label="Toggle position keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['x', 'y'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-property-row">
               <div class="me-number-input-wrapper">
                 <input class="me-number-input" type="number" value={selectedVisualProperty('x', 0)} on:input={(event) => onUpdateElementProperty('x', Number(event.currentTarget.value))} />
@@ -463,29 +503,43 @@
             </div>
           </div>
           <div class="me-property-group me-rotation-property">
-            <div class="me-property-label">Rotation</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Rotation</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotation'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotation'])} on:click={() => onTogglePropertyKeyframe(['rotation'])} title="Toggle rotation keyframe at playhead" aria-label="Toggle rotation keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotation'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} />
           </div>
           <p class="me-shared-property-note">Visual changes apply to every clip using this source asset.</p>
           <div class="me-property-group">
-            <div class="me-property-label">Scale</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Scale</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['scale'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['scale'])} on:click={() => onTogglePropertyKeyframe(['scale'])} title="Toggle scale keyframe at playhead" aria-label="Toggle scale keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['scale'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-slider-control">
-              <input class="me-custom-slider" type="range" min="0.05" max="3" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
-              <input class="me-slider-value-input" type="number" min="0.05" step="0.01" value={numericProperty(selectedClipElement, 'scale', 1).toFixed(2)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
+              <input class="me-custom-slider" type="range" min="0.05" max="3" step="0.01" value={selectedVisualProperty('scale', 1, currentTime)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale" />
+              <input class="me-slider-value-input" type="number" min="0.05" step="0.01" value={selectedVisualProperty('scale', 1, currentTime).toFixed(2)} on:input={(event) => onUpdateElementProperty('scale', Number(event.currentTarget.value))} aria-label="Scale value" />
             </div>
           </div>
           <div class="me-property-group">
-            <div class="me-property-label">Opacity</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Opacity</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['opacity'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['opacity'])} on:click={() => onTogglePropertyKeyframe(['opacity'])} title="Toggle opacity keyframe at playhead" aria-label="Toggle opacity keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['opacity'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
             <div class="me-slider-control">
-              <input class="me-custom-slider" type="range" min="0" max="1" step="0.01" value={numericProperty(selectedClipElement, 'opacity', 1)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
-              <input class="me-slider-value-input" type="number" min="0" max="100" value={Math.round(numericProperty(selectedClipElement, 'opacity', 1) * 100)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
+              <input class="me-custom-slider" type="range" min="0" max="1" step="0.01" value={selectedVisualProperty('opacity', 1)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value))} aria-label="Opacity" />
+              <input class="me-slider-value-input" type="number" min="0" max="100" value={Math.round(selectedVisualProperty('opacity', 1) * 100)} on:input={(event) => onUpdateElementProperty('opacity', Number(event.currentTarget.value) / 100)} aria-label="Opacity percentage" />
             </div>
           </div>
           <div class="me-property-group">
-            <div class="me-property-label">Color</div>
+            <div class="me-property-label-row">
+              <div class="me-property-label">Color</div>
+              {#if selectedClipElement?.asset?.type === 'svg'}
+                <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['fill'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['fill'])} on:click={() => onTogglePropertyKeyframe(['fill'])} title="Toggle color keyframe at playhead" aria-label="Toggle color keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['fill'])}><Diamond size={11} fill="currentColor" /></button>
+              {/if}
+            </div>
             {#if selectedClipElement?.asset?.type === 'svg'}
               <ColorPicker
-                value={stringProperty(selectedClipElement, 'fill', '#ffffff')}
+                value={selectedVisualStringProperty('fill', '#ffffff')}
                 ariaLabel="Clip color"
                 onChange={(color) => onUpdateElementProperty('fill', color)}
               />
@@ -509,6 +563,20 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="me-section-title">Keyframes</div>
+        {#if animatedPropertyNames.length}
+          <div class="me-animated-properties" aria-label="Animated properties">
+            {#each animatedPropertyNames as property}
+              <span>{property}</span>
+            {/each}
+          </div>
+        {/if}
+        <div class="me-property-group me-keyframe-controls">
+          <button type="button" class="me-timeline-command" on:click={onAddKeyframe}><Diamond size={12} fill="currentColor" /> Add at playhead</button>
+          {#if selectedKeyframeOffset !== null}
+            <button type="button" class="me-icon-btn me-danger-btn" on:click={onDeleteKeyframe} title="Delete selected keyframe"><Trash2 size={14} /></button>
+          {/if}
         </div>
         <details class="me-more-options" bind:open={moreOptionsOpen}>
           <summary>More Options</summary>

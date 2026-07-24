@@ -67,7 +67,7 @@
   export let onSeek: (event: Event) => void;
   export let timelineTrackDisplayOrder: (track: Track | null | undefined, fallbackId: string) => number;
   export let onUpdateTrack: (track: Track, updates: { hidden?: boolean; muted?: boolean }) => void;
-  export let selectedKeyframeMarkers: () => { offset: number; easing?: string }[];
+  export let selectedKeyframeMarkers: { offset: number; easing?: string; properties: string[] }[];
   export let keyframeTime: (offset: number) => number;
   export let onMoveTimelineElement: (event: PointerEvent, element: Element) => void;
   export let onSelectElement: (id: string, seek?: boolean) => void;
@@ -76,6 +76,7 @@
   export let onDeleteElement: (id: string) => void;
   export let onTrimElement: (event: PointerEvent, id: string, edge: 'start' | 'end') => void;
   export let onDragKeyframe: (event: PointerEvent, offset: number) => void;
+  export let onSelectKeyframe: (offset: number) => void;
   export let onDeleteKeyframeAt: (event: Event, offset: number) => void;
   export let onAddKeyframe: () => void;
   export let onMoveTimelineAudio: (event: PointerEvent) => void;
@@ -86,6 +87,13 @@
   export let onDropTransition: (event: DragEvent, boundary: ClipTransitionBoundary) => void;
   export let onSelectTransition: (boundary: ClipTransitionBoundary) => void;
   export let onAudioMetadata: (duration: number) => void;
+
+  let keyframeAtPlayhead = false;
+  $: keyframeAtPlayhead = selectedKeyframeMarkers.some(
+    (frame) =>
+      Math.abs(keyframeTime(frame.offset) - currentTime) <=
+      0.5 / (scene?.canvas.fps ?? 60)
+  );
 </script>
 
   <section class="me-timeline-panel">
@@ -198,7 +206,7 @@
             {#if clipDrag && clipDrag.ghostTrackId === row.trackId}
               <span class="me-clip-ghost" class:me-invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}></span>
               {#if clipDrag.kind === 'element' && clipDrag.id === selectedElementId && !row.items.some((item) => item.element.id === selectedElementId)}
-                {#each selectedKeyframeMarkers() as frame}
+                {#each selectedKeyframeMarkers as frame}
                   <span class="me-keyframe-marker me-drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"></span>
                 {/each}
               {/if}
@@ -227,27 +235,30 @@
             {/each}
             {#if row.items.some((item) => item.element.id === selectedElementId) && !(clipDrag?.kind === 'element' && clipDrag.id === selectedElementId && clipDrag.ghostTrackId !== row.trackId)}
               {@const kfLane = row.items.find((item) => item.element.id === selectedElementId)?.lane ?? 0}
-              {#each selectedKeyframeMarkers() as frame}
+              {#each selectedKeyframeMarkers as frame}
                 <button
                   type="button"
                   class="me-keyframe-marker"
                   class:me-selected-keyframe={selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - frame.offset) < 0.000001}
                   style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}
-                  title={`Keyframe ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
+                  title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
                   aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}
                   on:pointerdown={(event) => onDragKeyframe(event, frame.offset)}
+                  on:click|stopPropagation={() => onSelectKeyframe(frame.offset)}
                   on:contextmenu={(event) => onDeleteKeyframeAt(event, frame.offset)}
                 ></button>
               {/each}
-              <button
-                type="button"
-                class="me-keyframe-add"
-                style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
-                title="Add keyframe at playhead"
-                aria-label="Add keyframe at playhead"
-                on:pointerdown|stopPropagation
-                on:click|stopPropagation={onAddKeyframe}
-              >+</button>
+              {#if !keyframeAtPlayhead}
+                <button
+                  type="button"
+                  class="me-keyframe-add"
+                  style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                  title="Add keyframe at playhead"
+                  aria-label="Add keyframe at playhead"
+                  on:pointerdown|stopPropagation
+                  on:click|stopPropagation={onAddKeyframe}
+                >+</button>
+              {/if}
             {/if}
           </div>
         </div>
@@ -290,7 +301,7 @@
               {#if clipDrag && clipDrag.ghostTrackId === String(clipTrack.track)}
                 <span class="me-clip-ghost" class:me-invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}></span>
                 {#if clipDrag.kind === 'element' && clipDrag.id === selectedElementId && !clipTrack.elements.some(({ item }) => item.element.id === selectedElementId)}
-                  {#each selectedKeyframeMarkers() as frame}
+                  {#each selectedKeyframeMarkers as frame}
                     <span class="me-keyframe-marker me-drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"></span>
                   {/each}
                 {/if}
@@ -332,27 +343,30 @@
               {/each}
               {#if clipTrack.elements.some(({ item }) => item.element.id === selectedElementId) && !(clipDrag?.kind === 'element' && clipDrag.id === selectedElementId && clipDrag.ghostTrackId !== String(clipTrack.track))}
                 {@const kfLane = clipTrack.elements.find(({ item }) => item.element.id === selectedElementId)?.lane ?? 0}
-                {#each selectedKeyframeMarkers() as frame}
+                {#each selectedKeyframeMarkers as frame}
                   <button
                     type="button"
                     class="me-keyframe-marker"
                     class:me-selected-keyframe={selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - frame.offset) < 0.000001}
                     style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}
-                    title={`Keyframe ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
+                    title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
                     aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}
                     on:pointerdown={(event) => onDragKeyframe(event, frame.offset)}
+                    on:click|stopPropagation={() => onSelectKeyframe(frame.offset)}
                     on:contextmenu={(event) => onDeleteKeyframeAt(event, frame.offset)}
                   ></button>
                 {/each}
-                <button
-                  type="button"
-                  class="me-keyframe-add"
-                  style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
-                  title="Add keyframe at playhead"
-                  aria-label="Add keyframe at playhead"
-                  on:pointerdown|stopPropagation
-                  on:click|stopPropagation={onAddKeyframe}
-                >+</button>
+                {#if !keyframeAtPlayhead}
+                  <button
+                    type="button"
+                    class="me-keyframe-add"
+                    style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}
+                    title="Add keyframe at playhead"
+                    aria-label="Add keyframe at playhead"
+                    on:pointerdown|stopPropagation
+                    on:click|stopPropagation={onAddKeyframe}
+                  >+</button>
+                {/if}
               {/if}
               {#each clipTrack.clips as packedClip}
                 {@const clip = packedClip.clip}
@@ -380,6 +394,34 @@
                   </button>
                 </span>
               {/each}
+              {#if selectedClip && String(selectedClip.track) === String(clipTrack.track)}
+                {@const selectedPackedClip = clipTrack.clips.find(({ clip }) => clip.id === selectedClip?.id)}
+                {@const selectedClipLane = selectedPackedClip?.lane ?? 0}
+                {#each selectedKeyframeMarkers as frame}
+                  <button
+                    type="button"
+                    class="me-keyframe-marker"
+                    class:me-selected-keyframe={selectedKeyframeOffset !== null && Math.abs(selectedKeyframeOffset - frame.offset) < 0.000001}
+                    style={`left: ${timelinePercent(keyframeTime(frame.offset))}%; top: ${6 + selectedClipLane * 34 + 13.5}px`}
+                    title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}
+                    aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}
+                    on:pointerdown={(event) => onDragKeyframe(event, frame.offset)}
+                    on:click|stopPropagation={() => onSelectKeyframe(frame.offset)}
+                    on:contextmenu={(event) => onDeleteKeyframeAt(event, frame.offset)}
+                  ></button>
+                {/each}
+                {#if !keyframeAtPlayhead}
+                  <button
+                    type="button"
+                    class="me-keyframe-add"
+                    style={`left: ${timelinePercent(currentTime)}%; top: ${6 + selectedClipLane * 34 + 13.5}px`}
+                    title="Add keyframe at playhead"
+                    aria-label="Add keyframe at playhead"
+                    on:pointerdown|stopPropagation
+                    on:click|stopPropagation={onAddKeyframe}
+                  >+</button>
+                {/if}
+              {/if}
               {#each transitionBoundaries.filter((boundary) => String(boundary.outgoing.track) === String(clipTrack.track)) as boundary}
                 <button
                   type="button"
@@ -408,4 +450,3 @@
 
     <audio bind:this={audioElement} on:loadedmetadata={() => onAudioMetadata(audioElement.duration)}></audio>
   </section>
-

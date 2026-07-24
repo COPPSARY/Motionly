@@ -682,8 +682,8 @@
   position: absolute;
   z-index: 5;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   padding: 0;
   border: 1px solid #111318;
   border-radius: 1px;
@@ -698,6 +698,15 @@
 .motion-editor-scope .me-keyframe-marker.me-selected-keyframe {
   background: #fff1c9;
   box-shadow: 0 0 0 2px #f4b860;
+}
+
+.motion-editor-scope .me-keyframe-marker:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.motion-editor-scope .me-keyframe-marker:active {
+  cursor: grabbing;
 }
 
 .motion-editor-scope .me-drag-keyframe {

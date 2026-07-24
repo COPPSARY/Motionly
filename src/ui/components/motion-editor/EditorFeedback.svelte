@@ -3,6 +3,7 @@
   import { X } from 'lucide-svelte';
 
   export let deleteToast: string;
+  export let keyframeNotice: string;
   export let showConfirmDialog: boolean;
   export let onUndoDelete: () => void;
   export let onCancelPreset: () => void;
@@ -15,6 +16,10 @@
     <span class="me-toast-separator" aria-hidden="true">·</span>
     <button type="button" on:click={onUndoDelete}>Undo</button>
   </div>
+{/if}
+
+{#if keyframeNotice}
+  <div class="me-keyframe-toast" role="status" aria-live="polite">{keyframeNotice}</div>
 {/if}
 
 {#if showConfirmDialog}
