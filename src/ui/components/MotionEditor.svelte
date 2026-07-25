@@ -157,6 +157,7 @@
   let audioClipDuration = 0;
   let visibleWaveformPeaks = 1;
   let timelineHeight = 230;
+  let contentPanelWidth = 260;
   let mp4Supported = false;
   let isExporting = false;
   let exportError = '';
@@ -167,6 +168,11 @@
   let mediaSubTab: 'assets' | 'presets' = 'assets';
   let showConfirmDialog = false;
   let pendingPresetPath = '';
+  let pendingDelete:
+    | { kind: 'assets'; assets: Asset[]; usageCount: number }
+    | { kind: 'audio' }
+    | { kind: 'text'; ids: string[] }
+    | null = null;
   let previewAsset: AssetPreview | null = null;
   let videoRenderId = 0;
   let isDraggingUpload = false;
@@ -339,6 +345,26 @@
   function cancelLoadPreset() {
     showConfirmDialog = false;
     pendingPresetPath = '';
+  }
+
+  function cancelConfirmDialog() {
+    if (pendingDelete) pendingDelete = null;
+    else cancelLoadPreset();
+    showConfirmDialog = false;
+  }
+
+  function confirmDialog() {
+    if (!pendingDelete) return confirmLoadPreset();
+    const deletion = pendingDelete;
+    pendingDelete = null;
+    showConfirmDialog = false;
+    if (deletion.kind === 'assets') {
+      for (const asset of deletion.assets) removeAssetNow(asset);
+    } else if (deletion.kind === 'audio') {
+      removeAudio();
+    } else {
+      for (const id of deletion.ids) deleteElement(id);
+    }
   }
 
   function loadGeneratedMotion(source: string): string | null {
@@ -717,6 +743,21 @@
 
   function toggleCodeEditor() {
     showCodeEditor = !showCodeEditor;
+  }
+
+  function resizeContentPanel(event: PointerEvent) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = contentPanelWidth;
+    const move = (pointer: PointerEvent) => {
+      contentPanelWidth = Math.min(420, Math.max(220, startWidth + pointer.clientX - startX));
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
   }
 
 
@@ -1402,7 +1443,62 @@
     }
   }
 
+  function requestRemoveAssets(selectedAssets: Asset[]) {
+    if (!ast || !selectedAssets.length) return;
+    pendingDelete = {
+      kind: 'assets',
+      assets: selectedAssets,
+      usageCount: selectedAssets.reduce((total, asset) => total + assetUsage(asset).usageCount, 0),
+    };
+    showConfirmDialog = true;
+  }
 
+  function requestRemoveAudio() {
+    if (!audioName) return;
+    pendingDelete = { kind: 'audio' };
+    showConfirmDialog = true;
+  }
+
+  function requestRemoveElements(ids: string[]) {
+    if (!ids.length) return;
+    pendingDelete = { kind: 'text', ids };
+    showConfirmDialog = true;
+  }
+
+  function assetUsage(asset: Asset) {
+    const elementNames = new Set(
+      ast.body.flatMap((node) =>
+        node.type === 'Element' &&
+        ((node.kind === 'asset' && node.name === asset.name) ||
+          (node.kind === 'image' && node.properties['source'] === asset.name))
+          ? [node.name]
+          : []
+      )
+    );
+    const usageCount =
+      elementNames.size +
+      ast.body.filter((node) => node.type === 'Clip' && node.assetName === asset.name).length;
+    return { elementNames, usageCount };
+  }
+
+  function removeAssetNow(asset: Asset) {
+    if (!ast) return;
+    const { elementNames } = assetUsage(asset);
+    const previousSource = code;
+    ast.body = ast.body.filter(
+      (node) =>
+        !(node.type === 'Import' && node.name === asset.name) &&
+        !(node.type === 'Clip' && node.assetName === asset.name) &&
+        !(node.type === 'Element' && elementNames.has(node.name)) &&
+        !(node.type === 'Animation' && elementNames.has(node.target))
+    );
+    embeddedAssets = embeddedAssets.filter((item) => item.name !== asset.name);
+    selectedElementId = '';
+    previewAsset = null;
+    const resultSource = serializeProgram(ast);
+    code = resultSource;
+    showDeletedToast('Asset removed', previousSource, resultSource);
+  }
 
   function clearAssetPreview() {
     previewAsset = null;
@@ -2873,7 +2969,7 @@
 
 <div class="motion-editor-scope" style={`--timeline-height: ${timelineHeight}px`}>
 <div class="me-motion-editor" class:me-fullscreen={isFullscreen} style={`--timeline-height: ${timelineHeight}px`}>
-  <div class="me-workbench" class:me-chat-open={showAiChat}>
+  <div class="me-workbench" class:me-chat-open={showAiChat} style={`--content-panel-width: ${contentPanelWidth}px`}>
     <NavigationRail activeTab={activeNavTab} onSelect={(tab) => (activeNavTab = tab)} />
 
     <ContentPanel
@@ -2902,14 +2998,17 @@
       onAssetDragStart={handleAssetDragStart}
       onAssetDragEnd={handleAssetDragEnd}
       onPreviewAsset={previewAssetOnly}
+      onRemoveAssets={requestRemoveAssets}
       onRequestPresetLoad={requestPresetLoad}
-      onRemoveAudio={removeAudio}
+      onRequestRemoveAudio={requestRemoveAudio}
       onAddTextElement={addTextElement}
       onSelectElement={selectElement}
+      onRemoveElements={requestRemoveElements}
       {canApplyLibraryPreset}
       onApplyLibraryPreset={applyLibraryPreset}
       onTransitionDragStart={handleTransitionDragStart}
       onTransitionDragEnd={handleTransitionDragEnd}
+      onResizeStart={resizeContentPanel}
     />
 
     <aside class="me-chat-drawer" class:me-collapsed={!showAiChat}>
@@ -3078,8 +3177,25 @@
   {deleteToast}
   {keyframeNotice}
   {showConfirmDialog}
+  dialogTitle={pendingDelete?.kind === 'assets'
+    ? 'Delete Asset'
+    : pendingDelete?.kind === 'audio'
+      ? 'Delete Audio'
+      : pendingDelete?.kind === 'text'
+        ? 'Delete Text'
+        : 'Load Preset'}
+  dialogMessage={pendingDelete?.kind === 'assets'
+    ? pendingDelete.assets.length === 1
+      ? `${pendingDelete.assets[0].name} is used ${pendingDelete.usageCount} time${pendingDelete.usageCount === 1 ? '' : 's'}. Delete it and its timeline items?`
+      : `Delete ${pendingDelete.assets.length} selected assets and their timeline items?`
+    : pendingDelete?.kind === 'audio'
+      ? `Delete ${audioName} and remove it from the timeline?`
+      : pendingDelete?.kind === 'text'
+        ? `Delete ${pendingDelete.ids.length === 1 ? pendingDelete.ids[0] : `${pendingDelete.ids.length} selected text layers`}?`
+        : 'Loading this preset will replace your current project and assets. Continue?'}
+  dialogConfirmLabel={pendingDelete ? 'Delete' : 'Load Preset'}
   onUndoDelete={undoDelete}
-  onCancelPreset={cancelLoadPreset}
-  onConfirmPreset={confirmLoadPreset}
+  onCancelDialog={cancelConfirmDialog}
+  onConfirmDialog={confirmDialog}
 />
 </div>
