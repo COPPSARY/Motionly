@@ -116,9 +116,12 @@ describe('motion editor leaf components', () => {
         deleteToast: 'Deleted title',
         keyframeNotice: 'Keyframe created',
         showConfirmDialog: true,
+        dialogTitle: 'Load Preset',
+        dialogMessage: 'Replace the project?',
+        dialogConfirmLabel: 'Load Preset',
         onUndoDelete,
-        onCancelPreset,
-        onConfirmPreset,
+        onCancelDialog: onCancelPreset,
+        onConfirmDialog: onConfirmPreset,
       },
     });
 
@@ -126,11 +129,7 @@ describe('motion editor leaf components', () => {
       Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Undo') ??
         null
     );
-    click(
-      Array.from(host.querySelectorAll('button')).find(
-        (button) => button.textContent === 'Cancel'
-      ) ?? null
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     click(
       Array.from(host.querySelectorAll('button')).find(
         (button) => button.textContent === 'Load Preset'
@@ -146,6 +145,127 @@ describe('motion editor leaf components', () => {
 });
 
 describe('MotionEditor integration', () => {
+  it('deletes an imported asset from the asset sidebar', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'Image',
+      class {
+        decode = () => Promise.resolve();
+      }
+    );
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+import "./logo.png" as logo
+import "./other.png" as other
+image product { source logo center }
+animate product { from { opacity 0 } to { opacity 1 } duration 1s }
+clip logo { start 0s duration 2s }
+text title { value "Title" center }
+text subtitle { value "Subtitle" center }`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('[aria-label="Show list view"]'));
+    await tick();
+    expect(host.querySelector('.me-asset-grid')?.classList.contains('me-list-view')).toBe(true);
+    click(host.querySelector('[aria-label="Show grid view"]'));
+    await tick();
+    expect(host.querySelector('.me-asset-grid')?.classList.contains('me-list-view')).toBe(false);
+
+    click(host.querySelector('[aria-label="Select and preview logo"]'));
+    await tick();
+    expect(host.querySelector('.me-asset-card-wrap')?.classList.contains('me-selected')).toBe(true);
+    expect(host.querySelector('[aria-label="Delete selected asset"]')).not.toBeNull();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await tick();
+    expect(host.querySelector('[aria-label="Delete selected asset"]')).toBeNull();
+
+    click(host.querySelector('[aria-label="Select and preview logo"]'));
+    await tick();
+    click(host.querySelector('[aria-label="Text"]'));
+    await tick();
+    click(host.querySelector('[aria-label="Media / Assets"]'));
+    await tick();
+    expect(host.querySelector('[aria-label="Delete selected asset"]')).toBeNull();
+
+    click(host.querySelector('[aria-label="Select and preview logo"]'));
+    await tick();
+    host
+      .querySelector('[aria-label="Select and preview other"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    await tick();
+    expect(host.querySelectorAll('.me-asset-card-wrap.me-selected')).toHaveLength(2);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    click(host.querySelector('[aria-label="Select and preview logo"]'));
+    host
+      .querySelector('[aria-label="Select and preview other"]')
+      ?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, shiftKey: true }));
+    await tick();
+    expect(host.querySelectorAll('.me-asset-card-wrap.me-selected')).toHaveLength(2);
+
+    click(host.querySelector('[aria-label="Delete selected assets"]'));
+    await tick();
+
+    expect(host.querySelector('.me-dialog-body')?.textContent).toContain(
+      'Delete 2 selected assets and their timeline items?'
+    );
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Delete'
+      ) ?? null
+    );
+    await tick();
+    expect(host.querySelector('[aria-label="Select and preview logo"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Select and preview other"]')).toBeNull();
+
+    click(host.querySelector('[aria-label="Text"]'));
+    await tick();
+    click(host.querySelector('[aria-label="Select title"]'));
+    host
+      .querySelector('[aria-label="Select subtitle"]')
+      ?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, shiftKey: true }));
+    await tick();
+    expect(host.querySelectorAll('.me-layer-row-wrap.me-checked')).toHaveLength(2);
+    click(host.querySelector('[aria-label="Delete selected text layers"]'));
+    await tick();
+    expect(host.querySelector('.me-dialog-body')?.textContent).toContain(
+      'Delete 2 selected text layers?'
+    );
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Delete'
+      ) ?? null
+    );
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).not.toContain('import ');
+    expect(source).not.toContain('image product');
+    expect(source).not.toContain('animate product');
+    expect(source).not.toContain('clip logo');
+    expect(source).not.toContain('text title');
+    expect(source).not.toContain('text subtitle');
+
+    await unmount(instance);
+  });
+
   it('mounts every major region and keeps nested panel styles isolated', async () => {
     class ResizeObserverStub {
       observe(): void {}
@@ -177,6 +297,18 @@ describe('MotionEditor integration', () => {
     expect(host.querySelector('.me-properties-panel')).not.toBeNull();
     expect(host.querySelector('.me-timeline-panel')).not.toBeNull();
     expect(host.querySelector('.me-source-toggle')).not.toBeNull();
+
+    host
+      .querySelector('[aria-label="Resize asset panel"]')
+      ?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 260 }));
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 320 }));
+    window.dispatchEvent(new MouseEvent('pointerup'));
+    await tick();
+    expect(
+      host
+        .querySelector<HTMLElement>('.me-workbench')
+        ?.style.getPropertyValue('--content-panel-width')
+    ).toBe('320px');
 
     click(host.querySelector('[aria-label="Settings"]'));
     await tick();

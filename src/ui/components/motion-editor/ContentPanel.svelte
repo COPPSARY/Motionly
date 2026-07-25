@@ -1,6 +1,6 @@
 <script lang="ts">
   import './content-panel.css';
-  import { FileImage, Maximize2, Music2, Plus, Sparkles, Square, Trash2, Type, Upload, Wand2 } from 'lucide-svelte';
+  import { CloudUpload, FileImage, LayoutGrid, List, Maximize2, Music2, Plus, Sparkles, Square, Trash2, Type, Upload, Wand2 } from 'lucide-svelte';
   import type { LoadedAsset } from '../../../assets/asset-loader';
   import type { Asset, Element, Scene } from '../../../types/scene';
   import AiConfigPanel from '../AiConfigPanel.svelte';
@@ -34,17 +34,127 @@
   export let onAssetDragStart: (event: DragEvent, asset: Asset) => void;
   export let onAssetDragEnd: () => void;
   export let onPreviewAsset: (asset: Asset) => void;
+  export let onRemoveAssets: (assets: Asset[]) => void;
   export let onRequestPresetLoad: (path: string) => void;
-  export let onRemoveAudio: () => void;
+  export let onRequestRemoveAudio: () => void;
   export let onAddTextElement: () => void;
   export let onSelectElement: (id: string) => void;
+  export let onRemoveElements: (ids: string[]) => void;
   export let canApplyLibraryPreset: (preset: AnimationPresetDef) => boolean;
   export let onApplyLibraryPreset: (preset: AnimationPresetDef) => void;
   export let onTransitionDragStart: (event: DragEvent) => void;
   export let onTransitionDragEnd: () => void;
+  export let onResizeStart: (event: PointerEvent) => void;
+
+  let selectedAssetNames = new Set<string>();
+  let assetView: 'grid' | 'list' = 'grid';
+  let audioSelected = false;
+  let selectedTextIds = new Set<string>();
+  let assetSelectionAnchor = '';
+  let textSelectionAnchor = '';
+  let selectionContext = '';
+  $: selectedAssets = scene?.imports.filter((asset) => selectedAssetNames.has(asset.name)) ?? [];
+  $: textElements = sourceElements.filter((element) => element.kind === 'text');
+  $: selectedTextElements = textElements.filter((element) => selectedTextIds.has(element.id));
+  $: {
+    const nextContext = `${activeNavTab}:${mediaSubTab}`;
+    if (selectionContext && selectionContext !== nextContext) clearSelections();
+    selectionContext = nextContext;
+  }
+
+  function clearSelections() {
+    selectedAssetNames = new Set();
+    assetSelectionAnchor = '';
+    selectedTextIds = new Set();
+    textSelectionAnchor = '';
+    audioSelected = false;
+  }
+
+  function handleSelectionKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') clearSelections();
+  }
+
+  function selectAsset(asset: Asset, event: MouseEvent) {
+    if (event.shiftKey) {
+      selectAssetRange(asset, event);
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      selectedAssetNames = new Set(selectedAssetNames);
+      if (selectedAssetNames.has(asset.name)) selectedAssetNames.delete(asset.name);
+      else selectedAssetNames.add(asset.name);
+    } else {
+      selectedAssetNames = new Set([asset.name]);
+    }
+    assetSelectionAnchor = asset.name;
+    onPreviewAsset(asset);
+  }
+
+  function selectAssetRange(asset: Asset, event: MouseEvent) {
+    if (!event.shiftKey) return;
+    event.preventDefault();
+    const imports = scene?.imports ?? [];
+    const anchorIndex = imports.findIndex((item) => item.name === assetSelectionAnchor);
+    const targetIndex = imports.findIndex((item) => item.name === asset.name);
+    if (anchorIndex < 0 || targetIndex < 0) {
+      selectedAssetNames = new Set([asset.name]);
+      assetSelectionAnchor = asset.name;
+    } else {
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+      selectedAssetNames = new Set(imports.slice(start, end + 1).map((item) => item.name));
+    }
+    onPreviewAsset(asset);
+  }
+
+  function removeSelectedText() {
+    onRemoveElements(selectedTextElements.map((element) => element.id));
+    selectedTextIds = new Set();
+  }
+
+  function selectText(element: Element, event: MouseEvent) {
+    if (event.shiftKey) {
+      selectTextRange(element, event);
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      selectedTextIds = new Set(selectedTextIds);
+      if (selectedTextIds.has(element.id)) selectedTextIds.delete(element.id);
+      else selectedTextIds.add(element.id);
+    } else {
+      selectedTextIds = new Set([element.id]);
+    }
+    textSelectionAnchor = element.id;
+    onSelectElement(element.id);
+  }
+
+  function selectTextRange(element: Element, event: MouseEvent) {
+    if (!event.shiftKey) return;
+    event.preventDefault();
+    const anchorIndex = textElements.findIndex((item) => item.id === textSelectionAnchor);
+    const targetIndex = textElements.findIndex((item) => item.id === element.id);
+    if (anchorIndex < 0 || targetIndex < 0) {
+      selectedTextIds = new Set([element.id]);
+      textSelectionAnchor = element.id;
+    } else {
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+      selectedTextIds = new Set(textElements.slice(start, end + 1).map((item) => item.id));
+    }
+    onSelectElement(element.id);
+  }
 </script>
 
+<svelte:window on:keydown={handleSelectionKeydown} />
+
 <aside class="me-content-panel">
+      <button
+        type="button"
+        class="me-panel-resize-handle"
+        aria-label="Resize asset panel"
+        title="Drag to resize panel"
+        on:pointerdown={onResizeStart}
+      ></button>
       {#if activeNavTab === 'media'}
         <div class="me-panel-header">
           <div class="me-panel-tabs">
@@ -68,8 +178,18 @@
           {#if mediaSubTab === 'assets'}
             <div class="me-panel-header-actions">
               <input bind:this={assetInput} class="me-file-input" type="file" accept="image/*,video/*,.svg,.gif,.mp4,.webm,.mov,.m4v,.lottie" multiple on:change={onAssetUpload} />
-              <button type="button" class="me-header-icon-btn" on:click={() => assetInput.click()} title="Import media" aria-label="Import media">
-                <Plus size={15} />
+              <button
+                type="button"
+                class="me-header-icon-btn"
+                title={`Show ${assetView === 'grid' ? 'list' : 'grid'} view`}
+                aria-label={`Show ${assetView === 'grid' ? 'list' : 'grid'} view`}
+                on:click={() => (assetView = assetView === 'grid' ? 'list' : 'grid')}
+              >
+                {#if assetView === 'grid'}<List size={15} />{:else}<LayoutGrid size={15} />{/if}
+              </button>
+              <button type="button" class="me-import-header-btn" on:click={() => assetInput.click()} title="Import media" aria-label="Import media">
+                <CloudUpload size={14} />
+                <span>Import</span>
               </button>
             </div>
           {/if}
@@ -88,7 +208,7 @@
             >
               {#if assetError}<p class="me-asset-error">{assetError}</p>{/if}
               {#if !assetsReady}<p class="me-status-label" role="status"><span></span> Loading media previews…</p>{/if}
-              {#if !scene?.audio && scene?.imports.length === 0}
+              {#if scene?.imports.length === 0}
                 <div class="me-library-empty-state">
                   <span class="me-library-empty-icon"><Upload size={18} /></span>
                   <strong>Add your first asset</strong>
@@ -99,35 +219,6 @@
                   <small>Images, video, SVG, GIF and Lottie</small>
                 </div>
               {/if}
-            <!-- Audio Section -->
-            {#if scene?.audio}
-              <div class="me-asset-folder">
-                <div class="me-folder-header">
-                  <Music2 size={14} />
-                  <span class="me-folder-title">Audio</span>
-                </div>
-                <div class="me-folder-content">
-                  <div
-                    class="me-asset-item me-audio-asset"
-                    role="button"
-                    tabindex="0"
-                    draggable="true"
-                    aria-label={`Drag ${audioName || 'audio'} to the timeline`}
-                    on:dragstart={onAudioDragStart}
-                    on:dragend={onAudioDragEnd}
-                  >
-                    <div class="me-asset-item-icon">
-                      <Music2 size={16} />
-                    </div>
-                    <div class="me-asset-item-info">
-                      <div class="me-asset-item-name">{scene.audio.substring(scene.audio.lastIndexOf('/') + 1)}</div>
-                      <div class="me-asset-item-path">{scene.audio}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            {/if}
-
             <!-- Visual Assets Section -->
             {#if scene && scene.imports.length > 0}
               <div class="me-asset-folder">
@@ -135,30 +226,51 @@
                   <FileImage size={14} />
                   <span class="me-folder-title">Media</span>
                   <span class="me-folder-count">{scene.imports.length}</span>
-                </div>
-                <div class="me-asset-grid">
-                  {#each scene.imports as asset}
+                  {#if selectedAssets.length}
                     <button
                       type="button"
-                      class="me-asset-card"
-                      draggable={assets.has(asset.name)}
-                      on:click={() => onPreviewAsset(asset)}
-                      on:dragstart={(e) => onAssetDragStart(e, asset)}
-                      on:dragend={onAssetDragEnd}
+                      class="me-folder-delete"
+                      title={`Delete selected asset${selectedAssets.length === 1 ? '' : 's'}`}
+                      aria-label={`Delete selected asset${selectedAssets.length === 1 ? '' : 's'}`}
+                      on:click={() => {
+                        onRemoveAssets(selectedAssets);
+                        selectedAssetNames = new Set();
+                      }}
                     >
-                      <div class="me-asset-thumbnail">
-                        {#if asset.type === 'video'}
-                          <video src={assetPreviewSource(assets.get(asset.name), asset.path)} muted playsinline preload="metadata"></video>
-                        {:else if asset.path}
-                          <img src={assetPreviewSource(assets.get(asset.name), asset.path)} alt={asset.name} />
-                        {:else}
-                          <FileImage size={24} />
-                        {/if}
-                      </div>
-                      <div class="me-asset-info">
-                        <div class="me-asset-name">{asset.name}</div>
-                      </div>
+                      <Trash2 size={14} />
                     </button>
+                  {/if}
+                </div>
+                <div class="me-asset-grid" class:me-list-view={assetView === 'list'}>
+                  {#each scene.imports as asset}
+                    <div
+                      class="me-asset-card-wrap"
+                      class:me-selected={selectedAssetNames.has(asset.name)}
+                    >
+                      <button
+                        type="button"
+                        class="me-asset-card"
+                        draggable={assets.has(asset.name)}
+                        aria-label={`Select and preview ${asset.name}`}
+                        on:click={(event) => selectAsset(asset, event)}
+                        on:contextmenu={(event) => selectAssetRange(asset, event)}
+                        on:dragstart={(e) => onAssetDragStart(e, asset)}
+                        on:dragend={onAssetDragEnd}
+                      >
+                        <div class="me-asset-thumbnail">
+                          {#if asset.type === 'video'}
+                            <video src={assetPreviewSource(assets.get(asset.name), asset.path)} muted playsinline preload="metadata"></video>
+                          {:else if asset.path}
+                            <img src={assetPreviewSource(assets.get(asset.name), asset.path)} alt={asset.name} />
+                          {:else}
+                            <FileImage size={24} />
+                          {/if}
+                        </div>
+                        <div class="me-asset-info">
+                          <div class="me-asset-name">{asset.name}</div>
+                        </div>
+                      </button>
+                    </div>
                   {/each}
                 </div>
               </div>
@@ -188,6 +300,20 @@
         <div class="me-panel-header">
           <h3 class="me-panel-heading-title">Audio</h3>
           <div class="me-panel-header-actions">
+            {#if audioSelected && audioName}
+              <button
+                type="button"
+                class="me-folder-delete"
+                title="Delete selected audio"
+                aria-label="Delete selected audio"
+                on:click={() => {
+                  onRequestRemoveAudio();
+                  audioSelected = false;
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            {/if}
             <button type="button" class="me-header-icon-btn" on:click={() => audioInput.click()} title="Import audio">
               <Upload size={16} />
             </button>
@@ -208,16 +334,20 @@
             {#if audioName}
               <div
                 class="me-audio-item me-audio-asset"
+                class:me-selected={audioSelected}
                 role="button"
                 tabindex="0"
                 draggable="true"
-                aria-label={`Drag ${audioName} to the timeline`}
+                aria-label={`Select or drag ${audioName}`}
+                on:click={() => (audioSelected = true)}
+                on:keydown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') audioSelected = true;
+                }}
                 on:dragstart={onAudioDragStart}
                 on:dragend={onAudioDragEnd}
               >
                 <Music2 size={18} />
                 <span>{audioName}</span>
-                <button class="me-icon-btn" on:click={onRemoveAudio} title="Remove audio"><Trash2 size={14} /></button>
               </div>
             {:else}
               <div class="me-library-empty-state">
@@ -236,6 +366,17 @@
         <div class="me-panel-header">
           <h3 class="me-panel-heading-title">Text</h3>
           <div class="me-panel-header-actions">
+            {#if selectedTextElements.length}
+              <button
+                type="button"
+                class="me-folder-delete"
+                title={`Delete selected text${selectedTextElements.length === 1 ? '' : ' layers'}`}
+                aria-label={`Delete selected text${selectedTextElements.length === 1 ? '' : ' layers'}`}
+                on:click={removeSelectedText}
+              >
+                <Trash2 size={14} />
+              </button>
+            {/if}
             <button type="button" class="me-header-icon-btn" on:click={onAddTextElement} title="Add text">
               <Plus size={16} />
             </button>
@@ -243,21 +384,28 @@
         </div>
         <div class="me-panel-content">
           <div class="me-layer-list">
-            {#each sourceElements.filter(el => el.kind === 'text') as element}
-              <button
-                type="button"
-                class="me-layer-row"
-                class:me-selected={selectedElementId === element.id}
-                on:click={() => onSelectElement(element.id)}
+            {#each textElements as element}
+              <div
+                class="me-layer-row-wrap"
+                class:me-checked={selectedTextIds.has(element.id)}
               >
-                <span class="me-layer-icon">
-                  <Type size={14} />
-                </span>
-                <span class="me-layer-copy">
-                  <strong>{element.id}</strong>
-                  <small>{elementDetail(element)}</small>
-                </span>
-              </button>
+                <button
+                  type="button"
+                  class="me-layer-row"
+                  class:me-selected={selectedElementId === element.id}
+                  aria-label={`Select ${element.id}`}
+                  on:click={(event) => selectText(element, event)}
+                  on:contextmenu={(event) => selectTextRange(element, event)}
+                >
+                  <span class="me-layer-icon">
+                    <Type size={14} />
+                  </span>
+                  <span class="me-layer-copy">
+                    <strong>{element.id}</strong>
+                    <small>{elementDetail(element)}</small>
+                  </span>
+                </button>
+              </div>
             {/each}
           </div>
         </div>
@@ -369,4 +517,3 @@
         <BrandConfigPanel assetList={assistantAssets} />
       {/if}
     </aside>
-
