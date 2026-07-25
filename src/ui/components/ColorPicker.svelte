@@ -4,6 +4,8 @@
   export let value = '#ffffff';
   export let ariaLabel = 'Color';
   export let onChange: (color: string) => void = () => undefined;
+  export let onDragStart: () => void = () => undefined;
+  export let onDragEnd: () => void = () => undefined;
 
   let root: HTMLDivElement;
   let open = false;
@@ -34,6 +36,17 @@
   function selectColor(color: string) {
     onChange(normalizeColor(color));
     open = false;
+  }
+
+  // Live drag in the native OS color dialog: preview on every input, but collapse
+  // the whole drag into a single undo step via the drag brackets.
+  function previewColor(color: string) {
+    onDragStart();
+    onChange(normalizeColor(color));
+  }
+
+  function commitColor() {
+    onDragEnd();
   }
 
   function commitHex(event: Event) {
@@ -84,7 +97,7 @@
         />
         <label class="custom-color" title="Choose a custom color" aria-label="Choose a custom color">
           <Pipette size={14} />
-          <input type="color" value={normalizedValue} on:input={(event) => selectColor(event.currentTarget.value)} />
+          <input type="color" value={normalizedValue} on:input={(event) => previewColor(event.currentTarget.value)} on:change={commitColor} />
         </label>
       </div>
 

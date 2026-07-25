@@ -33,6 +33,8 @@
   export let isPropertyAnimated: (properties: string[]) => boolean;
   export let hasPropertyKeyframeAtPlayhead: (properties: string[]) => boolean;
   export let onUpdateElementProperty: (key: string, value: string | number | boolean) => void;
+  export let onGestureStart: () => void = () => undefined;
+  export let onGestureEnd: () => void = () => undefined;
   export let onTogglePropertyKeyframe: (properties: string[]) => void;
   export let onBeginPropertyScrub: (event: PointerEvent, key: string, fallback: number, minimum?: number) => void;
   export let onPropertyScrubKey: (event: KeyboardEvent, key: string, fallback: number, minimum?: number) => void;
@@ -131,7 +133,7 @@
               <div class="me-property-label">Rotation</div>
               <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotation'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotation'])} on:click={() => onTogglePropertyKeyframe(['rotation'])} title="Toggle rotation keyframe at playhead" aria-label="Toggle rotation keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotation'])}><Diamond size={11} fill="currentColor" /></button>
             </div>
-            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} />
+            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} onDragStart={onGestureStart} onDragEnd={onGestureEnd} />
           </div>
           {#if selectedElement.kind === 'text'}
             <div class="me-property-group">
@@ -183,12 +185,16 @@
                 value={selectedVisualStringProperty('color', '#ffffff')}
                 ariaLabel="Text color"
                 onChange={(color) => onUpdateElementProperty('color', color)}
+                onDragStart={onGestureStart}
+                onDragEnd={onGestureEnd}
               />
             {:else if selectedElement.kind === 'overlay' || selectedElement.asset?.type === 'svg'}
               <ColorPicker
                 value={selectedVisualStringProperty('fill', '#ffffff')}
                 ariaLabel="Layer color"
                 onChange={(color) => onUpdateElementProperty('fill', color)}
+                onDragStart={onGestureStart}
+                onDragEnd={onGestureEnd}
               />
             {:else}
               <div class="me-property-unavailable">Uses source media colors</div>
@@ -264,6 +270,8 @@
                 value={stringProperty(selectedElement, 'stroke', '#ffffff')}
                 ariaLabel="SVG stroke color"
                 onChange={(color) => onUpdateElementProperty('stroke', color)}
+                onDragStart={onGestureStart}
+                onDragEnd={onGestureEnd}
               />
             </div>
           {/if}
@@ -507,7 +515,7 @@
               <div class="me-property-label">Rotation</div>
               <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotation'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotation'])} on:click={() => onTogglePropertyKeyframe(['rotation'])} title="Toggle rotation keyframe at playhead" aria-label="Toggle rotation keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotation'])}><Diamond size={11} fill="currentColor" /></button>
             </div>
-            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} />
+            <RotationDial value={selectedVisualProperty('rotation', 0)} onChange={(angle) => onUpdateElementProperty('rotation', angle)} onDragStart={onGestureStart} onDragEnd={onGestureEnd} />
           </div>
           <p class="me-shared-property-note">Visual changes apply to every clip using this source asset.</p>
           <div class="me-property-group">
@@ -542,6 +550,8 @@
                 value={selectedVisualStringProperty('fill', '#ffffff')}
                 ariaLabel="Clip color"
                 onChange={(color) => onUpdateElementProperty('fill', color)}
+                onDragStart={onGestureStart}
+                onDragEnd={onGestureEnd}
               />
             {:else}
               <div class="me-property-unavailable">Uses source media colors</div>

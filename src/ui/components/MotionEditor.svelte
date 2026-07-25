@@ -1161,6 +1161,8 @@
     target.setPointerCapture?.(event.pointerId);
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
+    // Bracket the whole scrub gesture into one undo step.
+    beginHistoryGesture();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const sensitivity = moveEvent.shiftKey ? 0.1 : 0.5;
@@ -1176,6 +1178,7 @@
       if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
       document.body.style.cursor = previousCursor;
       document.body.style.userSelect = previousSelection;
+      endHistoryGesture();
     };
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', finishScrub);
@@ -1239,6 +1242,8 @@
           const centerX = bounds.x + bounds.width / 2;
           const centerY = bounds.y + bounds.height / 2;
           const visualId = selectedClip?.id ?? selectedVisual.id;
+          // Bracket the whole resize gesture into one undo step.
+          beginHistoryGesture();
           dragState = {
             mode: 'resize',
             id: selectedAnimationTarget() || selectedVisual.id,
@@ -1269,6 +1274,8 @@
     if (!target) return;
     const sourceTarget = scene.clips.find((clip) => clip.id === targetId)?.assetName ?? targetId;
     const center = elementCenter(target);
+    // Bracket the whole move gesture into one undo step.
+    beginHistoryGesture();
     dragState = {
       mode: 'move',
       id: sourceTarget,
@@ -1327,6 +1334,9 @@
   function handleCanvasPointerUp(event: PointerEvent) {
     dragState = null;
     snapGuides = { vertical: null, horizontal: null };
+    // Collapse the move/resize gesture into a single undo entry (a no-op click
+    // records nothing because the source never changed).
+    endHistoryGesture();
     if (canvas.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
     }
@@ -2956,6 +2966,8 @@
       {isPropertyAnimated}
       {hasPropertyKeyframeAtPlayhead}
       onUpdateElementProperty={updateElementProperty}
+      onGestureStart={beginHistoryGesture}
+      onGestureEnd={endHistoryGesture}
       onTogglePropertyKeyframe={togglePropertyKeyframe}
       onBeginPropertyScrub={beginPropertyScrub}
       onPropertyScrubKey={handlePropertyScrubKey}
