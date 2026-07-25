@@ -116,7 +116,7 @@ The lower panel contains playback and layer-based clip editing.
 - Drag clips horizontally to change time and vertically to move between visual layers.
 - Trim handles work for media, text, images, overlays, and effects.
 - Magnet toggles smart snapping for both timeline clips (clip edges and the playhead) and the canvas (layer alignment guides). Trim, delete, and move never ripple other clips.
-- Undo/Redo buttons and standard keyboard shortcuts restore serialized `.motion` snapshots.
+- Undo/Redo buttons and standard keyboard shortcuts restore serialized `.motion` snapshots. Continuous gestures — canvas move and resize, property sliders, the rotation dial, and the color picker — collapse into a single undo step per drag, so one `Ctrl/Cmd` + `Z` reverses the whole gesture rather than each intermediate pointer position.
 - Timeline `−`/`+` controls and `Ctrl/Cmd` + wheel/pinch zoom around the pointer.
 - Eye and speaker controls persist track visibility and mute state.
 - Dragging Assets creates thumbnail clips and writes track/timing metadata automatically.
