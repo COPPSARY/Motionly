@@ -93,6 +93,7 @@
 
   export let code = '';
   export let onSave: () => void | Promise<void> = () => undefined;
+  export let serverBacked = false;
   let canvas: HTMLCanvasElement;
   let stage: HTMLDivElement;
   let renderer: CanvasRenderer | null = null;
@@ -176,6 +177,7 @@
   let previewAsset: AssetPreview | null = null;
   let videoRenderId = 0;
   let isDraggingUpload = false;
+  let stageDropActive = false;
   let draggingAsset: Asset | null = null;
   let draggingAudio = false;
   let draggingTransition: 'crossfade' | null = null;
@@ -1549,6 +1551,33 @@
     await importAssetFiles(event.dataTransfer?.files);
   }
 
+  // Dropping OS files directly onto the preview stage saves them into the asset
+  // folder (Media panel), where they can be viewed, reused, or deleted.
+  function handleStageFileDragOver(event: DragEvent) {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    stageDropActive = true;
+  }
+
+  function handleStageFileDragLeave(event: DragEvent) {
+    if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
+      stageDropActive = false;
+    }
+  }
+
+  async function handleStageFileDrop(event: DragEvent) {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    stageDropActive = false;
+    const added = await importAssetFiles(event.dataTransfer.files);
+    if (added.length) {
+      // Reveal the freshly imported media so the drop has a visible result.
+      activeNavTab = 'media';
+      mediaSubTab = 'assets';
+    }
+  }
+
   function handleAssetFileDrag(event: DragEvent) {
     if (event.dataTransfer?.types.includes('Files')) isDraggingUpload = true;
   }
@@ -1559,12 +1588,37 @@
     }
   }
 
-  async function importAssetFiles(fileList: FileList | null | undefined) {
-    if (!ast) return;
+  /**
+   * Persist an uploaded/dragged file so the editor can reference it.
+   *
+   * In a server-backed project (npx init → CLI `dev`), the file is written into
+   * the project's on-disk `assets/` folder via the local editor server and
+   * referenced by relative path, so it becomes real, reusable project media.
+   * In the browser-only editor (no project server) there is nowhere to write, so
+   * the file is embedded in the `.motion` source as a tagged data URL instead.
+   */
+  async function persistAssetFile(file: File): Promise<string> {
+    if (serverBacked) {
+      const response = await fetch(`/assets/${encodeURIComponent(file.name)}`, {
+        method: 'PUT',
+        headers: { 'content-type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!response.ok) {
+        throw new Error(`Could not save ${file.name} to the project assets folder (${response.status}).`);
+      }
+      return `./assets/${file.name}`;
+    }
+    return tagEmbeddedAssetPath(await readFileDataUrl(file), file.name);
+  }
+
+  async function importAssetFiles(fileList: FileList | null | undefined): Promise<string[]> {
+    if (!ast) return [];
     const program = ast;
     assetError = '';
     const files = Array.from(fileList ?? []);
-    if (!files.length) return;
+    if (!files.length) return [];
+    const addedNames: string[] = [];
     for (const file of files) {
       const lowerName = file.name.toLowerCase();
       const isImage = file.type.startsWith('image/') || lowerName.endsWith('.svg');
@@ -1577,13 +1631,6 @@
       const maximumSize = isVideo ? 100_000_000 : isLottie ? 50_000_000 : 10_000_000;
       if (file.size > maximumSize) {
         assetError = `${file.name} is larger than ${isVideo ? '100' : isLottie ? '50' : '10'} MB.`;
-        continue;
-      }
-      let path = '';
-      try {
-        path = tagEmbeddedAssetPath(await readFileDataUrl(file), file.name);
-      } catch (cause) {
-        assetError = cause instanceof Error ? cause.message : `Could not read ${file.name}.`;
         continue;
       }
       const matchingImports = program.body.filter(
@@ -1615,8 +1662,23 @@
           assetError = `Kept the current ${file.name}.`;
           continue;
         }
-        for (const node of matchingImports) node.path = path;
+        // Persist only after the replace decision so declining never overwrites disk media.
+        let replacedPath = '';
+        try {
+          replacedPath = await persistAssetFile(file);
+        } catch (cause) {
+          assetError = cause instanceof Error ? cause.message : `Could not save ${file.name}.`;
+          continue;
+        }
+        for (const node of matchingImports) node.path = replacedPath;
         assetError = `Matched ${file.name} to its existing import by filename.`;
+        continue;
+      }
+      let path = '';
+      try {
+        path = await persistAssetFile(file);
+      } catch (cause) {
+        assetError = cause instanceof Error ? cause.message : `Could not save ${file.name}.`;
         continue;
       }
       const used = new Set(program.body.flatMap((node) => node.type === 'Import' ? [node.name] : node.type === 'Element' ? [node.name] : []));
@@ -1625,8 +1687,10 @@
       let suffix = 2;
       while (used.has(name)) name = `${base}_${suffix++}`;
       program.body.push({ type: 'Import', path, name });
+      addedNames.push(name);
     }
     code = serializeProgram(program);
+    return addedNames;
   }
 
   async function readMediaIdentity(file: File, isVideo: boolean) {
@@ -3034,12 +3098,16 @@
       {previewAsset}
       {parseError}
       {exportError}
+      fileDropActive={stageDropActive}
       onFit={fitPreview}
       onToggleFullscreen={toggleFullscreen}
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={handleCanvasPointerMove}
       onPointerUp={handleCanvasPointerUp}
       onClearAssetPreview={clearAssetPreview}
+      onFileDragOver={handleStageFileDragOver}
+      onFileDragLeave={handleStageFileDragLeave}
+      onFileDrop={handleStageFileDrop}
     />
 
     <PropertiesInspector
