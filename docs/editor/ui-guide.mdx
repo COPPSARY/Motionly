@@ -17,7 +17,7 @@ Motionly uses one focused editor screen.
 
 ## Left Navigation Rail
 
-Icon-based tabs for quick access to tools and content:
+Icon-based tabs for quick access to tools and content. The content panel that opens next to the rail is horizontally resizable — drag its right edge to resize any panel (Media, Audio, Text, Effects, Scenes, AI Config, or Settings) without affecting the preview or timeline.
 
 - **Media** - Assets panel with organized folders (Images & Graphics)
 - **Audio** - Audio assets panel
@@ -34,11 +34,24 @@ Browse and manage project assets:
 - Click thumbnails for full-screen preview (temporary, no timeline disruption)
 - Import PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and Lottie files
 - See explicit browser/renderer warnings when an animated format cannot be frame-seeked or decoded
-- Organized folder structure showing audio and visual assets
+- Organized folder structure showing visual assets (audio lives in the Audio panel, not the Assets panel)
 - Drag assets directly onto timeline to create clips
 - Green drop indicator shows where clips will be placed
+- Use the view switcher above the asset list to toggle between **grid** and **list** views. Grid shows large thumbnails for visual browsing. List shows a denser row layout that's easier to scan by name.
+- Use the media import button at the top of the panel to add files. It highlights on hover and accepts drag-and-drop from your OS in addition to click-to-browse.
 
 The Media panel has two tabs: **Assets** and **Presets**.
+
+### Selecting and deleting items
+
+Assets, audio clips, and text items in their respective panels all support the same selection model:
+
+- Click an item to select it.
+- Hold the platform multi-select modifier (`Ctrl` on Windows/Linux, `Cmd` on macOS) and click to add or remove individual items from the selection.
+- Hold `Shift` and click to select a contiguous range between the last-selected item and the item you clicked.
+- Selected items are highlighted consistently across Assets, Audio, and Text panels.
+- Press `Delete` or `Backspace` to remove the current selection. Motionly shows a confirmation dialog before deleting multiple items.
+- Press `Escape` to cancel selection and dismiss any open confirmation.
 
 ## AI Config
 
@@ -131,9 +144,11 @@ The editor listens for these shortcuts whenever the canvas or timeline has focus
 | `Space` | Toggle playback |
 | `Home` | Reset playhead to the start |
 | `S` | Split the selected clip at the playhead |
-| `Delete` / `Backspace` | Delete the current selection |
+| `Delete` / `Backspace` | Delete the current selection (opens a confirmation dialog when multiple items are selected) |
 | `Arrow keys` | Nudge the selected layer by one unit |
-| `Escape` | Clear selection |
+| `Escape` | Clear selection, dismiss confirmation dialogs, and cancel in-progress drags |
+| `Ctrl` / `Cmd` + click | Toggle an item in a multi-selection in the Assets, Audio, or Text panel |
+| `Shift` + click | Select a range between the last-selected item and the clicked item |
 | `Ctrl/Cmd` + `S` | Save the current `.motion` project |
 | `Ctrl/Cmd` + `Z` | Undo |
 | `Ctrl/Cmd` + `Shift` + `Z` | Redo |
