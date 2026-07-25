@@ -1,6 +1,6 @@
 <script lang="ts">
   import './preview-stage.css';
-  import { Maximize2, X } from 'lucide-svelte';
+  import { Maximize2, Upload, X } from 'lucide-svelte';
   import type { SnapGuides } from '../../canvas-geometry';
   import type { AssetPreview } from './types';
 
@@ -16,12 +16,16 @@
   export let previewAsset: AssetPreview | null;
   export let parseError: string | null;
   export let exportError: string;
+  export let fileDropActive = false;
   export let onFit: () => void;
   export let onToggleFullscreen: () => void;
   export let onPointerDown: (event: PointerEvent) => void;
   export let onPointerMove: (event: PointerEvent) => void;
   export let onPointerUp: (event: PointerEvent) => void;
   export let onClearAssetPreview: () => void;
+  export let onFileDragOver: (event: DragEvent) => void = () => undefined;
+  export let onFileDragLeave: (event: DragEvent) => void = () => undefined;
+  export let onFileDrop: (event: DragEvent) => void = () => undefined;
 </script>
 
 <main class="me-preview-container">
@@ -35,7 +39,16 @@
       </button>
     </div>
   </div>
-  <div bind:this={stage} class="me-stage">
+  <div
+    bind:this={stage}
+    class="me-stage"
+    class:me-stage-drop-active={fileDropActive}
+    role="region"
+    aria-label="Preview canvas. Drop media files here to add them to your assets."
+    on:dragover={onFileDragOver}
+    on:dragleave={onFileDragLeave}
+    on:drop={onFileDrop}
+  >
     {#if !assetsReady}<div class="me-stage-status" role="status"><span></span> Preparing project media…</div>{/if}
     <div class="me-canvas-shell" style={canvasStyle}>
       <canvas
@@ -56,6 +69,12 @@
         <span class="me-snap-guide me-snap-guide-h" style={`top: ${(snapGuides.horizontal / canvasHeight) * 100}%`}></span>
       {/if}
     </div>
+    {#if fileDropActive}
+      <div class="me-stage-drop-hint" role="status">
+        <Upload size={22} />
+        <span>Drop to add to your assets</span>
+      </div>
+    {/if}
     {#if previewAsset}
       <div class="me-asset-preview-overlay">
         {#if previewAsset.type === 'video'}

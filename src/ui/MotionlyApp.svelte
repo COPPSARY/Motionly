@@ -293,7 +293,7 @@ animate title {
   </div>
 
   <!-- Editor -->
-  <MotionEditor bind:this={editor} bind:code={motionCode} onSave={handleSave} />
+  <MotionEditor bind:this={editor} bind:code={motionCode} onSave={handleSave} {serverBacked} />
 </div>
 
 <style>
