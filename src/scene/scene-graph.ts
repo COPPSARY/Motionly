@@ -373,6 +373,21 @@ export function assetType(path: string): AssetType {
   return 'image';
 }
 
+/**
+ * Sources that carry their own length (video, GIF, Lottie) and should be placed
+ * at that length. Everything else — stills, SVG — is static and gets the
+ * editor's default duration. GIFs share the `image` asset type, so the
+ * extension has to be checked separately.
+ */
+export function hasIntrinsicDuration(path: string): boolean {
+  const type = assetType(path);
+  if (type === 'video' || type === 'lottie') return true;
+  const lower = path.toLowerCase();
+  const filename = assetFilename(path).toLowerCase();
+  const pathname = lower.split(/[?#]/, 1)[0] ?? lower;
+  return lower.startsWith('data:image/gif') || (filename || pathname).endsWith('.gif');
+}
+
 /** Validate serializable layer-mask references before rendering. */
 export function validateElementMasks(elements: Element[]): void {
   const byId = new Map(elements.map((element) => [element.id, element]));

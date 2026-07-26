@@ -7,7 +7,7 @@ import {
   videoSourceTime,
   type LoadedAsset,
 } from '../../src/assets/asset-loader';
-import { assetType } from '../../src/scene/scene-graph';
+import { assetType, hasIntrinsicDuration } from '../../src/scene/scene-graph';
 import type { EvaluatedScene } from '../../src/types/scene';
 
 describe('animated assets', () => {
@@ -30,6 +30,19 @@ describe('animated assets', () => {
     );
     expect(assetType('/media/loop.gif')).toBe('image');
     expect(assetType('/media/photo.png')).toBe('image');
+  });
+
+  it('separates sources that carry their own length from static artwork', () => {
+    expect(hasIntrinsicDuration('/media/intro.mp4')).toBe(true);
+    expect(hasIntrinsicDuration('/media/loader.lottie')).toBe(true);
+    // GIFs share the `image` asset type but still play a timeline of their own.
+    expect(hasIntrinsicDuration('/media/loop.GIF?version=2')).toBe(true);
+    expect(hasIntrinsicDuration('data:image/gif;base64,AAAA')).toBe(true);
+    expect(
+      hasIntrinsicDuration('data:application/octet-stream;base64,AAAA#motionly-filename=loop.gif')
+    ).toBe(true);
+    expect(hasIntrinsicDuration('/media/photo.png')).toBe(false);
+    expect(hasIntrinsicDuration('/media/logo.svg')).toBe(false);
   });
 
   it('maps timeline time to variable-duration GIF frames', () => {
