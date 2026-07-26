@@ -44,7 +44,7 @@
   import { elementWindowProperties, moveElementClip, splitElementClip } from '../element-clips';
   import { restoreEmbeddedAssetPaths } from '../../ai/chat';
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
-  import { editorShortcut } from '../editor-shortcuts';
+  import { editorShortcut, shortcutContext } from '../editor-shortcuts';
   import { cloneClipInProgram, cloneElementInProgram } from '../duplicate-cloning';
   import { extractAudioPeaks, waveformBucketCount, waveformPath } from '../audio-waveform';
   import { moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
@@ -235,11 +235,12 @@
     requestAnimationFrame(measureTimeline);
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target instanceof Element ? e.target : null;
-      const interactive = Boolean(target?.closest(
-        'input, textarea, select, button, a, [contenteditable="true"], [role="button"], [role="slider"]'
-      ));
-      const shortcut = editorShortcut(e, interactive);
+      const context = shortcutContext(e.target);
+      if (e.key === 'Escape' && context !== 'global' && e.target instanceof HTMLElement) {
+        e.target.blur();
+        if (context === 'typing') return;
+      }
+      const shortcut = editorShortcut(e, context);
       if (!shortcut || showConfirmDialog) return;
       e.preventDefault();
       if (e.repeat && !shortcut.startsWith('nudge-')) return;
