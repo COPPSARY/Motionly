@@ -22,7 +22,7 @@
   export let snapEnabled: boolean;
   export let timelineZoom: number;
   export let timelineContentWidth: number;
-  export let totalDuration: number;
+  export let timelineVisibleDuration: number;
   export let scene: Scene | null;
   export let draggingAsset: boolean;
   export let draggingAudio: boolean;
@@ -169,7 +169,7 @@
           {#if dropTargetTime !== null}
             <span class="me-drop-indicator" style={`left: ${timelinePercent(dropTargetTime)}%`}></span>
           {/if}
-          <input class="me-timeline-scrubber" type="range" min="0" max={totalDuration} step={1 / (scene?.canvas.fps ?? 60)} value={currentTime} on:input={onSeek} aria-label="Timeline scrubber" />
+          <input class="me-timeline-scrubber" type="range" min="0" max={timelineVisibleDuration} step={1 / (scene?.canvas.fps ?? 60)} value={currentTime} on:input={onSeek} aria-label="Timeline scrubber" />
         </div>
       </div>
 
