@@ -25,6 +25,7 @@ const TIME_PROPERTIES = new Set([
   'trimOut',
   'transitionInDuration',
   'transitionOutDuration',
+  'followThroughLag',
 ]);
 const NUMBER_PROPERTIES = new Set([
   'x',
@@ -34,11 +35,18 @@ const NUMBER_PROPERTIES = new Set([
   'scale',
   'originX',
   'originY',
+  'originXPixel',
+  'originYPixel',
   'skewX',
   'skewY',
   'rotation',
+  'rotationX',
+  'rotationY',
+  'perspective',
   'opacity',
   'pathProgress',
+  'trimStart',
+  'motionPathProgress',
   'revealProgress',
   'blur',
   'brightness',
@@ -62,6 +70,7 @@ const NUMBER_PROPERTIES = new Set([
   'x2',
   'y2',
   'zoom',
+  'followThroughDamping',
 ]);
 const COLOR_PROPERTIES = new Set(['background', 'color', 'fill', 'stroke']);
 
@@ -101,7 +110,9 @@ export function normalizeCamera(properties: Record<string, unknown> = {}): Camer
 export function normalizeProperties(properties: Record<string, unknown>): PropertyMap {
   const normalized: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(properties)) {
-    normalized[key] = normalizeProperty(key, value);
+    // `rotationZ` is a spec-compliant alias for the existing single Z-axis `rotation` field.
+    const resolvedKey = key === 'rotationZ' ? 'rotation' : key;
+    normalized[resolvedKey] = normalizeProperty(resolvedKey, value);
   }
   return normalized as unknown as PropertyMap;
 }
@@ -127,6 +138,10 @@ export function defaultElementProperties(kind: ElementKind): ElementProperties {
     height: null,
     scale: 1,
     rotation: 0,
+    rotationX: 0,
+    rotationY: 0,
+    perspective: 800,
+    rotationDirection: 'auto',
     originX: 0.5,
     originY: 0.5,
     opacity: 1,

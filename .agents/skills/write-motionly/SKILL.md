@@ -65,7 +65,9 @@ Before generating or converting missing supporting artwork, ask one concise ques
 - Use normalized `originX`/`originY` values from `0` to `1` to push into a specific region of an SVG.
 - For "zoom into the logo," "pan across the diagram," or similar requests, animate the SVG itself. Do not move the global camera when only one artwork changes focus.
 - Separate meaningful vector parts only when they need independent timing; stagger related parts by roughly `60–140ms` and hold the completed artwork.
-- Motionly does not currently provide deterministic path morphing. Use transform, mask, or matched-shape crossfades and state the limitation.
+- `trimStart` generalizes `drawSVG`'s draw-from-start reveal into a partial-arc "trim path": set `trimStart` alongside an animated `pathProgress` (the existing `drawSVG` preset drives this) to get a moving trimmed segment (comet-trail) instead of a fixed draw-in. See [motion-syntax.md](references/motion-syntax.md).
+- `motionPath` moves (and, with `motionPathRotate`, orients) an element along an imported guide path's own geometry, driven by an animated `motionPathProgress` (0-1). The guide path's SVG coordinate space is used directly as an x/y offset — author guide paths in the same units as the canvas layout.
+- Motionly does not currently provide deterministic path morphing (interpolating between two different `d` shapes) or gradient-stop animation. Use transform, mask, or matched-shape crossfades for morphing, and a static gradient (or a pre-rendered asset) instead of an animated one; state these limitations rather than faking them.
 
 ## Script, Audio, And Timing
 

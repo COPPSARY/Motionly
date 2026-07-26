@@ -30,6 +30,36 @@ export function interpolateValue(
 }
 
 /**
+ * Interpolate a rotation angle (degrees) between two values, honoring a
+ * direction preference:
+ * - 'auto' (default) takes the literal from->to delta as authored, so
+ *   multi-turn sweeps (e.g. a spin preset going -260deg or +720deg) work
+ *   exactly as written — this matches long-standing preset behavior.
+ * - 'cw' / 'ccw' force the rotation to move through a positive / negative
+ *   delta, nudging by a single 360 turn when the authored delta points the
+ *   other way. Only meant for resolving ambiguous short (<360) deltas.
+ */
+export function interpolateAngle(
+  from: number,
+  to: number,
+  progress: number,
+  direction: 'auto' | 'cw' | 'ccw' = 'auto'
+): number {
+  if (progress <= 0) return from;
+  if (progress >= 1) return to;
+
+  let delta = to - from;
+
+  if (direction === 'cw' && delta < 0) {
+    delta += 360;
+  } else if (direction === 'ccw' && delta > 0) {
+    delta -= 360;
+  }
+
+  return from + delta * progress;
+}
+
+/**
  * Check if value is a color string
  */
 function isColor(value: AnimatableValue): value is string {

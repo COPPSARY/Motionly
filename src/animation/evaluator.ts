@@ -4,7 +4,7 @@
  */
 
 import { ease } from '../core/easing';
-import { interpolateValue } from '../core/interpolate';
+import { interpolateAngle, interpolateValue } from '../core/interpolate';
 import { clamp } from '../core/units';
 import type {
   Scene,
@@ -23,10 +23,14 @@ interface PreparedScene {
   clippedAssets: Set<string>;
   clipsById: Map<string, Clip>;
   elementsByAsset: Map<string, Element>;
+  elementsById: Map<string, Element>;
   orderedClips: Clip[];
   regularElements: Element[];
   tracksById: Map<string, Track>;
 }
+
+const FOLLOW_THROUGH_KEYS = ['x', 'y', 'rotation'] as const;
+const ROTATION_KEYS = new Set(['rotation', 'rotationX', 'rotationY']);
 
 const preparedScenes = new WeakMap<Scene, PreparedScene>();
 const interpolatedKeys = new WeakMap<Animation, string[]>();
@@ -51,6 +55,7 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
       if (element.asset) {
         render = { ...render, mediaTime: Math.max(0, time) } as ElementProperties;
       }
+      render = applyFollowThrough(element, render, prepared, time);
       return { ...element, render };
     });
 
@@ -135,12 +140,14 @@ function prepareScene(scene: Scene): PreparedScene {
       elementsByAsset.set(element.assetName, element);
     }
   }
+  const elementsById = new Map(scene.elements.map((element) => [element.id, element]));
 
   const prepared: PreparedScene = {
     animationsByTarget,
     clippedAssets: new Set(scene.clips.map((clip) => clip.assetName)),
     clipsById: new Map(scene.clips.map((clip) => [clip.id, clip])),
     elementsByAsset,
+    elementsById,
     orderedClips: [],
     regularElements: [],
     tracksById,
@@ -205,6 +212,47 @@ function trackRank(track: number | string): number {
 }
 
 /**
+ * Layer a lagged, damped copy of a parent element's motion delta onto a child's
+ * render, for secondary motion / follow-through. No-op unless the child
+ * declares `followThrough <parentId>`.
+ */
+function applyFollowThrough(
+  element: Element,
+  render: ElementProperties,
+  prepared: PreparedScene,
+  time: number
+): ElementProperties {
+  const props = element.properties as unknown as Record<string, unknown>;
+  const parentId = props['followThrough'];
+  if (!parentId) return render;
+
+  const parent = prepared.elementsById.get(String(parentId));
+  if (!parent) return render;
+
+  const lag = Number(props['followThroughLag'] ?? 0);
+  const damping = clamp(Number(props['followThroughDamping'] ?? 0.3), 0, 1);
+  const restProps = parent.properties as unknown as Record<string, unknown>;
+  const laggedRender = evaluateElement(
+    parent,
+    prepared.animationsByTarget.get(parent.id) ?? [],
+    time - lag
+  ) as unknown as Record<string, unknown>;
+
+  const next = { ...render } as Record<string, unknown>;
+  for (const key of FOLLOW_THROUGH_KEYS) {
+    const rest = Number(restProps[key] ?? 0);
+    const lagged = Number(laggedRender[key] ?? rest);
+    next[key] = Number(next[key] ?? 0) + (lagged - rest) * damping;
+  }
+
+  const restScale = Number(restProps['scale'] ?? 1) || 1;
+  const laggedScale = Number(laggedRender['scale'] ?? restScale) || restScale;
+  next['scale'] = Number(next['scale'] ?? 1) * (1 + (laggedScale / restScale - 1) * damping);
+
+  return next as unknown as ElementProperties;
+}
+
+/**
  * Evaluate camera state at a specific time
  */
 function evaluateCamera(scene: Scene, prepared: PreparedScene, time: number): ElementProperties {
@@ -260,7 +308,15 @@ function applyAnimation(state: PropertyMap, animation: Animation, time: number):
 
   if (localTime < 0) return state;
 
-  const rawProgress = clamp(localTime / animation.duration);
+  const rawCycles = animation.duration > 0 ? localTime / animation.duration : 0;
+  const rawProgress =
+    animation.repeat === undefined
+      ? clamp(rawCycles)
+      : resolveCycleProgress(
+          rawCycles,
+          animation.repeat === 'infinite' ? Infinity : Math.max(Number(animation.repeat), 0),
+          animation.repeatType ?? 'loop'
+        );
 
   if (animation.keyframes.length > 0) {
     return applyKeyframes(state, animation.keyframes, rawProgress, animation.easing);
@@ -276,13 +332,47 @@ function applyAnimation(state: PropertyMap, animation: Animation, time: number):
     interpolatedKeys.set(animation, keys);
   }
 
+  const direction = (state['rotationDirection'] as 'auto' | 'cw' | 'ccw' | undefined) ?? 'auto';
+
   for (const key of keys) {
     const from = animation.from[key] ?? state[key] ?? 0;
     const to = animation.to[key] ?? state[key] ?? 0;
-    next[key] = interpolateValue(from, to, progress);
+    next[key] = ROTATION_KEYS.has(key)
+      ? interpolateAngle(Number(from), Number(to), progress, direction)
+      : interpolateValue(from, to, progress);
   }
 
   return next;
+}
+
+/**
+ * Remap raw elapsed cycles (localTime / duration) into a 0-1 in-cycle
+ * progress value, honoring a repeat count ('infinite' or a number) and
+ * repeat type ('loop' replays forward each cycle, 'yoyo' alternates).
+ */
+function resolveCycleProgress(
+  rawCycles: number,
+  maxCycles: number,
+  repeatType: 'loop' | 'yoyo'
+): number {
+  if (maxCycles <= 0) return 0;
+
+  const clampedCycles = Math.min(rawCycles, maxCycles);
+  let cycleIndex = Math.floor(clampedCycles);
+  let position = clampedCycles - cycleIndex;
+
+  // Landing exactly on a cycle boundary at the end of playback means the
+  // previous cycle just completed; hold at its end rather than the start
+  // of a cycle that never plays.
+  if (position === 0 && clampedCycles > 0 && clampedCycles === maxCycles) {
+    cycleIndex -= 1;
+    position = 1;
+  }
+
+  if (repeatType === 'yoyo' && cycleIndex % 2 === 1) {
+    return 1 - position;
+  }
+  return position;
 }
 
 /**
@@ -298,6 +388,7 @@ function applyKeyframes(
 
   const next: PropertyMap = { ...state };
   const keys = new Set(keyframes.flatMap((frame) => Object.keys(frame.properties)));
+  const direction = (state['rotationDirection'] as 'auto' | 'cw' | 'ccw' | undefined) ?? 'auto';
 
   for (const key of keys) {
     const propertyFrames = keyframes.filter((frame) => key in frame.properties);
@@ -319,7 +410,14 @@ function applyKeyframes(
       if (!left || !right || progress < left.offset || progress > right.offset) continue;
       const span = right.offset - left.offset || 1;
       const local = ease((progress - left.offset) / span, right.easing ?? easing);
-      next[key] = interpolateValue(left.properties[key]!, right.properties[key]!, local);
+      next[key] = ROTATION_KEYS.has(key)
+        ? interpolateAngle(
+            Number(left.properties[key]),
+            Number(right.properties[key]),
+            local,
+            direction
+          )
+        : interpolateValue(left.properties[key]!, right.properties[key]!, local);
       break;
     }
   }

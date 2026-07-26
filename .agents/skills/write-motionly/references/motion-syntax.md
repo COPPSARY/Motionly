@@ -292,6 +292,8 @@ overlay spotlight {
 
 Supported shapes are `circle`, `ellipse`, `rect`, `line`, `arrow`, `path`, `text`, and `spotlight`. For `path`, set `path` to SVG `d` data. `clip` confines a sublayer to the image. All overlay properties use the normal `animate` blocks and keyframes; overlays also follow their parent's evaluated visibility and transform.
 
+An overlay does not require `parent`. Omit it and the shape is positioned relative to canvas center using its own `x`/`y`/`rotation`/`scale`, exactly like any other element — this is the basis for the UI Components below (cards, buttons, progress bars) that aren't annotating an image. `rect` respects `originX`/`originY` for its anchor point (default `0.5, 0.5`, centered); set `originX 0` for a left-anchored bar or panel.
+
 Starter presets:
 
 - `highlight-circle-reveal`: draws a circle/ellipse stroke around the target.
@@ -320,6 +322,71 @@ overlay atmosphere {
 
 Background effects currently include `gradientMotion`, `noise`, `grid`, `aurora`, `prism`, `rippleGrid`, `ripple-grid`, and `particles`. Keep opacity restrained behind copy.
 
+## UI Components
+
+Cards, buttons, progress bars, badges, and panels are standalone `overlay` shapes (no `parent`) composed with the normal shape/fill/text system above, animated with the presets below. There are no dedicated `button`/`card`/`modal` element kinds — everything is built from `rect`/`text`/`circle` overlays, kept purposeful rather than growing a large widget library.
+
+```motion
+overlay pricingCard {
+  shape rect
+  x 0
+  y 0
+  width 420
+  height 260
+  radius 24
+  fill #101826
+  shadow 24
+  opacity 0
+  animation cardReveal(delay 400ms duration 700ms ease power3.out)
+}
+
+overlay ctaButton {
+  shape rect
+  x 0
+  y 160
+  width 200
+  height 56
+  radius 28
+  fill #7cf7c5
+  opacity 0
+  animation buttonPop(delay 1s)
+}
+
+overlay progressTrack {
+  shape rect
+  x -150
+  y 260
+  originX 0
+  width 300
+  height 8
+  fill #1c2c40
+  opacity 1
+}
+
+overlay progressBar {
+  shape rect
+  x -150
+  y 260
+  originX 0
+  width 300
+  height 8
+  fill #7cf7c5
+  opacity 1
+  animation progressFill(delay 1.4s duration 900ms ease power3.out)
+}
+```
+
+- `cardReveal`: rise + scale-in with a rising `shadow` (elevation lifts in as the card settles) — distinct from `softReveal` in that shadow is part of the choreography, not just a static value.
+- `buttonPop`: fast elastic scale-in (default `450ms`, vs. the general `1.2s` default) tuned for small interactive elements.
+- `progressFill`: animates `width` from `0` to the overlay's authored width. Pair a static "track" rect (no animation, dim fill) behind an `originX 0` "fill" rect so it grows left-to-right like a real progress bar.
+
+For other UI patterns, compose from the existing preset set rather than reaching for a new name:
+
+- **Notification/toast**: `dynamicSlide` from an edge (`direction left|right|up|down`), short `duration`, with `exitAt`/`exitDuration` for the auto-dismiss.
+- **Modal**: `scaleReveal` (or `cardReveal`) for the panel, plus a full-canvas `overlay` with `softReveal` for the dimming backdrop, sequenced together with matching `delay`.
+- **Menu/sidebar/table rows**: a `sequence` block with `hierarchy` (see below) driving `dynamicSlide` or `fadeUp` per row/item instead of hand-computed delays.
+- **Charts**: build bars/segments as `rect`/`circle`/`path` overlays and reveal with `cardReveal`/`progressFill`/`drawSVG` per element, staggered with `sequence`.
+
 ## Object Presets
 
 Preferred production set:
@@ -330,9 +397,23 @@ Preferred production set:
 - `shapeWipe`: directional full-scene transition.
 - `irisWipe`: circular full-scene transition.
 - `drawSVG`: path progress for simple stroked SVGs only.
-- `heroLogo`, `productPanel`, `rotateReveal`, `scaleReveal`: use selectively.
+- `heroLogo`, `productPanel`, `rotateReveal`: use selectively.
 
-Other supported object presets include `sceneExit`, `springIn`, `bounceIn`, `float`, `pulse`, `morph`, `productReveal`, `appleHero`, and `startupLaunch`. Prefer the restrained set unless the brief calls for a different motion character.
+Icon and pop-in motion:
+
+- `springIn`: rise with overlapping easing — power-out approach, then an elastic settle for a natural, non-robotic spring.
+- `bounceIn`: drops from above with a literal bounce easing (`distance` controls drop height).
+- `scaleReveal`: elastic scale-in from near-zero — a genuine "pop," distinct from `softReveal`'s subtle scale nudge.
+- `spinIn`: full-rotation entrance (`rotationFrom`, default `-260°`) with a slight overshoot past rest before settling — for logos/icons that should visibly spin into place, not just fade up.
+
+Image/media motion:
+
+- `kenBurns`: continuous pan + zoom for the element's own duration (`panX`, `panY`, `to` for end zoom) — independent of the global `camera`, for a slow drift on one photo/screenshot while everything else holds still.
+- `tiltReveal`: perspective-style entrance using skew + rotation (`skewXFrom`, `skewYFrom`, `rotationFrom`). Canvas2D has no true 3D transform; this approximates depth rather than rendering real perspective — state that limitation if a brief specifically needs true 3D.
+
+For parallax (a background layer lagging behind camera/foreground movement), use `followThrough` (below) with a `followThroughDamping` under `1` rather than a dedicated preset.
+
+Other supported object presets include `sceneExit`, `float`, `pulse`, `morph`, `productReveal`, `appleHero`, and `startupLaunch`. `morph`, `productReveal`, `appleHero`, and `startupLaunch` currently resolve to the same restrained generic fade/scale/rise fallback — true shape morphing between two different paths is not implemented (see SVG Animation below); use a matched-shape crossfade instead. Prefer the restrained, distinctly-implemented set above unless the brief calls for a different motion character.
 
 Example supporting asset:
 
@@ -349,6 +430,97 @@ icon {
 ```
 
 Directions are `left`, `right`, `up`, and `down`.
+
+## Motion Quality: Overshoot, Anticipation, Follow-Through, Stagger
+
+Opt-in options for a livelier, less "PowerPoint" feel. All are additive — omitting them keeps a preset's existing curve exactly as before.
+
+`overshoot` and `anticipation` work on any object preset whose entrance is a plain two-state animation (`softReveal`, `heroLogo`, `productPanel`, `rotateReveal`, `drawSVG`, `shapeWipe`, `irisWipe`, `maskReveal`, the callout/spotlight presets, and the default fallback). Presets that already choreograph their own keyframes (`dynamicSlide`, `float`, `pulse`) ignore these two options since they already have an intentional curve.
+
+```motion
+badge {
+  center
+  scale 1
+  animation heroLogo(delay 200ms duration 700ms anticipation 120ms overshoot 1.08 ease power3.out)
+}
+```
+
+- `anticipation <time>`: a small counter-motion before the main move (e.g. a slight dip before a rise, or shrink before a pop), extending the preset's effective duration by that amount.
+- `overshoot <multiplier>`: the settle axis (scale for pop-ins, position/rotation for slides) moves past its final value, then eases back. `scale` overshoots to `rest * multiplier`; `x`/`y`/`rotation` overshoot proportionally to how far they travelled.
+
+`followThrough` links any element/overlay to lag and dampen behind a parent's motion, for secondary motion (e.g. a label or glow trailing an icon):
+
+```motion
+glow {
+  followThrough icon
+  followThroughLag 140ms
+  followThroughDamping 0.3
+}
+```
+
+The parent must exist, cannot be the element itself, and cannot itself declare `followThrough` (no chaining). `followThroughDamping` is 0–1 (0 = no secondary motion, 1 = full delta).
+
+`sequence` blocks compute a whole group's stagger from one place instead of hand-computed per-element delays, and now support a `hierarchy` distribution:
+
+```motion
+sequence agentIcons {
+  items codex claudeCode antigravity
+  delay 8.8s
+  gap 0.5s
+  hierarchy wave
+}
+
+codex {
+  sequence agentIcons
+  animation dynamicSlide(duration 0.7s direction up distance 90 ease power3.out)
+}
+```
+
+Set the same `sequence <name>` property on each member (works for both preset `animation`/`textAnimation` calls and explicit `animate` blocks). `hierarchy` is `linear` (default, flat per-index delay), `wave` (eased distribution), or `center-out` (middle member first, outer members lag more).
+
+## SVG Animation: Trim Paths And Motion Paths
+
+`trimStart` generalizes the `drawSVG` stroke reveal from a fixed "draw from the start" into a partial-arc trim, using the same `pathProgress` (driven by the `drawSVG` preset) as the trim's end point:
+
+```motion
+import "./assets/line.svg" as squiggle
+
+squiggle {
+  center
+  width 400
+  trimStart .2
+  animation drawSVG(duration 1.2s ease power3.out)
+}
+```
+
+With `trimStart` at `0` (the default), this is the existing draw-in behavior. Set `trimStart` above `0` — or animate it — for a moving trimmed segment (a "comet trail" that travels along the path rather than growing from a fixed start); in that case the full-artwork fade-in at the end of the reveal is suppressed, since a moving segment should never solidify into filled artwork.
+
+`motionPath` moves an element along an imported path asset's own geometry, driven by an animated `motionPathProgress` (`0` to `1`):
+
+```motion
+import "./assets/guide-curve.svg" as guideCurve
+import "./assets/pointer.svg" as pointer
+
+pointer {
+  width 40
+  motionPath guideCurve
+  motionPathProgress 0
+  motionPathRotate
+}
+
+animate pointer {
+  to {
+    motionPathProgress 1
+  }
+  delay 500ms
+  duration 1.4s
+  easing power3.out
+}
+```
+
+`motionPath` names an imported asset (not an element id) — the first `<path>` in that SVG is sampled. `motionPathRotate` (bare boolean) orients the element to the path's tangent direction as it travels. The guide path's own SVG coordinate space is used directly as an x/y offset on top of the element's own `x`/`y` — author guide paths in units matching your canvas layout, centered around `0,0` if the motion should be centered on the element's normal position.
+
+Not currently supported: deterministic path morphing (interpolating between two different `d` shapes) and gradient-stop animation. Use matched-shape crossfades for morphing and a static gradient for now; state these as real limitations rather than working around them silently.
 
 ## Camera Presets
 

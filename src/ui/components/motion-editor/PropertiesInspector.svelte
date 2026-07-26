@@ -257,6 +257,36 @@
             </div>
           </div>
 
+          <div class="me-property-group">
+            <div class="me-property-label-row">
+              <div class="me-property-label">3D Tilt</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotationX', 'rotationY'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotationX', 'rotationY'])} on:click={() => onTogglePropertyKeyframe(['rotationX', 'rotationY'])} title="Toggle 3D tilt keyframe at playhead" aria-label="Toggle 3D tilt keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotationX', 'rotationY'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
+            <div class="me-property-row">
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" step="1" value={selectedVisualProperty('rotationX', 0)} on:input={(e) => onUpdateElementProperty('rotationX', Number(e.currentTarget.value))} />
+                <span class="me-input-suffix">x°</span>
+              </div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" step="1" value={selectedVisualProperty('rotationY', 0)} on:input={(e) => onUpdateElementProperty('rotationY', Number(e.currentTarget.value))} />
+                <span class="me-input-suffix">y°</span>
+              </div>
+            </div>
+            <div class="me-number-input-wrapper">
+              <input class="me-number-input" type="number" min="1" step="10" value={numericProperty(selectedElement, 'perspective', 800)} on:input={(e) => onUpdateElementProperty('perspective', Number(e.currentTarget.value))} />
+              <span class="me-input-suffix">perspective</span>
+            </div>
+          </div>
+
+          <div class="me-property-group">
+            <div class="me-property-label">Rotation Direction</div>
+            <select class="me-text-input" value={stringProperty(selectedElement, 'rotationDirection', 'auto')} on:change={(e) => onUpdateElementProperty('rotationDirection', e.currentTarget.value)}>
+              <option value="auto">Auto</option>
+              <option value="cw">Clockwise</option>
+              <option value="ccw">Counter-clockwise</option>
+            </select>
+          </div>
+
           {#if selectedElement.asset?.type === 'svg' && !assets.get(selectedElement.assetName ?? '')?.motionlySvg?.animated}
             <div class="me-property-group">
               <div class="me-property-label">SVG Stroke Override</div>
@@ -443,10 +473,10 @@
         <div class="me-property-group">
           <div class="me-property-label">Easing</div>
           <div class="me-easing-options">
-            {#each ['soft', 'power3.out', 'linear', 'ease-out', 'spring', 'smooth'] as easingOption}
-              <button 
-                type="button" 
-                class="me-easing-option" 
+            {#each ['soft', 'power3.out', 'linear', 'ease-out', 'spring', 'spring.soft', 'spring.bouncy', 'spring.stiff', 'smooth'] as easingOption}
+              <button
+                type="button"
+                class="me-easing-option"
                 class:me-active={(selectedAnimation?.easing ?? 'soft') === easingOption}
                 on:click={() => onUpdateAnimationProperty('easing', easingOption)}
               >
@@ -462,6 +492,32 @@
             on:change={(event) => onUpdateAnimationProperty('easing', event.currentTarget.value)}
             aria-label="Custom animation easing"
           />
+        </div>
+
+        <div class="me-property-group">
+          <div class="me-property-label">Repeat</div>
+          <div class="me-property-row">
+            <div class="me-number-input-wrapper">
+              <input
+                class="me-number-input"
+                type="text"
+                value={String(selectedAnimation?.repeat ?? '')}
+                placeholder="off"
+                on:change={(event) => onUpdateAnimationProperty('repeat', event.currentTarget.value)}
+                aria-label="Repeat count, or 'infinite'"
+              />
+              <span class="me-input-suffix">×</span>
+            </div>
+            <select
+              class="me-text-input"
+              value={selectedAnimation?.repeatType ?? 'loop'}
+              disabled={!selectedAnimation?.repeat}
+              on:change={(event) => onUpdateAnimationProperty('repeatType', event.currentTarget.value)}
+            >
+              <option value="loop">Loop</option>
+              <option value="yoyo">Yoyo</option>
+            </select>
+          </div>
         </div>
           </div>
         </details>

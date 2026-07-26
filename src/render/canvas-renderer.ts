@@ -296,6 +296,8 @@ function drawElement(
 
   if (opacity <= 0) return;
 
+  applyMotionPath(props, assets);
+
   ctx.save();
   ctx.globalAlpha = opacity;
 
@@ -340,13 +342,13 @@ function drawAsset(
 
   const rotation = (props['rotation'] as number) ?? 0;
   const scale = (props['scale'] as number) ?? 1;
-  const originX = finiteNumber(props['originX'], 0.5);
-  const originY = finiteNumber(props['originY'], 0.5);
-  const drawX = -box.width * originX;
-  const drawY = -box.height * originY;
+  const origin = resolveOrigin(props, box.width, box.height);
+  const drawX = -origin.x;
+  const drawY = -origin.y;
 
-  ctx.translate(box.x + box.width * originX, box.y + box.height * originY);
+  ctx.translate(box.x + origin.x, box.y + origin.y);
   ctx.rotate((rotation * Math.PI) / 180);
+  apply3DTilt(ctx, props, box.width, box.height);
   applySkew(ctx, props);
   ctx.scale(scale, scale);
   clipReveal(ctx, box.width, box.height, props, drawX, drawY);
@@ -383,8 +385,12 @@ function drawSvgReveal(
 ): void {
   const svg = asset.motionlySvg;
   if (!svg) return;
-  const progress = Math.max(0, Math.min(1, value));
-  const artworkOpacity = Math.max(0, Math.min(1, (progress - 0.72) / 0.28));
+  const trimEnd = Math.max(0, Math.min(1, value));
+  const trimStart = Math.max(0, Math.min(trimEnd, finiteNumber(props['trimStart'], 0)));
+  // The full-artwork fade-in only makes sense for the default "draw from the
+  // start" usage; a moving trimmed segment (trimStart > 0) is a comet-trail
+  // effect and should never solidify into the filled artwork.
+  const artworkOpacity = trimStart <= 0 ? Math.max(0, Math.min(1, (trimEnd - 0.72) / 0.28)) : 0;
 
   if (artworkOpacity > 0) {
     ctx.save();
@@ -393,7 +399,7 @@ function drawSvgReveal(
     ctx.restore();
   }
 
-  if (progress >= 1) return;
+  if (trimStart <= 0 && trimEnd >= 1) return;
   ctx.save();
   ctx.translate(drawX, drawY);
   ctx.scale(box.width / svg.width, box.height / svg.height);
@@ -405,11 +411,70 @@ function drawSvgReveal(
     ctx.lineWidth = finiteNumber(props['strokeWidth'], path.strokeWidth);
     ctx.lineCap = path.lineCap;
     ctx.lineJoin = path.lineJoin;
-    ctx.setLineDash([path.length, path.length]);
-    ctx.lineDashOffset = path.length * (1 - progress);
+    const segment = Math.max(0, trimEnd - trimStart) * path.length;
+    ctx.setLineDash([segment, Math.max(0.001, path.length - segment)]);
+    ctx.lineDashOffset = -trimStart * path.length;
     ctx.stroke(svgPath(path));
   }
   ctx.restore();
+}
+
+const motionPathElementCache = new Map<string, SVGPathElement | null>();
+
+/** Detached, cached DOM path element used only for point-at-length sampling. */
+function motionPathElement(d: string): SVGPathElement | null {
+  const cached = motionPathElementCache.get(d);
+  if (cached !== undefined) return cached;
+  if (typeof document === 'undefined') return null;
+  let element: SVGPathElement | null;
+  try {
+    element = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    element.setAttribute('d', d);
+  } catch {
+    element = null;
+  }
+  motionPathElementCache.set(d, element);
+  return element;
+}
+
+/**
+ * Move (and optionally orient) an element along an imported path asset's
+ * geometry, using `motionPathProgress` (0-1) as position along the path.
+ * The path's own SVG coordinate space is used directly as an x/y offset —
+ * author guide paths in the same units as your canvas layout.
+ */
+function applyMotionPath(props: Record<string, unknown>, assets: Map<string, LoadedAsset>): void {
+  const pathAssetName = props['motionPath'];
+  if (!pathAssetName) return;
+
+  const asset = assets.get(String(pathAssetName));
+  const path = asset?.motionlySvg?.paths[0];
+  if (!path || !path.length) return;
+
+  const element = motionPathElement(path.d);
+  if (!element) return;
+
+  const progress = Math.max(0, Math.min(1, finiteNumber(props['motionPathProgress'], 0)));
+  let point: { x: number; y: number };
+  try {
+    point = element.getPointAtLength(path.length * progress);
+  } catch {
+    return;
+  }
+
+  props['x'] = finiteNumber(props['x'], 0) + point.x;
+  props['y'] = finiteNumber(props['y'], 0) + point.y;
+
+  if (props['motionPathRotate']) {
+    const aheadProgress = Math.min(1, progress + 0.001);
+    try {
+      const ahead = element.getPointAtLength(path.length * aheadProgress);
+      const angle = (Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180) / Math.PI;
+      props['rotation'] = finiteNumber(props['rotation'], 0) + angle;
+    } catch {
+      // Keep the position update even if tangent sampling fails.
+    }
+  }
 }
 
 function drawSvgVector(
@@ -491,6 +556,7 @@ function drawText(
 
   ctx.translate(x, y);
   ctx.rotate((rotation * Math.PI) / 180);
+  apply3DTilt(ctx, props);
   applySkew(ctx, props);
   ctx.scale(scale, scale);
   drawTrackedText(ctx, value, 0, 0, tracking);
@@ -568,7 +634,39 @@ function drawOverlay(
     else ctx.fillRect(0, 0, canvas.width * value, canvas.height);
     return;
   }
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawStandaloneOverlay(ctx, canvas, props);
+}
+
+/**
+ * Draw a freestanding overlay shape (rect/circle/ellipse/text/...) positioned
+ * relative to canvas center, for UI-composition primitives (cards, buttons,
+ * progress bars, badges) that aren't annotating an image.
+ */
+function drawStandaloneOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvas: Canvas,
+  props: Record<string, unknown>
+): void {
+  const x = Number(props['x'] ?? 0);
+  const y = Number(props['y'] ?? 0);
+  const scale = Number(props['scale'] ?? 1);
+  const rotation = Number(props['rotation'] ?? 0);
+  const shape = String(props['shape'] ?? 'rect');
+  const cx = canvas.width / 2 + x;
+  const cy = canvas.height / 2 + y;
+
+  const shapeWidth = Number(props['width'] ?? 120);
+  const shapeHeight = Number(props['height'] ?? 80);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((rotation * Math.PI) / 180);
+  apply3DTilt(ctx, props, shapeWidth, shapeHeight);
+  applySkew(ctx, props);
+  ctx.scale(scale, scale);
+  drawShadow(ctx, props);
+  drawVectorPrimitive(ctx, shape, props, canvas.width, canvas.height, cx, cy);
+  ctx.restore();
 }
 
 /**
@@ -598,16 +696,16 @@ function drawImageOverlay(
   const referenceHeight = asset.height || box.height;
   const parentRotation = Number(parentProps['rotation'] ?? 0);
   const parentScale = Number(parentProps['scale'] ?? 1);
-  const parentOriginX = finiteNumber(parentProps['originX'], 0.5);
-  const parentOriginY = finiteNumber(parentProps['originY'], 0.5);
+  const parentOrigin = resolveOrigin(parentProps, box.width, box.height);
 
   ctx.save();
   ctx.globalAlpha *= parentOpacity;
-  ctx.translate(box.x + box.width * parentOriginX, box.y + box.height * parentOriginY);
+  ctx.translate(box.x + parentOrigin.x, box.y + parentOrigin.y);
   ctx.rotate((parentRotation * Math.PI) / 180);
+  apply3DTilt(ctx, parentProps, box.width, box.height);
   applySkew(ctx, parentProps);
   ctx.scale(parentScale, parentScale);
-  ctx.translate(-box.width * parentOriginX, -box.height * parentOriginY);
+  ctx.translate(-parentOrigin.x, -parentOrigin.y);
   ctx.scale(box.width / referenceWidth, box.height / referenceHeight);
 
   if (props['clip']) {
@@ -621,8 +719,11 @@ function drawImageOverlay(
   const scale = Number(props['scale'] ?? 1);
   const rotation = Number(props['rotation'] ?? 0);
   const shape = String(props['shape'] ?? 'rect');
+  const shapeWidth = Number(props['width'] ?? 120);
+  const shapeHeight = Number(props['height'] ?? 80);
   ctx.translate(x, y);
   ctx.rotate((rotation * Math.PI) / 180);
+  apply3DTilt(ctx, props, shapeWidth, shapeHeight);
   applySkew(ctx, props);
   ctx.scale(scale, scale);
   drawVectorPrimitive(ctx, shape, props, referenceWidth, referenceHeight, x, y);
@@ -691,7 +792,9 @@ function drawVectorPrimitive(
     if (stroke !== 'none') ctx.stroke(svgPath);
     return;
   } else {
-    path.rect(-width / 2, -height / 2, width, height);
+    const originX = finiteNumber(props['originX'], 0.5);
+    const originY = finiteNumber(props['originY'], 0.5);
+    path.rect(-width * originX, -height * originY, width, height);
   }
 
   if (fill !== 'none' && progress >= 1) ctx.fill(path);
@@ -734,6 +837,59 @@ function applySkew(ctx: CanvasRenderingContext2D, props: Record<string, unknown>
   const x = Math.tan((((props['skewX'] as number) ?? 0) * Math.PI) / 180);
   const y = Math.tan((((props['skewY'] as number) ?? 0) * Math.PI) / 180);
   if (x || y) ctx.transform(1, y, x, 1, 0, 0);
+}
+
+/**
+ * Resolve the rotation/scale anchor point for an element, in pixels relative
+ * to its own top-left corner. `originXPixel`/`originYPixel` (absolute pixels)
+ * override the normalized `originX`/`originY` fraction (0-1) when present.
+ */
+export function resolveOrigin(
+  props: Record<string, unknown>,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  const pixelX = props['originXPixel'];
+  const pixelY = props['originYPixel'];
+  const x =
+    typeof pixelX === 'number' && Number.isFinite(pixelX)
+      ? pixelX
+      : width * finiteNumber(props['originX'], 0.5);
+  const y =
+    typeof pixelY === 'number' && Number.isFinite(pixelY)
+      ? pixelY
+      : height * finiteNumber(props['originY'], 0.5);
+  return { x, y };
+}
+
+/**
+ * Fake 3D tilt (rotationX/rotationY) in the flat 2D canvas context: the
+ * tilted axis is foreshortened by its cosine, and a perspective-scaled skew
+ * approximates the convergence a real projection matrix would produce.
+ * `perspective` behaves like CSS `perspective` — smaller values exaggerate
+ * the effect, larger values flatten it. `width`/`height` are optional; pass
+ * the element's box size for the skew term, or omit for pure axis scaling.
+ */
+export function apply3DTilt(
+  ctx: CanvasRenderingContext2D,
+  props: Record<string, unknown>,
+  width = 0,
+  height = 0
+): void {
+  const rotationX = finiteNumber(props['rotationX'], 0);
+  const rotationY = finiteNumber(props['rotationY'], 0);
+  if (!rotationX && !rotationY) return;
+
+  const perspective = Math.max(1, finiteNumber(props['perspective'], 800));
+  const radX = (rotationX * Math.PI) / 180;
+  const radY = (rotationY * Math.PI) / 180;
+
+  const scaleY = Math.max(0.02, Math.cos(radX));
+  const scaleX = Math.max(0.02, Math.cos(radY));
+  const skewFromX = (Math.sin(radX) * height) / 2 / perspective;
+  const skewFromY = (Math.sin(radY) * width) / 2 / perspective;
+
+  ctx.transform(scaleX, skewFromX, skewFromY, scaleY, 0, 0);
 }
 
 function clipReveal(

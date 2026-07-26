@@ -11,6 +11,7 @@ import {
   defaultElementProperties,
 } from './properties';
 import { applyAnimationPresets, cameraPresetAnimations } from '../animation-library/presets.js';
+import { distributeSequenceDelay, normalizeHierarchy } from '../core/stagger';
 import type {
   Scene,
   Animation,
@@ -148,6 +149,7 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
   });
 
   validateElementMasks(scene.elements);
+  validateElementFollowThrough(scene.elements);
 
   // Sort elements by layer
   scene.elements.sort(
@@ -310,7 +312,22 @@ function normalizeAnimation(node: AnimationNode, sequences: Map<string, Sequence
     duration: normalizeProperty('duration', node.duration ?? 1) as number,
     easing: String(node.easing ?? 'soft'),
     sequence: node.sequence,
+    ...(node.repeat !== undefined ? { repeat: normalizeRepeat(node.repeat) } : {}),
+    ...(node.repeatType === 'yoyo' || node.repeatType === 'loop'
+      ? { repeatType: node.repeatType }
+      : {}),
   };
+}
+
+/**
+ * Normalize a `repeat` value from source ("infinite" or a count) into
+ * the Animation.repeat shape.
+ */
+function normalizeRepeat(value: number | string): number | 'infinite' {
+  if (typeof value === 'number') return value;
+  if (String(value).trim() === 'infinite') return 'infinite';
+  const parsed = Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 1;
 }
 
 /**
@@ -327,8 +344,9 @@ function buildSequences(ast: ProgramNode): Map<string, Sequence> {
     const items = String(node.properties['items'] ?? '')
       .split(/\s+/)
       .filter(Boolean);
+    const hierarchy = normalizeHierarchy(node.properties['hierarchy']);
 
-    sequences.set(node.name, { name: node.name, delay, gap, items });
+    sequences.set(node.name, { name: node.name, delay, gap, items, hierarchy });
   }
 
   return sequences;
@@ -344,7 +362,13 @@ function sequenceOffset(node: AnimationNode, sequences: Map<string, Sequence>): 
   if (!sequence) return 0;
 
   const index = sequence.items.indexOf(node.target);
-  return sequence.delay + Math.max(0, index) * sequence.gap;
+  return distributeSequenceDelay(
+    sequence.delay,
+    sequence.gap,
+    Math.max(0, index),
+    sequence.items.length,
+    sequence.hierarchy
+  );
 }
 
 /**
@@ -388,6 +412,34 @@ export function validateElementMasks(elements: Element[]): void {
     );
     if (sourceMask && sourceMask !== 'none') {
       throw new Error(`Nested layer masks are not supported: "${element.id}" -> "${mask}"`);
+    }
+  }
+}
+
+/** Validate serializable followThrough (secondary motion) references before rendering. */
+export function validateElementFollowThrough(elements: Element[]): void {
+  const byId = new Map(elements.map((element) => [element.id, element]));
+  for (const element of elements) {
+    const parentId = String(
+      (element.properties as unknown as Record<string, unknown>)['followThrough'] ?? ''
+    );
+    if (!parentId || parentId === 'none') continue;
+    if (parentId === element.id) {
+      throw new Error(`Layer "${element.id}" cannot follow through on itself`);
+    }
+    const parent = byId.get(parentId);
+    if (!parent) {
+      throw new Error(
+        `followThrough parent "${parentId}" referenced by "${element.id}" does not exist`
+      );
+    }
+    const parentFollowThrough = String(
+      (parent.properties as unknown as Record<string, unknown>)['followThrough'] ?? ''
+    );
+    if (parentFollowThrough && parentFollowThrough !== 'none') {
+      throw new Error(
+        `Chained followThrough is not supported: "${element.id}" -> "${parentId}" -> "${parentFollowThrough}"`
+      );
     }
   }
 }

@@ -37,6 +37,8 @@ function serializeNode(node: ASTNode): string {
   if (node.delay !== undefined) lines.push(`  delay ${formatDuration(node.delay)}`);
   if (node.duration !== undefined) lines.push(`  duration ${formatDuration(node.duration)}`);
   if (node.easing) lines.push(`  easing ${node.easing}`);
+  if (node.repeat !== undefined && node.repeat !== '') lines.push(`  repeat ${node.repeat}`);
+  if (node.repeatType) lines.push(`  repeatType ${node.repeatType}`);
   lines.push('}');
   return lines.join('\n');
 }

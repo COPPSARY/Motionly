@@ -65,6 +65,31 @@ describe('countUp preset', () => {
     );
   });
 
+  it('fades opacity in with the count and back out at exitAt, like other entrance presets', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 5s }
+        text total {
+          value 0
+          center
+          opacity 0
+          animation countUp(from 0 to 100 delay 1s duration 1s exitAt 3s exitDuration 0.5s)
+        }
+      `)
+    );
+    const element = () => evaluateScene(scene, 0).elements.find((item) => item.id === 'total');
+    expect(Number(element()?.render.opacity)).toBe(0);
+
+    const before = evaluateScene(scene, 0.5).elements.find((item) => item.id === 'total');
+    expect(Number(before?.render.opacity)).toBe(0);
+
+    const during = evaluateScene(scene, 2).elements.find((item) => item.id === 'total');
+    expect(Number(during?.render.opacity)).toBe(1);
+
+    const afterExit = evaluateScene(scene, 3.6).elements.find((item) => item.id === 'total');
+    expect(Number(afterExit?.render.opacity)).toBe(0);
+  });
+
   it('prefers CountUp when an older text preset is still present', () => {
     const scene = buildSceneGraph(
       parseMotion(`

@@ -5,7 +5,15 @@
 
 import { parsePresetCall } from './preset-parser';
 import { countDecimalPlaces, resolveCountSeparator } from './count-up';
-import type { Scene, Element, Animation, PropertyMap, ElementProperties } from '../types/scene';
+import { elementSequenceOffset } from '../core/stagger';
+import type {
+  Scene,
+  Element,
+  Animation,
+  Keyframe,
+  PropertyMap,
+  ElementProperties,
+} from '../types/scene';
 
 const TEXT_PRESETS = new Set([
   'splitReveal',
@@ -38,7 +46,20 @@ const OBJECT_PRESETS = new Set([
   'dynamicSlide',
   'scaleReveal',
   'morph',
+  'spinIn',
   'rotateReveal',
+  'rotateOut',
+  'swing',
+  'pendulum',
+  'rollIn',
+  'rotateScale',
+  'logoSpinReveal',
+  'spin',
+  'kenBurns',
+  'tiltReveal',
+  'cardReveal',
+  'buttonPop',
+  'progressFill',
   'productReveal',
   'appleHero',
   'startupLaunch',
@@ -68,15 +89,19 @@ export function applyAnimationPresets(scene: Scene): Scene {
     if (element.kind === 'text' && textPreset && isTextPreset(textPreset as string)) {
       if (parsePresetCall(textPreset).name === 'countUp') {
         const generated = expandCountUpPreset(element, textPreset as string);
+        const seqOffset = elementSequenceOffset(scene.sequences, props['sequence'], element.id);
         sourceElements.push(generated.element);
-        generatedAnimations.push(generated.animation);
+        generatedAnimations.push(...offsetDelays(generated.animations, seqOffset, 1));
         continue;
       }
 
       const generated = expandTextPreset(element, textPreset as string);
+      const seqOffset = elementSequenceOffset(scene.sequences, props['sequence'], element.id);
       sourceElements.push(hideElement(element));
       generatedElements.push(...generated.elements);
-      generatedAnimations.push(...generated.animations);
+      generatedAnimations.push(
+        ...offsetDelays(generated.animations, seqOffset, generated.elements.length)
+      );
       continue;
     }
 
@@ -89,7 +114,8 @@ export function applyAnimationPresets(scene: Scene): Scene {
 
     const animation = props['animation'];
     if (animation && isObjectPreset(animation as string)) {
-      const preset = parsePresetCall(animation).name;
+      const parsedPreset = parsePresetCall(animation);
+      const preset = parsedPreset.name;
       sourceElements.push({
         ...element,
         properties: {
@@ -109,7 +135,12 @@ export function applyAnimationPresets(scene: Scene): Scene {
             : {}),
         },
       });
-      generatedAnimations.push(...objectPresetAnimations(element));
+      const presetAnimations = objectPresetAnimations(element);
+      if (presetAnimations[0]) {
+        presetAnimations[0] = applyEntranceQuality(presetAnimations[0], parsedPreset.options);
+      }
+      const seqOffset = elementSequenceOffset(scene.sequences, props['sequence'], element.id);
+      generatedAnimations.push(...offsetDelays(presetAnimations, seqOffset));
     } else {
       sourceElements.push(element);
     }
@@ -125,7 +156,7 @@ export function applyAnimationPresets(scene: Scene): Scene {
 function expandCountUpPreset(
   element: Element,
   value: string
-): { element: Element; animation: Animation } {
+): { element: Element; animations: Animation[] } {
   const { options } = parsePresetCall(value);
   const props = element.properties as unknown as Record<string, unknown>;
   const from = finiteNumber(options['from'], 0);
@@ -133,6 +164,37 @@ function expandCountUpPreset(
   const direction = String(options['direction'] ?? 'up').toLowerCase();
   const start = direction === 'down' ? to : from;
   const end = direction === 'down' ? from : to;
+  const delay = finiteNumber(options['delay'], 0);
+  const duration = Math.max(0.001, finiteNumber(options['duration'], 2));
+  const easing = String(options['ease'] ?? options['easing'] ?? 'power3.out');
+  const opacity = (props['opacity'] as number) || 1;
+
+  // countUp only animates `value`; fold opacity in too so the element follows
+  // the same "hidden until shown" contract every other preset relies on.
+  const animations: Animation[] = [
+    {
+      target: element.id,
+      from: { value: start, opacity: 0 },
+      to: { value: end, opacity },
+      keyframes: [],
+      delay,
+      duration,
+      easing,
+    },
+  ];
+
+  if (options['exitAt'] != null) {
+    animations.push(
+      basicAnimation(
+        element.id,
+        options['exitAt'] as number,
+        (options['exitDuration'] as number) ?? 0.5,
+        (options['exitEase'] as string) ?? 'power2.in',
+        { value: end, opacity },
+        { value: end, opacity: 0 }
+      )
+    );
+  }
 
   return {
     element: {
@@ -145,16 +207,23 @@ function expandCountUpPreset(
         countTo: to,
       } as unknown as ElementProperties,
     },
-    animation: {
-      target: element.id,
-      from: { value: start },
-      to: { value: end },
-      keyframes: [],
-      delay: finiteNumber(options['delay'], 0),
-      duration: Math.max(0.001, finiteNumber(options['duration'], 2)),
-      easing: String(options['ease'] ?? options['easing'] ?? 'power3.out'),
-    },
+    animations,
   };
+}
+
+/** Shift every animation's delay by a sequence's computed stagger offset. */
+/**
+ * Shift a sequence's stagger offset onto the leading `entranceCount` entrance
+ * animations only. Any trailing exit animations already carry an absolute
+ * `exitAt` project time (object presets: 1 entrance then 1 exit; text presets:
+ * one entrance per split part, then one exit per part) and must not be
+ * shifted again.
+ */
+function offsetDelays(animations: Animation[], offset: number, entranceCount = 1): Animation[] {
+  if (!offset || animations.length === 0) return animations;
+  return animations.map((animation, index) =>
+    index < entranceCount ? { ...animation, delay: animation.delay + offset } : animation
+  );
 }
 
 function finiteNumber(value: unknown, fallback: number): number {
@@ -370,7 +439,8 @@ function objectPresetAnimations(element: Element): Animation[] {
   const props = element.properties as unknown as Record<string, unknown>;
   const { name, options } = parsePresetCall(props['animation'] as string);
   const delay = (options['delay'] as number) ?? 0;
-  const duration = (options['duration'] as number) ?? (name === 'float' ? 4 : 1.2);
+  const duration =
+    (options['duration'] as number) ?? (name === 'float' ? 4 : name === 'buttonPop' ? 0.45 : 1.2);
   const easing = normalizeEase(
     (options['ease'] as string) ??
       (name === 'springIn' || name === 'bounceIn' ? 'spring' : 'ease-out')
@@ -419,7 +489,11 @@ function objectPresetAnimations(element: Element): Animation[] {
   }
 
   if (name === 'heroLogo') {
-    return [
+    const opacity = (props['opacity'] as number) || 1;
+    const scale = (options['to'] as number) ?? (props['scale'] as number);
+    const y = (options['yTo'] as number) ?? (props['y'] as number);
+    const rotation = props['rotation'] as number;
+    const animations = [
       basicAnimation(
         target,
         delay,
@@ -428,17 +502,32 @@ function objectPresetAnimations(element: Element): Animation[] {
         {
           opacity: 0,
           scale: (options['from'] as number) ?? 0.82,
-          y: (options['yFrom'] as number) ?? (props['y'] as number) + 34,
-          rotation: (options['rotationFrom'] as number) ?? -1.5,
+          y: (options['yFrom'] as number) ?? y + 34,
+          rotation: (options['rotationFrom'] as number) ?? rotation - 1.5,
         },
-        {
-          opacity: 1,
-          scale: (options['to'] as number) ?? (props['scale'] as number),
-          y: (options['yTo'] as number) ?? (props['y'] as number),
-          rotation: props['rotation'] as number,
-        }
+        { opacity, scale, y, rotation }
       ),
     ];
+
+    if (options['exitAt'] != null) {
+      animations.push(
+        basicAnimation(
+          target,
+          options['exitAt'] as number,
+          (options['exitDuration'] as number) ?? 0.5,
+          (options['exitEase'] as string) ?? 'power2.in',
+          { opacity, scale, y, rotation },
+          {
+            opacity: 0,
+            scale: (options['exitScale'] as number) ?? scale * 0.96,
+            y: (options['yExit'] as number) ?? y - 24,
+            rotation,
+          }
+        )
+      );
+    }
+
+    return animations;
   }
 
   if (name === 'productPanel') {
@@ -568,6 +657,8 @@ function objectPresetAnimations(element: Element): Animation[] {
   }
 
   if (name === 'rotateReveal') {
+    const rotationXTarget = (props['rotationX'] as number) || 0;
+    const rotationYTarget = (props['rotationY'] as number) || 0;
     return [
       basicAnimation(
         target,
@@ -577,15 +668,449 @@ function objectPresetAnimations(element: Element): Animation[] {
         {
           opacity: 0,
           scale: 0.94,
-          rotation: (props['rotation'] as number) - 4,
+          rotation: (props['rotation'] as number) - ((options['rotationFrom'] as number) ?? 4),
+          rotationX: (options['rotationXFrom'] as number) ?? rotationXTarget,
+          rotationY: (options['rotationYFrom'] as number) ?? rotationYTarget,
         },
         {
           opacity: 1,
           scale: props['scale'] as number,
           rotation: props['rotation'] as number,
+          rotationX: rotationXTarget,
+          rotationY: rotationYTarget,
         }
       ),
     ];
+  }
+
+  if (name === 'springIn') {
+    const y = (props['y'] as number) ?? 0;
+    const scale = (props['scale'] as number) ?? 1;
+    const opacity = (props['opacity'] as number) || 1;
+    const rise = (options['distance'] as number) ?? 60;
+    return withExit(
+      [
+        {
+          target,
+          from: {},
+          to: {},
+          keyframes: [
+            { offset: 0, properties: { opacity: 0, y: y + rise, scale: scale * 0.7 } },
+            {
+              offset: 0.62,
+              properties: { opacity, y: y - rise * 0.08, scale: scale * 1.06 },
+              easing: 'power2.out',
+            },
+            { offset: 1, properties: { opacity, y, scale }, easing: 'elastic.out(1,0.55)' },
+          ],
+          delay,
+          duration,
+          easing: 'power2.out',
+        },
+      ],
+      target,
+      { opacity, y, scale },
+      options
+    );
+  }
+
+  if (name === 'bounceIn') {
+    const y = (props['y'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const drop = (options['distance'] as number) ?? 140;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'bounceOut',
+          { opacity: 0, y: y - drop },
+          { opacity, y }
+        ),
+      ],
+      target,
+      { opacity, y },
+      options
+    );
+  }
+
+  if (name === 'scaleReveal') {
+    const scale = (props['scale'] as number) ?? 1;
+    const opacity = (props['opacity'] as number) || 1;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'spring',
+          { opacity: 0, scale: (options['from'] as number) ?? scale * 0.2 },
+          { opacity, scale }
+        ),
+      ],
+      target,
+      { opacity, scale },
+      options
+    );
+  }
+
+  if (name === 'spinIn') {
+    const scale = (props['scale'] as number) ?? 1;
+    const rotation = (props['rotation'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const rotationFrom = (options['rotationFrom'] as number) ?? rotation - 260;
+    const rotationXTarget = (props['rotationX'] as number) || 0;
+    const rotationYTarget = (props['rotationY'] as number) || 0;
+    const rotationXFrom = (options['rotationXFrom'] as number) ?? rotationXTarget;
+    const rotationYFrom = (options['rotationYFrom'] as number) ?? rotationYTarget;
+    return withExit(
+      [
+        {
+          target,
+          from: {},
+          to: {},
+          keyframes: [
+            {
+              offset: 0,
+              properties: {
+                opacity: 0,
+                scale: scale * 0.3,
+                rotation: rotationFrom,
+                rotationX: rotationXFrom,
+                rotationY: rotationYFrom,
+              },
+            },
+            {
+              offset: 0.55,
+              properties: { opacity, scale: scale * 1.06, rotation: rotation + 8 },
+            },
+            {
+              offset: 1,
+              properties: {
+                opacity,
+                scale,
+                rotation,
+                rotationX: rotationXTarget,
+                rotationY: rotationYTarget,
+              },
+            },
+          ],
+          delay,
+          duration,
+          easing: (options['ease'] as string) ?? 'power3.out',
+        },
+      ],
+      target,
+      { opacity, scale, rotation },
+      options
+    );
+  }
+
+  if (name === 'rotateOut') {
+    const scale = (props['scale'] as number) ?? 1;
+    const rotation = (props['rotation'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const rotationTo =
+      (options['rotationTo'] as number) ?? rotation + ((options['turns'] as number) ?? 0.5) * 360;
+    return [
+      basicAnimation(
+        target,
+        (options['exitAt'] as number) ?? delay,
+        (options['exitDuration'] as number) ?? duration,
+        (options['ease'] as string) ?? 'power2.in',
+        { opacity, scale, rotation },
+        { opacity: 0, scale: scale * ((options['to'] as number) ?? 0.7), rotation: rotationTo }
+      ),
+    ];
+  }
+
+  if (name === 'swing') {
+    const rotation = (props['rotation'] as number) ?? 0;
+    const amplitude = (options['amplitude'] as number) ?? 14;
+    return [
+      {
+        target,
+        from: {},
+        to: {},
+        keyframes: [
+          { offset: 0, properties: { rotation } },
+          { offset: 0.25, properties: { rotation: rotation + amplitude }, easing: 'power2.out' },
+          {
+            offset: 0.6,
+            properties: { rotation: rotation - amplitude * 0.6 },
+            easing: 'power2.out',
+          },
+          {
+            offset: 0.85,
+            properties: { rotation: rotation + amplitude * 0.25 },
+            easing: 'power2.out',
+          },
+          { offset: 1, properties: { rotation }, easing: 'power2.out' },
+        ],
+        delay,
+        duration: (options['duration'] as number) ?? 1.4,
+        easing: 'power2.out',
+        repeat:
+          (options['repeat'] as number | undefined) ?? (options['loop'] ? 'infinite' : undefined),
+        repeatType: 'loop',
+      },
+    ];
+  }
+
+  if (name === 'pendulum') {
+    const rotation = (props['rotation'] as number) ?? 0;
+    const amplitude = (options['amplitude'] as number) ?? 22;
+    return [
+      basicAnimation(
+        target,
+        delay,
+        (options['duration'] as number) ?? 1.2,
+        'sine.inOut',
+        { rotation: rotation - amplitude },
+        { rotation: rotation + amplitude }
+      ),
+    ].map((animation) => ({
+      ...animation,
+      repeat: (options['repeat'] as number | undefined) ?? 'infinite',
+      repeatType: 'yoyo',
+    }));
+  }
+
+  if (name === 'rollIn') {
+    const x = (props['x'] as number) ?? 0;
+    const rotation = (props['rotation'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const distance = (options['distance'] as number) ?? 120;
+    const fromLeft = options['from'] !== 'right';
+    const turns = (options['turns'] as number) ?? 1;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          easing,
+          {
+            opacity: 0,
+            x: fromLeft ? x - distance : x + distance,
+            rotation: fromLeft ? rotation - turns * 360 : rotation + turns * 360,
+          },
+          { opacity, x, rotation }
+        ),
+      ],
+      target,
+      { opacity, x, rotation },
+      options
+    );
+  }
+
+  if (name === 'rotateScale') {
+    const scale = (props['scale'] as number) ?? 1;
+    const rotation = (props['rotation'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const rotationFrom = (options['rotationFrom'] as number) ?? rotation - 45;
+    const scaleFrom = (options['from'] as number) ?? scale * 0.6;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'spring',
+          { opacity: 0, scale: scaleFrom, rotation: rotationFrom },
+          { opacity, scale, rotation }
+        ),
+      ],
+      target,
+      { opacity, scale, rotation },
+      options
+    );
+  }
+
+  if (name === 'logoSpinReveal') {
+    const scale = (props['scale'] as number) ?? 1;
+    const rotation = (props['rotation'] as number) ?? 0;
+    const opacity = (props['opacity'] as number) || 1;
+    const rotationFrom = (options['rotationFrom'] as number) ?? rotation - 180;
+    return [
+      {
+        target,
+        from: {},
+        to: {},
+        keyframes: [
+          {
+            offset: 0,
+            properties: {
+              opacity: 0,
+              scale: scale * 0.4,
+              rotation: rotationFrom,
+              pathProgress: 0,
+            },
+          },
+          {
+            offset: 0.7,
+            properties: { opacity, scale: scale * 1.04, pathProgress: 1 },
+            easing: 'power3.out',
+          },
+          { offset: 1, properties: { opacity, scale, rotation }, easing: 'power3.out' },
+        ],
+        delay,
+        duration: (options['duration'] as number) ?? 1.6,
+        easing: (options['ease'] as string) ?? 'power3.out',
+      },
+    ];
+  }
+
+  if (name === 'spin') {
+    const rotation = (props['rotation'] as number) ?? 0;
+    const direction = options['direction'] === 'ccw' ? -1 : 1;
+    return [
+      {
+        target,
+        from: { rotation },
+        to: { rotation: rotation + direction * 360 },
+        keyframes: [],
+        delay,
+        duration: (options['duration'] as number) ?? 1.2,
+        easing: 'linear',
+        repeat: 'infinite',
+        repeatType: 'loop',
+      },
+    ];
+  }
+
+  if (name === 'kenBurns') {
+    const x = (props['x'] as number) ?? 0;
+    const y = (props['y'] as number) ?? 0;
+    const scale = (props['scale'] as number) ?? 1;
+    return [
+      basicAnimation(
+        target,
+        delay,
+        duration,
+        (options['ease'] as string) ?? 'linear',
+        { x, y, scale },
+        {
+          x: (options['xTo'] as number) ?? x + ((options['panX'] as number) ?? 40),
+          y: (options['yTo'] as number) ?? y + ((options['panY'] as number) ?? -24),
+          scale: (options['to'] as number) ?? scale * 1.08,
+        }
+      ),
+    ];
+  }
+
+  if (name === 'tiltReveal') {
+    const y = (props['y'] as number) ?? 0;
+    const scale = (props['scale'] as number) ?? 1;
+    const opacity = (props['opacity'] as number) || 1;
+    const rotation = (props['rotation'] as number) ?? 0;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'power3.out',
+          {
+            opacity: 0,
+            y: y + ((options['yFrom'] as number) ?? 26),
+            scale: scale * 0.92,
+            rotation: rotation - ((options['rotationFrom'] as number) ?? 6),
+            skewX: (options['skewXFrom'] as number) ?? -8,
+            skewY: (options['skewYFrom'] as number) ?? 2,
+          },
+          { opacity, y, scale, rotation, skewX: 0, skewY: 0 }
+        ),
+      ],
+      target,
+      { opacity, y, scale, rotation, skewX: 0, skewY: 0 },
+      options
+    );
+  }
+
+  if (name === 'cardReveal') {
+    const x = (props['x'] as number) ?? 0;
+    const y = (props['y'] as number) ?? 0;
+    const scale = (props['scale'] as number) ?? 1;
+    const opacity = (props['opacity'] as number) || 1;
+    const shadow = (props['shadow'] as number) ?? 24;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'power3.out',
+          {
+            opacity: 0,
+            x,
+            y: y + ((options['yFrom'] as number) ?? 28),
+            scale: scale * ((options['from'] as number) ?? 0.96),
+            shadow: 0,
+          },
+          { opacity, x, y, scale, shadow }
+        ),
+      ],
+      target,
+      { opacity, x, y, scale, shadow },
+      options
+    );
+  }
+
+  if (name === 'buttonPop') {
+    const scale = (props['scale'] as number) ?? 1;
+    const opacity = (props['opacity'] as number) || 1;
+    const y = (props['y'] as number) ?? 0;
+    return withExit(
+      [
+        basicAnimation(
+          target,
+          delay,
+          duration,
+          (options['ease'] as string) ?? 'spring',
+          {
+            opacity: 0,
+            scale: scale * ((options['from'] as number) ?? 0.55),
+            y: y + ((options['yFrom'] as number) ?? 6),
+          },
+          { opacity, scale, y }
+        ),
+      ],
+      target,
+      { opacity, scale, y },
+      options
+    );
+  }
+
+  if (name === 'progressFill') {
+    const width = (props['width'] as number) ?? 200;
+    const opacity = (props['opacity'] as number) || 1;
+    const animations = [
+      basicAnimation(
+        target,
+        delay,
+        duration,
+        (options['ease'] as string) ?? 'power3.out',
+        { width: (options['from'] as number) ?? 0, opacity: 0 },
+        { width, opacity }
+      ),
+    ];
+
+    if (options['exitAt'] != null) {
+      animations.push(
+        basicAnimation(
+          target,
+          options['exitAt'] as number,
+          (options['exitDuration'] as number) ?? 0.5,
+          (options['exitEase'] as string) ?? 'power2.in',
+          { width, opacity },
+          { width, opacity: 0 }
+        )
+      );
+    }
+
+    return animations;
   }
 
   if (name === 'drawSVG') {
@@ -760,6 +1285,30 @@ function backgroundEffect(element: Element): { elements: Element[]; animations: 
 }
 
 /**
+ * Append a fade-out animation (rest state -> opacity 0) when `exitAt` is set,
+ * so entrance presets that don't hand-author their own exit still respect it.
+ */
+function withExit(
+  animations: Animation[],
+  target: string,
+  restState: PropertyMap,
+  options: Record<string, unknown>
+): Animation[] {
+  if (options['exitAt'] == null) return animations;
+  animations.push(
+    basicAnimation(
+      target,
+      options['exitAt'] as number,
+      (options['exitDuration'] as number) ?? 0.5,
+      (options['exitEase'] as string) ?? 'power2.in',
+      restState,
+      { ...restState, opacity: 0 }
+    )
+  );
+  return animations;
+}
+
+/**
  * Create basic animation
  */
 function basicAnimation(
@@ -771,6 +1320,75 @@ function basicAnimation(
   to: PropertyMap
 ): Animation {
   return { target, from, to, keyframes: [], delay, duration, easing };
+}
+
+/**
+ * Keys that get a directional nudge/overshoot; everything else (opacity, blur,
+ * revealProgress, ...) just holds its start/rest value at the extra keyframes.
+ */
+const MOTION_QUALITY_KEYS = new Set(['x', 'y', 'rotation', 'scale']);
+const ANTICIPATION_DIP_FACTOR = 0.18;
+const OVERSHOOT_KEYFRAME_OFFSET = 0.82;
+
+/**
+ * Add opt-in `anticipation` (pre-move counter-nudge) and `overshoot` (settle past
+ * target) to a plain two-state entrance animation. No-op for animations that
+ * already use explicit keyframes (those presets choreograph their own curve) or
+ * when neither option is set.
+ */
+function applyEntranceQuality(animation: Animation, options: Record<string, unknown>): Animation {
+  if (animation.keyframes.length > 0) return animation;
+
+  const anticipation = Math.max(0, finiteNumber(options['anticipation'], 0));
+  const overshoot = finiteNumber(options['overshoot'], 0);
+  if (anticipation <= 0 && overshoot <= 1) return animation;
+
+  const keys = [...new Set([...Object.keys(animation.from), ...Object.keys(animation.to)])];
+  const startState = animation.from;
+  const restState = animation.to;
+
+  const dip: PropertyMap = {};
+  const peak: PropertyMap = {};
+  for (const key of keys) {
+    const start = Number(startState[key] ?? restState[key] ?? 0);
+    const rest = Number(restState[key] ?? start);
+    if (MOTION_QUALITY_KEYS.has(key)) {
+      dip[key] = start - (rest - start) * ANTICIPATION_DIP_FACTOR;
+      peak[key] =
+        overshoot > 1
+          ? key === 'scale'
+            ? rest * overshoot
+            : rest + (rest - start) * (overshoot - 1)
+          : rest;
+    } else {
+      dip[key] = start;
+      peak[key] = rest;
+    }
+  }
+
+  const totalDuration = animation.duration + anticipation;
+  const anticipationOffset = anticipation > 0 ? anticipation / totalDuration : 0;
+  const overshootOffset = anticipationOffset + (1 - anticipationOffset) * OVERSHOOT_KEYFRAME_OFFSET;
+
+  const keyframes: Keyframe[] = [];
+  if (anticipation > 0) {
+    keyframes.push({ offset: 0, properties: dip });
+    keyframes.push({ offset: anticipationOffset, properties: { ...startState } });
+  } else {
+    keyframes.push({ offset: 0, properties: { ...startState } });
+  }
+  if (overshoot > 1) {
+    keyframes.push({ offset: overshootOffset, properties: peak });
+  }
+  keyframes.push({ offset: 1, properties: { ...restState } });
+
+  return {
+    ...animation,
+    from: {},
+    to: {},
+    duration: totalDuration,
+    keyframes,
+  };
 }
 
 /**

@@ -80,8 +80,14 @@ export interface BaseElementProperties {
   height: number | null;
   scale: number;
   rotation: number;
+  rotationX: number;
+  rotationY: number;
+  perspective: number;
+  rotationDirection: 'auto' | 'cw' | 'ccw';
   originX: number;
   originY: number;
+  originXPixel?: number;
+  originYPixel?: number;
   opacity: number;
   blur: number;
   brightness: number;
@@ -94,11 +100,18 @@ export interface BaseElementProperties {
   mask?: string;
   maskInvert?: boolean;
   maskVisible?: boolean;
+  followThrough?: string;
+  followThroughLag?: number;
+  followThroughDamping?: number;
   shadow: number;
   layer: Layer;
   center: boolean;
   cover: boolean;
   pathProgress?: number;
+  trimStart?: number;
+  motionPath?: string;
+  motionPathProgress?: number;
+  motionPathRotate?: boolean;
   revealProgress?: number;
   revealStyle?: string;
   revealDirection?: string;
@@ -197,6 +210,7 @@ export interface Sequence {
   delay: number;
   gap: number;
   items: string[];
+  hierarchy: 'linear' | 'wave' | 'center-out';
 }
 
 /**
@@ -300,4 +314,6 @@ export interface Animation {
   duration: number;
   easing: EasingName;
   sequence?: string;
+  repeat?: number | 'infinite';
+  repeatType?: 'loop' | 'yoyo';
 }
