@@ -91,6 +91,17 @@
     'fill',
   ];
 
+  // Timeline layout: clips are drawn at a fixed pixels-per-second scale (× zoom)
+  // so a clip's on-screen length reflects its real duration. At rest the ruler
+  // spans the content end (or the visible panel, whichever is longer) with no
+  // trailing padding. While a clip is being dragged/stretched toward the end,
+  // the ruler grows to follow so there is room to extend; committing past the
+  // old end grows the project. Fixed px/s means existing clips never shift when
+  // the ruler grows.
+  const TIMELINE_LABEL_WIDTH = 220;
+  const TIMELINE_PIXELS_PER_SECOND = 100;
+  const TIMELINE_MIN_LANE_WIDTH = 160;
+
   export let code = '';
   export let onSave: () => void | Promise<void> = () => undefined;
   export let serverBacked = false;
@@ -187,6 +198,10 @@
   let editorHistory = createEditorHistory(code);
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
+  let timelineViewportWidth = 0;
+  // While a clip/element is being dragged or stretched toward the end this holds
+  // the current far edge (seconds) so the ruler can grow to follow; 0 when idle.
+  let timelineDragReach = 0;
   let snapEnabled = true;
   let timelineSnapGuide: number | null = null;
   let historyGestureBase: string | null = null;
@@ -208,6 +223,16 @@
     const observer = new ResizeObserver(fitPreview);
     if (stage) observer.observe(stage);
     requestAnimationFrame(fitPreview);
+
+    // Track the timeline viewport width so the lane scale can fit long projects
+    // to the visible area while keeping short projects compact.
+    const measureTimeline = () => {
+      if (timelineScroll) timelineViewportWidth = timelineScroll.clientWidth;
+    };
+    const timelineObserver = new ResizeObserver(measureTimeline);
+    if (timelineScroll) timelineObserver.observe(timelineScroll);
+    measureTimeline();
+    requestAnimationFrame(measureTimeline);
     
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target instanceof Element ? e.target : null;
@@ -274,6 +299,7 @@
     
     return () => {
       observer.disconnect();
+      timelineObserver.disconnect();
       disposeAssets(assets);
       audioLoadId += 1;
       audioWaveformLoadId += 1;
@@ -449,7 +475,7 @@
           boundary.type !== null
       ) ?? null
     : null;
-  $: timelineTicks = Array.from({ length: 7 }, (_, index) => (totalDuration * index) / 6);
+  $: timelineTicks = Array.from({ length: 7 }, (_, index) => (timelineVisibleDuration * index) / 6);
   $: displayFrame = Math.round(currentTime * (scene?.canvas.fps ?? 60));
   $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets);
   $: canvasWidth = scene?.canvas.width ?? 1920;
@@ -462,7 +488,40 @@
     elementCount: sourceElements.length,
   };
   $: canvasStyle = `width: ${Math.round(canvasWidth * zoom)}px; aspect-ratio: ${canvasWidth} / ${canvasHeight};`;
-  $: timelineContentWidth = Math.max(820, 220 + totalDuration * 100 * timelineZoom);
+  // The last clipbar end (content end). The playhead is clamped here; the ruler
+  // extends a fixed tail past it so clips can be dragged/extended into the gap.
+  $: timelineContentEnd = (() => {
+    const ends = [
+      ...(scene?.clips ?? []).map((clip) => clip.start + clip.duration),
+      ...(scene?.elements ?? []).map((element) => timelineRange(element.id).end),
+    ].filter((value) => Number.isFinite(value));
+    return ends.length ? Math.max(0, ...ends) : Math.max(0, totalDuration);
+  })();
+  // Fixed pixels-per-second scale (× zoom): a clip is drawn at duration × scale,
+  // so short clips look short. The ruler/drag extent is the content end plus a
+  // fixed tail so there is always room to drag or stretch a clip; committing a
+  // clip past the current end grows the project (see extendProjectDuration).
+  // All clip/tick/playhead positions are percentages of timelineVisibleDuration.
+  $: timelinePixelsPerSecond = TIMELINE_PIXELS_PER_SECOND * timelineZoom;
+  $: timelineAvailableLaneWidth = Math.max(
+    TIMELINE_MIN_LANE_WIDTH,
+    timelineViewportWidth - TIMELINE_LABEL_WIDTH
+  );
+  // Seconds that fill the visible panel at the current scale.
+  $: timelineFillPanelDuration =
+    timelinePixelsPerSecond > 0 ? timelineAvailableLaneWidth / timelinePixelsPerSecond : 0;
+  // At rest: content end, or the panel width if the content is shorter (so a
+  // short clip looks short inside a filled ruler, with no trailing padding).
+  // While dragging toward the end: grow to keep half a screen of room ahead of
+  // the drag so it can be extended; existing clips keep their pixel position
+  // because the scale is fixed.
+  $: timelineVisibleDuration = Math.max(
+    timelineContentEnd,
+    timelineFillPanelDuration,
+    timelineDragReach > 0 ? timelineDragReach + timelineFillPanelDuration * 0.5 : 0
+  );
+  $: timelineLaneWidth = timelineVisibleDuration * timelinePixelsPerSecond;
+  $: timelineContentWidth = TIMELINE_LABEL_WIDTH + timelineLaneWidth;
 
   function parseAndRender() {
     try {
@@ -682,7 +741,8 @@
   }
 
   function quantizeTimelineTime(time: number): number {
-    return quantizeFrameTime(time, totalDuration, scene?.canvas.fps ?? 60);
+    // Clamp the playhead to the last clipbar end, not the padded ruler tail.
+    return quantizeFrameTime(time, timelineContentEnd, scene?.canvas.fps ?? 60);
   }
 
   function seek(event: Event) {
@@ -807,9 +867,12 @@
     return { start: Math.max(0, start), end: Math.min(totalDuration, end) };
   }
 
-  function timelinePercent(time: number): number {
-    return totalDuration > 0 ? Math.max(0, Math.min(100, (time / totalDuration) * 100)) : 0;
-  }
+  // Reactive so clip/tick/playhead positions recompute when the visible
+  // duration changes (e.g. on zoom), not just when the project duration does.
+  $: timelinePercent = (time: number): number =>
+    timelineVisibleDuration > 0
+      ? Math.max(0, Math.min(100, (time / timelineVisibleDuration) * 100))
+      : 0;
 
   async function handleAudioSelected(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
@@ -1068,16 +1131,24 @@
   function trimElement(event: PointerEvent, id: string, edge: 'start' | 'end') {
     event.preventDefault();
     event.stopPropagation();
-    const lane = (event.currentTarget as HTMLElement).closest('.me-track-lane');
-    if (!lane) return;
+    const laneEl = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
+    if (!laneEl) return;
+    const trackId = laneEl.dataset['track'] ?? '';
     beginHistoryGesture();
-    const rect = lane.getBoundingClientRect();
     const update = (pointer: PointerEvent) => {
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-      setClipBoundary(id, edge, snapTimelineTime(raw, rect.width, id));
+      // Fetch the lane live: the ruler (and this element) can grow/re-render
+      // mid-trim, so a rect captured up front would go stale.
+      const rect = timelineLaneRect(trackId) ?? laneEl.getBoundingClientRect();
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+      if (edge === 'end') {
+        timelineDragReach = raw;
+        followTimelineDrag(raw);
+      }
+      setClipBoundary(id, edge, snapTimelineTime(raw, rect.width, id, raw + timelineFillPanelDuration));
     };
     const stop = () => {
       timelineSnapGuide = null;
+      timelineDragReach = 0;
       endHistoryGesture();
       window.removeEventListener('pointermove', update);
       window.removeEventListener('pointerup', stop);
@@ -1097,6 +1168,7 @@
     const start = edge === 'start' ? Math.min(time, range.end - minimum) : range.start;
     const end = edge === 'end' ? Math.max(time, range.start + minimum) : range.end;
     element.properties = elementWindowProperties(element.properties, start, end, minimum);
+    extendProjectDuration(end);
     code = serializeProgram(ast);
   }
 
@@ -2114,12 +2186,29 @@
       : laneTrackAtPoint(pointer.clientX, pointer.clientY) ?? clipDrag.originTrackId;
     const rect = timelineLaneRect(targetTrackId);
     if (!rect) return;
-    const pointerTime = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-    const rawStart = Math.min(
-      totalDuration,
-      Math.max(0, snapTimelineTime(pointerTime - clipDrag.grabOffset, rect.width, clipDrag.id))
+    const pointerTime = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+    // Follow the pointer; the ruler grows via timelineDragReach so there is
+    // always room to keep extending. The project only grows on commit.
+    const rawStart = Math.max(
+      0,
+      snapTimelineTime(
+        pointerTime - clipDrag.grabOffset,
+        rect.width,
+        clipDrag.id,
+        timelineVisibleDuration
+      )
     );
     clipDrag = { ...clipDrag, ghostStart: rawStart, ghostTrackId: targetTrackId, valid: true };
+    timelineDragReach = rawStart + clipDrag.duration;
+    followTimelineDrag(timelineDragReach);
+  }
+
+  /** Keep the dragged/stretched end in view as the ruler grows behind it. */
+  function followTimelineDrag(reachSeconds: number) {
+    if (!timelineScroll) return;
+    const endPx = TIMELINE_LABEL_WIDTH + Math.max(0, reachSeconds) * timelinePixelsPerSecond;
+    const viewRight = timelineScroll.scrollLeft + timelineScroll.clientWidth;
+    if (endPx > viewRight - 48) timelineScroll.scrollLeft = endPx - timelineScroll.clientWidth + 48;
   }
 
   function moveTimelineClip(event: PointerEvent, clip: Clip) {
@@ -2129,7 +2218,7 @@
     selectElement(clip.id, false);
     const rect = timelineLaneRect(String(clip.track));
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: clip.id,
       kind: 'clip',
@@ -2161,10 +2250,24 @@
     window.addEventListener('pointercancel', stop);
   }
 
+  /** Grow the canvas duration so a moved clip/element that ends past the current
+   *  project end still fits inside the rendered timeline. */
+  function extendProjectDuration(minDuration: number) {
+    if (!ast || !Number.isFinite(minDuration) || minDuration <= totalDuration) return;
+    const canvasNode = ast.body.find((candidate) => candidate.type === 'Canvas');
+    if (canvasNode) {
+      canvasNode.properties = {
+        ...canvasNode.properties,
+        duration: `${minDuration.toFixed(3)}s`,
+      };
+    }
+  }
+
   function commitClipDrag() {
     const drag = clipDrag;
     clipDrag = null;
     timelineSnapGuide = null;
+    timelineDragReach = 0;
     if (!drag || !scene || !drag.moved || !drag.valid) return;
     if (drag.kind === 'audio') {
       const node = ast?.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
@@ -2183,9 +2286,12 @@
         drag.id,
         targetTrack,
         drag.ghostStart,
-        totalDuration
+        timelineVisibleDuration
       );
-      if (next) writeClipLayout(next);
+      if (next) {
+        extendProjectDuration(drag.ghostStart + drag.duration);
+        writeClipLayout(next);
+      }
       endHistoryGesture();
       return;
     }
@@ -2217,6 +2323,7 @@
       ...node.properties,
       track: targetTrack.id,
     };
+    extendProjectDuration(end);
     code = serializeProgram(ast);
     endHistoryGesture();
   }
@@ -2240,7 +2347,7 @@
       String(node.properties['track'] ?? scene.tracks.find((track) => track.role === 'overlay')?.id ?? defaultMainTrack);
     const rect = originLane?.getBoundingClientRect() ?? timelineLaneRect(originTrackId);
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: element.id,
       kind: 'element',
@@ -2279,7 +2386,7 @@
     const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
     const rect = lane?.getBoundingClientRect();
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: '__audio__',
       kind: 'audio',
@@ -2311,14 +2418,15 @@
     event.preventDefault();
     event.stopPropagation();
     selectElement(clip.id, false);
-    const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane');
-    if (!lane) return;
+    const laneEl = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
+    if (!laneEl) return;
+    const trackId = laneEl.dataset['track'] ?? '';
     beginHistoryGesture();
-    const rect = lane.getBoundingClientRect();
     const minimum = 1 / (scene?.canvas.fps ?? 60);
     const move = (pointer: PointerEvent) => {
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-      const time = snapTimelineTime(raw, rect.width, clip.id);
+      const rect = timelineLaneRect(trackId) ?? laneEl.getBoundingClientRect();
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+      const time = snapTimelineTime(raw, rect.width, clip.id, raw + timelineFillPanelDuration);
       if (!scene) return;
       const next = trimClipOnTrack(
         scene.clips,
@@ -2327,10 +2435,20 @@
         time,
         minimum
       );
+      const trimmed = next.find((candidate) => candidate.id === clip.id);
+      if (trimmed) {
+        const trimmedEnd = trimmed.start + trimmed.duration;
+        extendProjectDuration(trimmedEnd);
+        if (edge === 'end') {
+          timelineDragReach = trimmedEnd;
+          followTimelineDrag(trimmedEnd);
+        }
+      }
       writeClipLayout(next);
     };
     const stop = () => {
       timelineSnapGuide = null;
+      timelineDragReach = 0;
       endHistoryGesture();
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
@@ -2389,12 +2507,12 @@
   }
 
   function timelineTimeAt(clientX: number, rect: DOMRect): number {
-    const raw = ((clientX - rect.left) / rect.width) * totalDuration;
+    const raw = ((clientX - rect.left) / rect.width) * timelineVisibleDuration;
     return snapTimelineTime(raw, rect.width);
   }
 
-  function snapTimelineTime(raw: number, width: number, excludeClipId = ''): number {
-    const clamped = Math.max(0, Math.min(totalDuration, raw));
+  function snapTimelineTime(raw: number, width: number, excludeClipId = '', maxTime = totalDuration): number {
+    const clamped = Math.max(0, Math.min(maxTime, raw));
     const fps = scene?.canvas.fps ?? 60;
     const frameTime = Math.round(clamped * fps) / fps;
     if (!snapEnabled) {
@@ -2411,7 +2529,7 @@
     }
     const nearest = candidates.reduce((best, value) =>
       Math.abs(value - clamped) < Math.abs(best - clamped) ? value : best, 0);
-    const snapped = Math.abs(nearest - clamped) <= (totalDuration * 8) / Math.max(1, width);
+    const snapped = Math.abs(nearest - clamped) <= (timelineVisibleDuration * 8) / Math.max(1, width);
     timelineSnapGuide = snapped ? nearest : null;
     return snapped ? nearest : frameTime;
   }
@@ -2868,7 +2986,7 @@
       }
       if (!node || !frame) return;
       const timing = selectedAnimationTiming(node);
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
       const snappedTime = snapTimelineTime(raw, rect.width);
       const nextOffset = keyframeOffsetAtTime(snappedTime, timing.delay, timing.duration);
       frame.offset = nextOffset;
@@ -3171,7 +3289,7 @@
     {snapEnabled}
     {timelineZoom}
     {timelineContentWidth}
-    {totalDuration}
+    {timelineVisibleDuration}
     {scene}
     draggingAsset={draggingAsset !== null}
     {draggingAudio}
