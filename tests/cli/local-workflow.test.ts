@@ -140,6 +140,29 @@ describe('local CLI workflow', () => {
       const asset = await fetch(`http://127.0.0.1:${port}/assets/logo.svg`, { method: 'HEAD' });
       expect(asset.headers.get('content-length')).toBe('11');
 
+      // Uploading an asset writes it into the project's on-disk assets folder
+      // and serves it back (issue #53: save dragged assets into the asset folder).
+      const uploaded = await fetch(`http://127.0.0.1:${port}/assets/dropped.svg`, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/svg+xml' },
+        body: '<svg id="dropped"></svg>',
+      });
+      expect(uploaded.status).toBe(204);
+      expect(await readFile(join(workspace, 'demo', 'assets', 'dropped.svg'), 'utf8')).toContain(
+        'id="dropped"'
+      );
+      const servedUpload = await fetch(`http://127.0.0.1:${port}/assets/dropped.svg`);
+      expect(servedUpload.status).toBe(200);
+      expect(await servedUpload.text()).toContain('id="dropped"');
+
+      // Path traversal outside the assets folder is rejected.
+      const traversal = await fetch(`http://127.0.0.1:${port}/assets/..%2f..%2fhacked.svg`, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/svg+xml' },
+        body: '<svg></svg>',
+      });
+      expect(traversal.status).toBe(403);
+
       const updated = source.replace('value "demo"', 'value "Saved"');
       const saved = await fetch(`http://127.0.0.1:${port}/api/motion-project`, {
         method: 'PUT',

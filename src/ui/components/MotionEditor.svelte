@@ -91,8 +91,20 @@
     'fill',
   ];
 
+  // Timeline layout: clips are drawn at a fixed pixels-per-second scale (× zoom)
+  // so a clip's on-screen length reflects its real duration. At rest the ruler
+  // spans the content end (or the visible panel, whichever is longer) with no
+  // trailing padding. While a clip is being dragged/stretched toward the end,
+  // the ruler grows to follow so there is room to extend; committing past the
+  // old end grows the project. Fixed px/s means existing clips never shift when
+  // the ruler grows.
+  const TIMELINE_LABEL_WIDTH = 220;
+  const TIMELINE_PIXELS_PER_SECOND = 100;
+  const TIMELINE_MIN_LANE_WIDTH = 160;
+
   export let code = '';
   export let onSave: () => void | Promise<void> = () => undefined;
+  export let serverBacked = false;
   let canvas: HTMLCanvasElement;
   let stage: HTMLDivElement;
   let renderer: CanvasRenderer | null = null;
@@ -157,6 +169,7 @@
   let audioClipDuration = 0;
   let visibleWaveformPeaks = 1;
   let timelineHeight = 230;
+  let contentPanelWidth = 260;
   let mp4Supported = false;
   let isExporting = false;
   let exportError = '';
@@ -167,9 +180,15 @@
   let mediaSubTab: 'assets' | 'presets' = 'assets';
   let showConfirmDialog = false;
   let pendingPresetPath = '';
+  let pendingDelete:
+    | { kind: 'assets'; assets: Asset[]; usageCount: number }
+    | { kind: 'audio' }
+    | { kind: 'text'; ids: string[] }
+    | null = null;
   let previewAsset: AssetPreview | null = null;
   let videoRenderId = 0;
   let isDraggingUpload = false;
+  let stageDropActive = false;
   let draggingAsset: Asset | null = null;
   let draggingAudio = false;
   let draggingTransition: 'crossfade' | null = null;
@@ -179,6 +198,10 @@
   let editorHistory = createEditorHistory(code);
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
+  let timelineViewportWidth = 0;
+  // While a clip/element is being dragged or stretched toward the end this holds
+  // the current far edge (seconds) so the ruler can grow to follow; 0 when idle.
+  let timelineDragReach = 0;
   let snapEnabled = true;
   let timelineSnapGuide: number | null = null;
   let historyGestureBase: string | null = null;
@@ -200,6 +223,16 @@
     const observer = new ResizeObserver(fitPreview);
     if (stage) observer.observe(stage);
     requestAnimationFrame(fitPreview);
+
+    // Track the timeline viewport width so the lane scale can fit long projects
+    // to the visible area while keeping short projects compact.
+    const measureTimeline = () => {
+      if (timelineScroll) timelineViewportWidth = timelineScroll.clientWidth;
+    };
+    const timelineObserver = new ResizeObserver(measureTimeline);
+    if (timelineScroll) timelineObserver.observe(timelineScroll);
+    measureTimeline();
+    requestAnimationFrame(measureTimeline);
     
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target instanceof Element ? e.target : null;
@@ -266,6 +299,7 @@
     
     return () => {
       observer.disconnect();
+      timelineObserver.disconnect();
       disposeAssets(assets);
       audioLoadId += 1;
       audioWaveformLoadId += 1;
@@ -339,6 +373,26 @@
   function cancelLoadPreset() {
     showConfirmDialog = false;
     pendingPresetPath = '';
+  }
+
+  function cancelConfirmDialog() {
+    if (pendingDelete) pendingDelete = null;
+    else cancelLoadPreset();
+    showConfirmDialog = false;
+  }
+
+  function confirmDialog() {
+    if (!pendingDelete) return confirmLoadPreset();
+    const deletion = pendingDelete;
+    pendingDelete = null;
+    showConfirmDialog = false;
+    if (deletion.kind === 'assets') {
+      for (const asset of deletion.assets) removeAssetNow(asset);
+    } else if (deletion.kind === 'audio') {
+      removeAudio();
+    } else {
+      for (const id of deletion.ids) deleteElement(id);
+    }
   }
 
   function loadGeneratedMotion(source: string): string | null {
@@ -421,7 +475,7 @@
           boundary.type !== null
       ) ?? null
     : null;
-  $: timelineTicks = Array.from({ length: 7 }, (_, index) => (totalDuration * index) / 6);
+  $: timelineTicks = Array.from({ length: 7 }, (_, index) => (timelineVisibleDuration * index) / 6);
   $: displayFrame = Math.round(currentTime * (scene?.canvas.fps ?? 60));
   $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets);
   $: canvasWidth = scene?.canvas.width ?? 1920;
@@ -434,7 +488,40 @@
     elementCount: sourceElements.length,
   };
   $: canvasStyle = `width: ${Math.round(canvasWidth * zoom)}px; aspect-ratio: ${canvasWidth} / ${canvasHeight};`;
-  $: timelineContentWidth = Math.max(820, 220 + totalDuration * 100 * timelineZoom);
+  // The last clipbar end (content end). The playhead is clamped here; the ruler
+  // extends a fixed tail past it so clips can be dragged/extended into the gap.
+  $: timelineContentEnd = (() => {
+    const ends = [
+      ...(scene?.clips ?? []).map((clip) => clip.start + clip.duration),
+      ...(scene?.elements ?? []).map((element) => timelineRange(element.id).end),
+    ].filter((value) => Number.isFinite(value));
+    return ends.length ? Math.max(0, ...ends) : Math.max(0, totalDuration);
+  })();
+  // Fixed pixels-per-second scale (× zoom): a clip is drawn at duration × scale,
+  // so short clips look short. The ruler/drag extent is the content end plus a
+  // fixed tail so there is always room to drag or stretch a clip; committing a
+  // clip past the current end grows the project (see extendProjectDuration).
+  // All clip/tick/playhead positions are percentages of timelineVisibleDuration.
+  $: timelinePixelsPerSecond = TIMELINE_PIXELS_PER_SECOND * timelineZoom;
+  $: timelineAvailableLaneWidth = Math.max(
+    TIMELINE_MIN_LANE_WIDTH,
+    timelineViewportWidth - TIMELINE_LABEL_WIDTH
+  );
+  // Seconds that fill the visible panel at the current scale.
+  $: timelineFillPanelDuration =
+    timelinePixelsPerSecond > 0 ? timelineAvailableLaneWidth / timelinePixelsPerSecond : 0;
+  // At rest: content end, or the panel width if the content is shorter (so a
+  // short clip looks short inside a filled ruler, with no trailing padding).
+  // While dragging toward the end: grow to keep half a screen of room ahead of
+  // the drag so it can be extended; existing clips keep their pixel position
+  // because the scale is fixed.
+  $: timelineVisibleDuration = Math.max(
+    timelineContentEnd,
+    timelineFillPanelDuration,
+    timelineDragReach > 0 ? timelineDragReach + timelineFillPanelDuration * 0.5 : 0
+  );
+  $: timelineLaneWidth = timelineVisibleDuration * timelinePixelsPerSecond;
+  $: timelineContentWidth = TIMELINE_LABEL_WIDTH + timelineLaneWidth;
 
   function parseAndRender() {
     try {
@@ -654,7 +741,8 @@
   }
 
   function quantizeTimelineTime(time: number): number {
-    return quantizeFrameTime(time, totalDuration, scene?.canvas.fps ?? 60);
+    // Clamp the playhead to the last clipbar end, not the padded ruler tail.
+    return quantizeFrameTime(time, timelineContentEnd, scene?.canvas.fps ?? 60);
   }
 
   function seek(event: Event) {
@@ -719,6 +807,21 @@
     showCodeEditor = !showCodeEditor;
   }
 
+  function resizeContentPanel(event: PointerEvent) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = contentPanelWidth;
+    const move = (pointer: PointerEvent) => {
+      contentPanelWidth = Math.min(420, Math.max(220, startWidth + pointer.clientX - startX));
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  }
+
 
 
   function timelineRange(id: string): { start: number; end: number } {
@@ -764,9 +867,12 @@
     return { start: Math.max(0, start), end: Math.min(totalDuration, end) };
   }
 
-  function timelinePercent(time: number): number {
-    return totalDuration > 0 ? Math.max(0, Math.min(100, (time / totalDuration) * 100)) : 0;
-  }
+  // Reactive so clip/tick/playhead positions recompute when the visible
+  // duration changes (e.g. on zoom), not just when the project duration does.
+  $: timelinePercent = (time: number): number =>
+    timelineVisibleDuration > 0
+      ? Math.max(0, Math.min(100, (time / timelineVisibleDuration) * 100))
+      : 0;
 
   async function handleAudioSelected(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
@@ -1025,16 +1131,24 @@
   function trimElement(event: PointerEvent, id: string, edge: 'start' | 'end') {
     event.preventDefault();
     event.stopPropagation();
-    const lane = (event.currentTarget as HTMLElement).closest('.me-track-lane');
-    if (!lane) return;
+    const laneEl = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
+    if (!laneEl) return;
+    const trackId = laneEl.dataset['track'] ?? '';
     beginHistoryGesture();
-    const rect = lane.getBoundingClientRect();
     const update = (pointer: PointerEvent) => {
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-      setClipBoundary(id, edge, snapTimelineTime(raw, rect.width, id));
+      // Fetch the lane live: the ruler (and this element) can grow/re-render
+      // mid-trim, so a rect captured up front would go stale.
+      const rect = timelineLaneRect(trackId) ?? laneEl.getBoundingClientRect();
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+      if (edge === 'end') {
+        timelineDragReach = raw;
+        followTimelineDrag(raw);
+      }
+      setClipBoundary(id, edge, snapTimelineTime(raw, rect.width, id, raw + timelineFillPanelDuration));
     };
     const stop = () => {
       timelineSnapGuide = null;
+      timelineDragReach = 0;
       endHistoryGesture();
       window.removeEventListener('pointermove', update);
       window.removeEventListener('pointerup', stop);
@@ -1054,6 +1168,7 @@
     const start = edge === 'start' ? Math.min(time, range.end - minimum) : range.start;
     const end = edge === 'end' ? Math.max(time, range.start + minimum) : range.end;
     element.properties = elementWindowProperties(element.properties, start, end, minimum);
+    extendProjectDuration(end);
     code = serializeProgram(ast);
   }
 
@@ -1161,6 +1276,8 @@
     target.setPointerCapture?.(event.pointerId);
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
+    // Bracket the whole scrub gesture into one undo step.
+    beginHistoryGesture();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const sensitivity = moveEvent.shiftKey ? 0.1 : 0.5;
@@ -1176,6 +1293,7 @@
       if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
       document.body.style.cursor = previousCursor;
       document.body.style.userSelect = previousSelection;
+      endHistoryGesture();
     };
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', finishScrub);
@@ -1239,6 +1357,8 @@
           const centerX = bounds.x + bounds.width / 2;
           const centerY = bounds.y + bounds.height / 2;
           const visualId = selectedClip?.id ?? selectedVisual.id;
+          // Bracket the whole resize gesture into one undo step.
+          beginHistoryGesture();
           dragState = {
             mode: 'resize',
             id: selectedAnimationTarget() || selectedVisual.id,
@@ -1269,6 +1389,8 @@
     if (!target) return;
     const sourceTarget = scene.clips.find((clip) => clip.id === targetId)?.assetName ?? targetId;
     const center = elementCenter(target);
+    // Bracket the whole move gesture into one undo step.
+    beginHistoryGesture();
     dragState = {
       mode: 'move',
       id: sourceTarget,
@@ -1327,6 +1449,9 @@
   function handleCanvasPointerUp(event: PointerEvent) {
     dragState = null;
     snapGuides = { vertical: null, horizontal: null };
+    // Collapse the move/resize gesture into a single undo entry (a no-op click
+    // records nothing because the source never changed).
+    endHistoryGesture();
     if (canvas.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
     }
@@ -1392,7 +1517,62 @@
     }
   }
 
+  function requestRemoveAssets(selectedAssets: Asset[]) {
+    if (!ast || !selectedAssets.length) return;
+    pendingDelete = {
+      kind: 'assets',
+      assets: selectedAssets,
+      usageCount: selectedAssets.reduce((total, asset) => total + assetUsage(asset).usageCount, 0),
+    };
+    showConfirmDialog = true;
+  }
 
+  function requestRemoveAudio() {
+    if (!audioName) return;
+    pendingDelete = { kind: 'audio' };
+    showConfirmDialog = true;
+  }
+
+  function requestRemoveElements(ids: string[]) {
+    if (!ids.length) return;
+    pendingDelete = { kind: 'text', ids };
+    showConfirmDialog = true;
+  }
+
+  function assetUsage(asset: Asset) {
+    const elementNames = new Set(
+      ast.body.flatMap((node) =>
+        node.type === 'Element' &&
+        ((node.kind === 'asset' && node.name === asset.name) ||
+          (node.kind === 'image' && node.properties['source'] === asset.name))
+          ? [node.name]
+          : []
+      )
+    );
+    const usageCount =
+      elementNames.size +
+      ast.body.filter((node) => node.type === 'Clip' && node.assetName === asset.name).length;
+    return { elementNames, usageCount };
+  }
+
+  function removeAssetNow(asset: Asset) {
+    if (!ast) return;
+    const { elementNames } = assetUsage(asset);
+    const previousSource = code;
+    ast.body = ast.body.filter(
+      (node) =>
+        !(node.type === 'Import' && node.name === asset.name) &&
+        !(node.type === 'Clip' && node.assetName === asset.name) &&
+        !(node.type === 'Element' && elementNames.has(node.name)) &&
+        !(node.type === 'Animation' && elementNames.has(node.target))
+    );
+    embeddedAssets = embeddedAssets.filter((item) => item.name !== asset.name);
+    selectedElementId = '';
+    previewAsset = null;
+    const resultSource = serializeProgram(ast);
+    code = resultSource;
+    showDeletedToast('Asset removed', previousSource, resultSource);
+  }
 
   function clearAssetPreview() {
     previewAsset = null;
@@ -1443,6 +1623,33 @@
     await importAssetFiles(event.dataTransfer?.files);
   }
 
+  // Dropping OS files directly onto the preview stage saves them into the asset
+  // folder (Media panel), where they can be viewed, reused, or deleted.
+  function handleStageFileDragOver(event: DragEvent) {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    stageDropActive = true;
+  }
+
+  function handleStageFileDragLeave(event: DragEvent) {
+    if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
+      stageDropActive = false;
+    }
+  }
+
+  async function handleStageFileDrop(event: DragEvent) {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    stageDropActive = false;
+    const added = await importAssetFiles(event.dataTransfer.files);
+    if (added.length) {
+      // Reveal the freshly imported media so the drop has a visible result.
+      activeNavTab = 'media';
+      mediaSubTab = 'assets';
+    }
+  }
+
   function handleAssetFileDrag(event: DragEvent) {
     if (event.dataTransfer?.types.includes('Files')) isDraggingUpload = true;
   }
@@ -1453,12 +1660,37 @@
     }
   }
 
-  async function importAssetFiles(fileList: FileList | null | undefined) {
-    if (!ast) return;
+  /**
+   * Persist an uploaded/dragged file so the editor can reference it.
+   *
+   * In a server-backed project (npx init → CLI `dev`), the file is written into
+   * the project's on-disk `assets/` folder via the local editor server and
+   * referenced by relative path, so it becomes real, reusable project media.
+   * In the browser-only editor (no project server) there is nowhere to write, so
+   * the file is embedded in the `.motion` source as a tagged data URL instead.
+   */
+  async function persistAssetFile(file: File): Promise<string> {
+    if (serverBacked) {
+      const response = await fetch(`/assets/${encodeURIComponent(file.name)}`, {
+        method: 'PUT',
+        headers: { 'content-type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!response.ok) {
+        throw new Error(`Could not save ${file.name} to the project assets folder (${response.status}).`);
+      }
+      return `./assets/${file.name}`;
+    }
+    return tagEmbeddedAssetPath(await readFileDataUrl(file), file.name);
+  }
+
+  async function importAssetFiles(fileList: FileList | null | undefined): Promise<string[]> {
+    if (!ast) return [];
     const program = ast;
     assetError = '';
     const files = Array.from(fileList ?? []);
-    if (!files.length) return;
+    if (!files.length) return [];
+    const addedNames: string[] = [];
     for (const file of files) {
       const lowerName = file.name.toLowerCase();
       const isImage = file.type.startsWith('image/') || lowerName.endsWith('.svg');
@@ -1471,13 +1703,6 @@
       const maximumSize = isVideo ? 100_000_000 : isLottie ? 50_000_000 : 10_000_000;
       if (file.size > maximumSize) {
         assetError = `${file.name} is larger than ${isVideo ? '100' : isLottie ? '50' : '10'} MB.`;
-        continue;
-      }
-      let path = '';
-      try {
-        path = tagEmbeddedAssetPath(await readFileDataUrl(file), file.name);
-      } catch (cause) {
-        assetError = cause instanceof Error ? cause.message : `Could not read ${file.name}.`;
         continue;
       }
       const matchingImports = program.body.filter(
@@ -1509,8 +1734,23 @@
           assetError = `Kept the current ${file.name}.`;
           continue;
         }
-        for (const node of matchingImports) node.path = path;
+        // Persist only after the replace decision so declining never overwrites disk media.
+        let replacedPath = '';
+        try {
+          replacedPath = await persistAssetFile(file);
+        } catch (cause) {
+          assetError = cause instanceof Error ? cause.message : `Could not save ${file.name}.`;
+          continue;
+        }
+        for (const node of matchingImports) node.path = replacedPath;
         assetError = `Matched ${file.name} to its existing import by filename.`;
+        continue;
+      }
+      let path = '';
+      try {
+        path = await persistAssetFile(file);
+      } catch (cause) {
+        assetError = cause instanceof Error ? cause.message : `Could not save ${file.name}.`;
         continue;
       }
       const used = new Set(program.body.flatMap((node) => node.type === 'Import' ? [node.name] : node.type === 'Element' ? [node.name] : []));
@@ -1519,8 +1759,10 @@
       let suffix = 2;
       while (used.has(name)) name = `${base}_${suffix++}`;
       program.body.push({ type: 'Import', path, name });
+      addedNames.push(name);
     }
     code = serializeProgram(program);
+    return addedNames;
   }
 
   async function readMediaIdentity(file: File, isVideo: boolean) {
@@ -1944,12 +2186,29 @@
       : laneTrackAtPoint(pointer.clientX, pointer.clientY) ?? clipDrag.originTrackId;
     const rect = timelineLaneRect(targetTrackId);
     if (!rect) return;
-    const pointerTime = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-    const rawStart = Math.min(
-      totalDuration,
-      Math.max(0, snapTimelineTime(pointerTime - clipDrag.grabOffset, rect.width, clipDrag.id))
+    const pointerTime = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+    // Follow the pointer; the ruler grows via timelineDragReach so there is
+    // always room to keep extending. The project only grows on commit.
+    const rawStart = Math.max(
+      0,
+      snapTimelineTime(
+        pointerTime - clipDrag.grabOffset,
+        rect.width,
+        clipDrag.id,
+        timelineVisibleDuration
+      )
     );
     clipDrag = { ...clipDrag, ghostStart: rawStart, ghostTrackId: targetTrackId, valid: true };
+    timelineDragReach = rawStart + clipDrag.duration;
+    followTimelineDrag(timelineDragReach);
+  }
+
+  /** Keep the dragged/stretched end in view as the ruler grows behind it. */
+  function followTimelineDrag(reachSeconds: number) {
+    if (!timelineScroll) return;
+    const endPx = TIMELINE_LABEL_WIDTH + Math.max(0, reachSeconds) * timelinePixelsPerSecond;
+    const viewRight = timelineScroll.scrollLeft + timelineScroll.clientWidth;
+    if (endPx > viewRight - 48) timelineScroll.scrollLeft = endPx - timelineScroll.clientWidth + 48;
   }
 
   function moveTimelineClip(event: PointerEvent, clip: Clip) {
@@ -1959,7 +2218,7 @@
     selectElement(clip.id, false);
     const rect = timelineLaneRect(String(clip.track));
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: clip.id,
       kind: 'clip',
@@ -1991,10 +2250,24 @@
     window.addEventListener('pointercancel', stop);
   }
 
+  /** Grow the canvas duration so a moved clip/element that ends past the current
+   *  project end still fits inside the rendered timeline. */
+  function extendProjectDuration(minDuration: number) {
+    if (!ast || !Number.isFinite(minDuration) || minDuration <= totalDuration) return;
+    const canvasNode = ast.body.find((candidate) => candidate.type === 'Canvas');
+    if (canvasNode) {
+      canvasNode.properties = {
+        ...canvasNode.properties,
+        duration: `${minDuration.toFixed(3)}s`,
+      };
+    }
+  }
+
   function commitClipDrag() {
     const drag = clipDrag;
     clipDrag = null;
     timelineSnapGuide = null;
+    timelineDragReach = 0;
     if (!drag || !scene || !drag.moved || !drag.valid) return;
     if (drag.kind === 'audio') {
       const node = ast?.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
@@ -2013,9 +2286,12 @@
         drag.id,
         targetTrack,
         drag.ghostStart,
-        totalDuration
+        timelineVisibleDuration
       );
-      if (next) writeClipLayout(next);
+      if (next) {
+        extendProjectDuration(drag.ghostStart + drag.duration);
+        writeClipLayout(next);
+      }
       endHistoryGesture();
       return;
     }
@@ -2047,6 +2323,7 @@
       ...node.properties,
       track: targetTrack.id,
     };
+    extendProjectDuration(end);
     code = serializeProgram(ast);
     endHistoryGesture();
   }
@@ -2070,7 +2347,7 @@
       String(node.properties['track'] ?? scene.tracks.find((track) => track.role === 'overlay')?.id ?? defaultMainTrack);
     const rect = originLane?.getBoundingClientRect() ?? timelineLaneRect(originTrackId);
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: element.id,
       kind: 'element',
@@ -2109,7 +2386,7 @@
     const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
     const rect = lane?.getBoundingClientRect();
     if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * totalDuration;
+    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
     clipDrag = {
       id: '__audio__',
       kind: 'audio',
@@ -2141,14 +2418,15 @@
     event.preventDefault();
     event.stopPropagation();
     selectElement(clip.id, false);
-    const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane');
-    if (!lane) return;
+    const laneEl = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
+    if (!laneEl) return;
+    const trackId = laneEl.dataset['track'] ?? '';
     beginHistoryGesture();
-    const rect = lane.getBoundingClientRect();
     const minimum = 1 / (scene?.canvas.fps ?? 60);
     const move = (pointer: PointerEvent) => {
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
-      const time = snapTimelineTime(raw, rect.width, clip.id);
+      const rect = timelineLaneRect(trackId) ?? laneEl.getBoundingClientRect();
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
+      const time = snapTimelineTime(raw, rect.width, clip.id, raw + timelineFillPanelDuration);
       if (!scene) return;
       const next = trimClipOnTrack(
         scene.clips,
@@ -2157,10 +2435,20 @@
         time,
         minimum
       );
+      const trimmed = next.find((candidate) => candidate.id === clip.id);
+      if (trimmed) {
+        const trimmedEnd = trimmed.start + trimmed.duration;
+        extendProjectDuration(trimmedEnd);
+        if (edge === 'end') {
+          timelineDragReach = trimmedEnd;
+          followTimelineDrag(trimmedEnd);
+        }
+      }
       writeClipLayout(next);
     };
     const stop = () => {
       timelineSnapGuide = null;
+      timelineDragReach = 0;
       endHistoryGesture();
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
@@ -2219,12 +2507,12 @@
   }
 
   function timelineTimeAt(clientX: number, rect: DOMRect): number {
-    const raw = ((clientX - rect.left) / rect.width) * totalDuration;
+    const raw = ((clientX - rect.left) / rect.width) * timelineVisibleDuration;
     return snapTimelineTime(raw, rect.width);
   }
 
-  function snapTimelineTime(raw: number, width: number, excludeClipId = ''): number {
-    const clamped = Math.max(0, Math.min(totalDuration, raw));
+  function snapTimelineTime(raw: number, width: number, excludeClipId = '', maxTime = totalDuration): number {
+    const clamped = Math.max(0, Math.min(maxTime, raw));
     const fps = scene?.canvas.fps ?? 60;
     const frameTime = Math.round(clamped * fps) / fps;
     if (!snapEnabled) {
@@ -2241,7 +2529,7 @@
     }
     const nearest = candidates.reduce((best, value) =>
       Math.abs(value - clamped) < Math.abs(best - clamped) ? value : best, 0);
-    const snapped = Math.abs(nearest - clamped) <= (totalDuration * 8) / Math.max(1, width);
+    const snapped = Math.abs(nearest - clamped) <= (timelineVisibleDuration * 8) / Math.max(1, width);
     timelineSnapGuide = snapped ? nearest : null;
     return snapped ? nearest : frameTime;
   }
@@ -2698,7 +2986,7 @@
       }
       if (!node || !frame) return;
       const timing = selectedAnimationTiming(node);
-      const raw = ((pointer.clientX - rect.left) / rect.width) * totalDuration;
+      const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
       const snappedTime = snapTimelineTime(raw, rect.width);
       const nextOffset = keyframeOffsetAtTime(snappedTime, timing.delay, timing.duration);
       frame.offset = nextOffset;
@@ -2863,7 +3151,7 @@
 
 <div class="motion-editor-scope" style={`--timeline-height: ${timelineHeight}px`}>
 <div class="me-motion-editor" class:me-fullscreen={isFullscreen} style={`--timeline-height: ${timelineHeight}px`}>
-  <div class="me-workbench" class:me-chat-open={showAiChat}>
+  <div class="me-workbench" class:me-chat-open={showAiChat} style={`--content-panel-width: ${contentPanelWidth}px`}>
     <NavigationRail activeTab={activeNavTab} onSelect={(tab) => (activeNavTab = tab)} />
 
     <ContentPanel
@@ -2892,14 +3180,17 @@
       onAssetDragStart={handleAssetDragStart}
       onAssetDragEnd={handleAssetDragEnd}
       onPreviewAsset={previewAssetOnly}
+      onRemoveAssets={requestRemoveAssets}
       onRequestPresetLoad={requestPresetLoad}
-      onRemoveAudio={removeAudio}
+      onRequestRemoveAudio={requestRemoveAudio}
       onAddTextElement={addTextElement}
       onSelectElement={selectElement}
+      onRemoveElements={requestRemoveElements}
       {canApplyLibraryPreset}
       onApplyLibraryPreset={applyLibraryPreset}
       onTransitionDragStart={handleTransitionDragStart}
       onTransitionDragEnd={handleTransitionDragEnd}
+      onResizeStart={resizeContentPanel}
     />
 
     <aside class="me-chat-drawer" class:me-collapsed={!showAiChat}>
@@ -2925,12 +3216,16 @@
       {previewAsset}
       {parseError}
       {exportError}
+      fileDropActive={stageDropActive}
       onFit={fitPreview}
       onToggleFullscreen={toggleFullscreen}
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={handleCanvasPointerMove}
       onPointerUp={handleCanvasPointerUp}
       onClearAssetPreview={clearAssetPreview}
+      onFileDragOver={handleStageFileDragOver}
+      onFileDragLeave={handleStageFileDragLeave}
+      onFileDrop={handleStageFileDrop}
     />
 
     <PropertiesInspector
@@ -2956,6 +3251,8 @@
       {isPropertyAnimated}
       {hasPropertyKeyframeAtPlayhead}
       onUpdateElementProperty={updateElementProperty}
+      onGestureStart={beginHistoryGesture}
+      onGestureEnd={endHistoryGesture}
       onTogglePropertyKeyframe={togglePropertyKeyframe}
       onBeginPropertyScrub={beginPropertyScrub}
       onPropertyScrubKey={handlePropertyScrubKey}
@@ -2992,7 +3289,7 @@
     {snapEnabled}
     {timelineZoom}
     {timelineContentWidth}
-    {totalDuration}
+    {timelineVisibleDuration}
     {scene}
     draggingAsset={draggingAsset !== null}
     {draggingAudio}
@@ -3066,8 +3363,25 @@
   {deleteToast}
   {keyframeNotice}
   {showConfirmDialog}
+  dialogTitle={pendingDelete?.kind === 'assets'
+    ? 'Delete Asset'
+    : pendingDelete?.kind === 'audio'
+      ? 'Delete Audio'
+      : pendingDelete?.kind === 'text'
+        ? 'Delete Text'
+        : 'Load Preset'}
+  dialogMessage={pendingDelete?.kind === 'assets'
+    ? pendingDelete.assets.length === 1
+      ? `${pendingDelete.assets[0].name} is used ${pendingDelete.usageCount} time${pendingDelete.usageCount === 1 ? '' : 's'}. Delete it and its timeline items?`
+      : `Delete ${pendingDelete.assets.length} selected assets and their timeline items?`
+    : pendingDelete?.kind === 'audio'
+      ? `Delete ${audioName} and remove it from the timeline?`
+      : pendingDelete?.kind === 'text'
+        ? `Delete ${pendingDelete.ids.length === 1 ? pendingDelete.ids[0] : `${pendingDelete.ids.length} selected text layers`}?`
+        : 'Loading this preset will replace your current project and assets. Continue?'}
+  dialogConfirmLabel={pendingDelete ? 'Delete' : 'Load Preset'}
   onUndoDelete={undoDelete}
-  onCancelPreset={cancelLoadPreset}
-  onConfirmPreset={confirmLoadPreset}
+  onCancelDialog={cancelConfirmDialog}
+  onConfirmDialog={confirmDialog}
 />
 </div>

@@ -147,7 +147,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: #34373d #0d0e10;
@@ -155,10 +155,10 @@
 
 .motion-editor-scope .me-ruler-row,
 .motion-editor-scope .me-timeline-row {
-  width: 100%;
-  min-width: var(--timeline-content-width, 820px);
+  width: var(--timeline-content-width, 820px);
+  min-width: 100%;
   display: grid;
-  grid-template-columns: 220px minmax(600px, 1fr);
+  grid-template-columns: 220px calc(var(--timeline-content-width, 820px) - 220px);
 }
 
 .motion-editor-scope .me-ruler-row {

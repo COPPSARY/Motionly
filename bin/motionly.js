@@ -308,6 +308,17 @@ async function readRequestBody(request, maximum = 5_000_000) {
   return source;
 }
 
+async function readRequestBuffer(request, maximum = 200_000_000) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of request) {
+    total += chunk.length;
+    if (total > maximum) throw new Error('TOO_LARGE');
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 function safeFile(rootPath, pathname) {
   const filePath = normalize(join(rootPath, pathname));
   return filePath === rootPath || filePath.startsWith(`${rootPath}${sep}`) ? filePath : null;
@@ -371,7 +382,7 @@ async function serveEditor(argv, projectFolder = null) {
         return;
       }
 
-      if (pathname.startsWith('/assets/')) {
+      if (pathname.startsWith('/assets/') && (request.method === 'GET' || request.method === 'HEAD')) {
         const bundledAsset = safeFile(dist, pathname.slice(1));
         if (bundledAsset && (await exists(bundledAsset))) {
           await serveFile(response, bundledAsset, request.method);
@@ -381,8 +392,17 @@ async function serveEditor(argv, projectFolder = null) {
 
       if (assetsRoot && pathname.startsWith('/assets/')) {
         const filePath = safeFile(assetsRoot, pathname.slice('/assets/'.length));
-        if (!filePath) {
+        if (!filePath || filePath === assetsRoot) {
           response.writeHead(403).end('Forbidden');
+          return;
+        }
+        if (request.method === 'PUT') {
+          // Save an uploaded/dragged asset into the project's on-disk assets folder
+          // so it can be reused, edited, or deleted like any other project media.
+          const data = await readRequestBuffer(request);
+          await mkdir(dirname(filePath), { recursive: true });
+          await writeFile(filePath, data);
+          response.writeHead(204, { 'X-Motionly-Asset': basename(filePath) }).end();
           return;
         }
         await serveFile(response, filePath, request.method);

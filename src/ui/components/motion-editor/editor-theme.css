@@ -14,10 +14,10 @@
 }
 
 .motion-editor-scope .me-workbench {
-  grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px;
+  grid-template-columns: 60px var(--content-panel-width, 260px) 50px minmax(0, 1fr) 300px;
 }
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px;
+  grid-template-columns: 60px var(--content-panel-width, 260px) 324px minmax(0, 1fr) 300px;
 }
 
 .motion-editor-scope .me-nav-rail {
@@ -392,13 +392,13 @@
 /* Final matte refinement and strict rail/panel containment. */
 .motion-editor-scope .me-workbench,
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px 260px 50px minmax(0, 1fr) 300px;
+  grid-template-columns: 60px var(--content-panel-width, 260px) 50px minmax(0, 1fr) 300px;
   overflow: hidden;
   isolation: isolate;
   background: #0e0e10;
 }
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px 260px 324px minmax(0, 1fr) 300px;
+  grid-template-columns: 60px var(--content-panel-width, 260px) 324px minmax(0, 1fr) 300px;
 }
 .motion-editor-scope .me-nav-rail {
   grid-column: 1;
@@ -417,7 +417,7 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  max-width: 260px;
+  max-width: none;
   contain: paint;
   background: #151517;
   border-right: 1px solid var(--hairline);
@@ -794,7 +794,7 @@
 }
 
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px 260px 360px minmax(0, 1fr) 300px;
+  grid-template-columns: 60px var(--content-panel-width, 260px) 360px minmax(0, 1fr) 300px;
 }
 
 /* Quiet workspace grid, refined property controls, and logo-gradient interactions. */

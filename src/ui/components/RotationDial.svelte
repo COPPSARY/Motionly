@@ -4,6 +4,8 @@
   export let value = 0;
   export let ariaLabel = 'Rotation';
   export let onChange: (angle: number) => void = () => undefined;
+  export let onDragStart: () => void = () => undefined;
+  export let onDragEnd: () => void = () => undefined;
 
   let dial: HTMLDivElement;
   let dragging = false;
@@ -52,6 +54,7 @@
     if (event.button !== 0) return;
     event.preventDefault();
     dragging = true;
+    onDragStart();
     dial.setPointerCapture(event.pointerId);
     updateFromPointer(event);
   }
@@ -61,8 +64,10 @@
   }
 
   function endDrag(event: PointerEvent) {
+    if (!dragging) return;
     dragging = false;
     if (dial.hasPointerCapture(event.pointerId)) dial.releasePointerCapture(event.pointerId);
+    onDragEnd();
   }
 
   function toggleFlip() {
