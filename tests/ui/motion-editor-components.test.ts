@@ -266,6 +266,41 @@ text subtitle { value "Subtitle" center }`,
     await unmount(instance);
   });
 
+  it('gives a new text layer the short static default instead of the whole project', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 20s background #000000 }`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('[aria-label="Text"]'));
+    await tick();
+    click(host.querySelector('[title="Add text"]'));
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).toMatch(/text text1 \{[^}]*duration 3\.000s/s);
+    expect(source).not.toMatch(/text text1 \{[^}]*duration 20\.000s/s);
+
+    await unmount(instance);
+  });
+
   it('mounts every major region and keeps nested panel styles isolated', async () => {
     class ResizeObserverStub {
       observe(): void {}

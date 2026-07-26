@@ -568,7 +568,8 @@
             <div class="me-property-group">
               <div class="me-property-label">Duration</div>
               <div class="me-number-input-wrapper">
-                <input class="me-number-input" type="number" min="0.05" max={totalDuration} step="0.05" value={selectedClip.duration} on:change={(event) => onResizeSelectedClip(Number(event.currentTarget.value))} />
+                <!-- No max: a still can be stretched past the project end, which grows the project. Media is clamped to its source length by the resize handler. -->
+                <input class="me-number-input" type="number" min="0.05" step="0.05" value={selectedClip.duration} on:change={(event) => onResizeSelectedClip(Number(event.currentTarget.value))} />
                 <span class="me-input-suffix">s</span>
               </div>
             </div>

@@ -25,14 +25,15 @@ export function trimClipOnTrack(
   clipId: string,
   edge: 'start' | 'end',
   requestedTime: number,
-  minimum: number
+  minimum: number,
+  staticSource = false
 ): Clip[] {
   return clips.map((clip) => {
     if (clip.id !== clipId) return clip;
     const timing =
       edge === 'start'
-        ? trimClipStart(clip as ClipTiming, requestedTime, minimum)
-        : trimClipEnd(clip as ClipTiming, requestedTime, minimum);
+        ? trimClipStart(clip as ClipTiming, requestedTime, minimum, staticSource)
+        : trimClipEnd(clip as ClipTiming, requestedTime, minimum, staticSource);
     return { ...clip, ...timing };
   });
 }
