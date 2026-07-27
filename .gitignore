@@ -12,3 +12,5 @@ build/
 # Local browser test profiles
 .chrome-media-test/
 coverage/
+coverage/
+.kiro/
