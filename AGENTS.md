@@ -81,6 +81,36 @@ Prefer these properties: `x`, `y`, `scale`, `rotation`, `opacity`, `blur`, `size
 
 Use `size`, not `fontSize`. Use `easing`, not `ease`.
 
+## Motion Doctrine
+
+Quality rules the engine enforces. Full text: `docs/animation/motion-doctrine.mdx`; prompt form: `src/motion-system/doctrine.ts`.
+
+- Arrivals reveal binary — opacity snaps, motion carries the entrance. Never fade an arrival.
+- One entrance is at most 800ms. A longer buildup is a staggered group, not one slow element.
+- A group entrance is a wave, not a queue: gaps shrink (×0.84), travel and duration scale by weight (focal 64px/0.62s, support 40px/0.46s), and the whole cascade lands inside 0.5s.
+- `power4.out` for arrivals, `power3.out` to settle. Bouncy overshoot is for deliberately playful work only.
+- Idle drift (float, breathe, glow pulse) is not sustained motion. Every beat declares a route: `stagedReveals`, `cameraIntent`, `uiLife`, `sequence`, `cursorLed`, or `hold`. No stretch may sit still longer than 1.4s.
+- Schedule 0.3–0.75s of stillness between an action and its result.
+- Transform between shots, never fade. One dominant direction per film; changing it needs a visible cause.
+
+`npm run inspect:motion -- project.motion --strict` audits pacing, cascades, coverage, and geometry.
+
+## Motion System
+
+Select complete motion design ideas instead of placing primitives. Three block kinds sit above the existing engine and lower into ordinary elements:
+
+- `beat NAME { start 4s duration 6s focus subjectId zoom 1.3 label "Product reveal" }` — a change in focus, not a slide. Beats never clear the composition, so objects persist and transform. Attach content with `beat NAME` to inherit its pacing.
+- `layout NAME { type bentoGrid columns 3 gap 40 }` — composition. Children declare `parent NAME` and the solver assigns position, size, and staggered entrance on an 8px rhythm. Never hand-place coordinates when a layout fits.
+- `showcase NAME { type phoneShowcase media alias headline "..." }` — one real asset becomes a product presentation with bezel, screen crop, glare, shadow, entrance, idle float, and camera push. Never build a device out of rectangles.
+
+Beat transitions transform rather than fade: `sharedElement`, `objectMorph`, `layoutMorph` (each needs `from` and `to`), or `cameraMove`, `continuous`, `cut`.
+
+Implementation lives in `src/motion-system/` (layouts, showcases, beats, transitions, asset intelligence, selection metadata) and `src/semantic/motion-lowering.ts`. `registry/` holds generated JSON manifests only — run `npm run registry:generate` after changing a definition. See `docs/motion-language/motion-system.mdx`.
+
+## Semantic Components
+
+Compose recognizable interfaces from the built-in component library before hand-drawing UI. `component name { type dashboard ... }` compiles into structured, professionally choreographed parts named `NAME__PART`. Types: cloud, database, server, arrow, button, dashboard, phone, browser, logo, chart, notification, cursor, codeeditor, website, terminal, pricingcard, laptop, and editor (the Motionly workspace). Fill them with content props (`label`, `values`, `labels`, `headline`, `cta`, `countTo`), customize any part with a dotted override (`price.countPrefix "€"`), animate parts directly (`animate NAME__PART { ... }`), and wire cause and effect with `connects`, `clicks` + `clickAt`, and `reactsTo`. Component text renders in the bundled Space Grotesk display face. See `.agents/skills/write-motionly/references/motion-syntax.md` for the full contract.
+
 ## Preset Guidance
 
 Presets should be subtle:

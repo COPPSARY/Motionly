@@ -59,19 +59,23 @@ export class CanvasRenderer {
     ctx.save();
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = scale < 1 ? 'medium' : 'high';
     ctx.globalAlpha = 1;
     ctx.filter = 'none';
     ctx.fillStyle = canvas.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const laidOut = layoutGeneratedText(elements);
+    const ordered = [
+      ...laidOut.filter((element) => element.kind === 'scene'),
+      ...laidOut.filter((element) => element.kind !== 'scene'),
+    ];
     const hiddenMaskSources = hiddenMaskSourceIds(laidOut);
     const elementsById = new Map(laidOut.map((element) => [element.id, element]));
 
     ctx.save();
     applyCamera(ctx, canvas, camera);
-    for (const element of laidOut) {
+    for (const element of ordered) {
       const props = element.render as unknown as Record<string, unknown>;
       if (props['layer'] !== 'effects' && !hiddenMaskSources.has(element.id)) {
         drawElementWithMask(
@@ -87,7 +91,7 @@ export class CanvasRenderer {
     }
     ctx.restore();
 
-    for (const element of laidOut) {
+    for (const element of ordered) {
       const props = element.render as unknown as Record<string, unknown>;
       if (props['layer'] === 'effects' && !hiddenMaskSources.has(element.id)) {
         drawElementWithMask(
@@ -125,7 +129,7 @@ function layoutGeneratedText(elements: EvaluatedElement[]): EvaluatedElement[] {
     const props = element.properties as unknown as Record<string, unknown>;
     const group = props['textGroup'] as string | undefined;
 
-    if (!group || props['textSplit'] !== 'words') {
+    if (!group || !['words', 'chars', 'lines'].includes(String(props['textSplit']))) {
       output.push(element);
       continue;
     }
@@ -137,7 +141,7 @@ function layoutGeneratedText(elements: EvaluatedElement[]): EvaluatedElement[] {
   }
 
   for (const group of groups.values()) {
-    output.push(...layoutWordGroup(group));
+    output.push(...layoutFragmentGroup(group));
   }
 
   return output;
@@ -146,12 +150,16 @@ function layoutGeneratedText(elements: EvaluatedElement[]): EvaluatedElement[] {
 /**
  * Layout word group for proper spacing
  */
-function layoutWordGroup(group: EvaluatedElement[]): EvaluatedElement[] {
+function layoutFragmentGroup(group: EvaluatedElement[]): EvaluatedElement[] {
   if (group.length === 0) return group;
 
   const ctx = layoutContext();
   const first = group[0]!.render as unknown as Record<string, unknown>;
   const groupX = (first['textGroupX'] as number) ?? 0;
+  const groupY = Number(first['y'] ?? 0);
+  const split = String(
+    (group[0]!.properties as unknown as Record<string, unknown>)['textSplit'] ?? 'words'
+  );
   ctx.font = `${first['weight']} ${first['size']}px ${first['font']}`;
 
   const widths = group.map((element) => {
@@ -159,13 +167,22 @@ function layoutWordGroup(group: EvaluatedElement[]): EvaluatedElement[] {
     return ctx.measureText(String(render['value'])).width;
   });
 
-  const space = ctx.measureText(' ').width;
+  const space = split === 'words' ? ctx.measureText(' ').width : 0;
   const total = widths.reduce((sum, width) => sum + width, 0) + space * (group.length - 1);
+  // Anchor the run to the source element's layout box when it was aligned:
+  // a left-aligned typewriter starts typing at the box's left edge instead of
+  // re-centering (and drifting) as fragments accumulate.
+  const groupAlign = String(first['textGroupAlign'] ?? 'center');
+  const groupWidth = Number(first['textGroupWidth']);
   let cursor = -total / 2;
+  if (Number.isFinite(groupWidth) && groupWidth > 0) {
+    if (groupAlign === 'left') cursor = -groupWidth / 2;
+    else if (groupAlign === 'right') cursor = groupWidth / 2 - total;
+  }
 
   return group.map((element, index) => {
     const width = widths[index]!;
-    const finalX = cursor + width / 2;
+    const finalX = split === 'lines' ? 0 : cursor + width / 2;
     cursor += width + space;
 
     const props = element.properties as unknown as Record<string, unknown>;
@@ -174,11 +191,17 @@ function layoutWordGroup(group: EvaluatedElement[]): EvaluatedElement[] {
     const renderX = render['x'] as number | undefined;
     const drift = typeof renderX === 'number' && typeof baseX === 'number' ? renderX - baseX : 0;
 
+    const lineHeight = Number(render['lineHeight'] ?? 1.2) * Number(render['size'] ?? 64);
+    const finalY =
+      split === 'lines'
+        ? groupY + (index - (group.length - 1) / 2) * lineHeight
+        : Number(render['y'] ?? groupY);
     return {
       ...element,
       render: {
         ...element.render,
         x: groupX + finalX + drift,
+        y: finalY,
       } as unknown as ElementProperties,
     };
   });
@@ -296,10 +319,30 @@ function drawElement(
 
   if (opacity <= 0) return;
 
-  applyMotionPath(props, assets);
+  applyMotionPath(props, assets, elementsById);
 
   ctx.save();
   ctx.globalAlpha = opacity;
+  const blendMode = String(props['blendMode'] ?? 'source-over');
+  if (isBlendMode(blendMode)) ctx.globalCompositeOperation = blendMode;
+
+  const clipWidth = Number(props['clipWidth'] ?? 0);
+  const clipHeight = Number(props['clipHeight'] ?? 0);
+  if (clipWidth > 0 && clipHeight > 0) {
+    ctx.translate(
+      canvas.width / 2 + Number(props['clipX'] ?? 0),
+      canvas.height / 2 + Number(props['clipY'] ?? 0)
+    );
+    ctx.rotate((Number(props['clipRotation'] ?? 0) * Math.PI) / 180);
+    ctx.beginPath();
+    ctx.rect(-clipWidth / 2, -clipHeight / 2, clipWidth, clipHeight);
+    ctx.clip();
+    ctx.rotate((-Number(props['clipRotation'] ?? 0) * Math.PI) / 180);
+    ctx.translate(
+      -(canvas.width / 2 + Number(props['clipX'] ?? 0)),
+      -(canvas.height / 2 + Number(props['clipY'] ?? 0))
+    );
+  }
 
   const filter = buildCanvasFilter(props);
   if (filter !== 'none') {
@@ -308,10 +351,25 @@ function drawElement(
 
   if (element.kind === 'text') {
     drawText(ctx, canvas, props);
-  } else if (element.kind === 'overlay') {
+  } else if (element.kind === 'path' && props['guide']) {
+    // Motion guides are editable helpers, not export artwork.
+  } else if (element.kind === 'overlay' || element.kind === 'path') {
     drawOverlay(ctx, canvas, props, assets, elementsById);
   } else if (element.kind === 'effect') {
     drawEffect(ctx, canvas, props);
+  } else if (element.kind === 'scene') {
+    if (props['background']) {
+      ctx.fillStyle = String(props['background']);
+      ctx.translate(
+        canvas.width / 2 + Number(props['x'] ?? 0),
+        canvas.height / 2 + Number(props['y'] ?? 0)
+      );
+      ctx.rotate((Number(props['rotation'] ?? 0) * Math.PI) / 180);
+      ctx.scale(Number(props['scale'] ?? 1), Number(props['scale'] ?? 1));
+      ctx.fillRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+    }
+  } else if (element.kind === 'group') {
+    // Structural layer: descendants already contain its evaluated world transform.
   } else {
     drawAsset(ctx, canvas, element, props, assets);
   }
@@ -353,10 +411,19 @@ function drawAsset(
   ctx.scale(scale, scale);
   clipReveal(ctx, box.width, box.height, props, drawX, drawY);
   const progress = props['pathProgress'];
-  if (typeof progress === 'number' && asset.motionlySvg?.paths.length) {
+  const morphProgress = props['morphProgress'];
+  const morphTarget = props['morphTo'] ? assets.get(String(props['morphTo'])) : undefined;
+  if (typeof morphProgress === 'number' && morphTarget) {
+    drawSvgMorph(ctx, asset, morphTarget, box, morphProgress, drawX, drawY, props);
+  } else if (
+    typeof progress === 'number' &&
+    asset.motionlySvg?.vectorSafe &&
+    asset.motionlySvg.paths.length
+  ) {
     drawSvgReveal(ctx, asset, box, progress, drawX, drawY, props);
   } else if (
     asset.motionlySvg?.paths.length &&
+    asset.motionlySvg.vectorSafe &&
     !asset.motionlySvg.animated &&
     (props['fill'] !== undefined ||
       props['stroke'] !== undefined ||
@@ -365,6 +432,12 @@ function drawAsset(
     drawSvgVector(ctx, asset.motionlySvg, box, drawX, drawY, props);
   } else {
     try {
+      // drawSVG on assets the vector pipeline cannot reveal path-by-path
+      // (rasters, animated SVG) falls back to an alpha reveal so a delayed
+      // draw still hides the artwork instead of showing it fully formed.
+      if (typeof progress === 'number') {
+        ctx.globalAlpha *= Math.max(0, Math.min(1, progress));
+      }
       ctx.drawImage(drawable, drawX, drawY, box.width, box.height);
     } catch (error) {
       // Chromium can briefly expose a decoded video as ready while replacing its
@@ -372,6 +445,123 @@ function drawAsset(
       if (!isLoadedVideo(asset)) throw error;
     }
   }
+}
+
+function drawSvgMorph(
+  ctx: CanvasRenderingContext2D,
+  sourceAsset: LoadedAsset,
+  targetAsset: LoadedAsset,
+  box: BoundingBox,
+  value: number,
+  drawX: number,
+  drawY: number,
+  props: Record<string, unknown>
+): void {
+  const progress = Math.max(0, Math.min(1, value));
+  const source = sourceAsset.motionlySvg;
+  const target = targetAsset.motionlySvg;
+  const compatible =
+    source &&
+    target &&
+    source.vectorSafe &&
+    target.vectorSafe &&
+    source.width === target.width &&
+    source.height === target.height &&
+    source.paths.length === target.paths.length &&
+    source.paths.every((path, index) =>
+      Boolean(interpolateCompatiblePathData(path.d, target.paths[index]?.d ?? '', progress))
+    );
+
+  if (!compatible || !source || !target) {
+    const targetDrawable = isLoadedVideo(targetAsset)
+      ? targetAsset.motionlyPreviewFrame
+      : targetAsset;
+    ctx.save();
+    ctx.globalAlpha *= 1 - progress;
+    ctx.drawImage(sourceAsset, drawX, drawY, box.width, box.height);
+    ctx.restore();
+    if (targetDrawable) {
+      ctx.save();
+      ctx.globalAlpha *= progress;
+      ctx.drawImage(targetDrawable, drawX, drawY, box.width, box.height);
+      ctx.restore();
+    }
+    return;
+  }
+
+  ctx.save();
+  ctx.translate(drawX, drawY);
+  ctx.scale(box.width / source.width, box.height / source.height);
+  const alpha = ctx.globalAlpha;
+  for (let index = 0; index < source.paths.length; index += 1) {
+    const from = source.paths[index]!;
+    const to = target.paths[index]!;
+    const data = interpolateCompatiblePathData(from.d, to.d, progress);
+    if (!data) continue;
+    const vector = new Path2D(data);
+    const fill = String(props['fill'] ?? from.fill);
+    const stroke = String(props['stroke'] ?? from.stroke);
+    if (fill !== 'none') {
+      ctx.globalAlpha = alpha * (from.fillOpacity + (to.fillOpacity - from.fillOpacity) * progress);
+      ctx.fillStyle = vectorGradient(ctx, props, source.width, source.height) ?? fill;
+      ctx.fill(vector);
+    }
+    if (stroke !== 'none') {
+      ctx.globalAlpha = alpha * (from.opacity + (to.opacity - from.opacity) * progress);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = finiteNumber(
+        props['strokeWidth'],
+        from.strokeWidth + (to.strokeWidth - from.strokeWidth) * progress
+      );
+      ctx.lineCap = from.lineCap;
+      ctx.lineJoin = from.lineJoin;
+      ctx.stroke(vector);
+    }
+  }
+  ctx.restore();
+}
+
+const PATH_TOKEN = /[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:e[-+]?\d+)?/gi;
+
+/** Interpolate path data when both paths have identical command topology. */
+export function interpolateCompatiblePathData(
+  from: string,
+  to: string,
+  progress: number
+): string | null {
+  const fromTokens = from.match(PATH_TOKEN);
+  const toTokens = to.match(PATH_TOKEN);
+  if (!fromTokens || !toTokens || fromTokens.length !== toTokens.length) return null;
+  const clamped = Math.max(0, Math.min(1, progress));
+  const output: string[] = [];
+  let command = '';
+  let parameterIndex = 0;
+  for (let index = 0; index < fromTokens.length; index += 1) {
+    const left = fromTokens[index]!;
+    const right = toTokens[index]!;
+    const leftCommand = /^[a-zA-Z]$/.test(left);
+    const rightCommand = /^[a-zA-Z]$/.test(right);
+    if (leftCommand || rightCommand) {
+      if (!leftCommand || !rightCommand || left !== right) return null;
+      command = left;
+      parameterIndex = 0;
+      output.push(left);
+      continue;
+    }
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+    if (!Number.isFinite(leftNumber) || !Number.isFinite(rightNumber)) return null;
+    const arcParameter = command.toLowerCase() === 'a' ? parameterIndex % 7 : -1;
+    if (arcParameter === 3 || arcParameter === 4) {
+      if (leftNumber !== rightNumber || (leftNumber !== 0 && leftNumber !== 1)) return null;
+      output.push(String(leftNumber));
+    } else {
+      const value = leftNumber + (rightNumber - leftNumber) * clamped;
+      output.push(String(Number(value.toFixed(4))));
+    }
+    parameterIndex += 1;
+  }
+  return output.join(' ');
 }
 
 function drawSvgReveal(
@@ -443,32 +633,50 @@ function motionPathElement(d: string): SVGPathElement | null {
  * The path's own SVG coordinate space is used directly as an x/y offset —
  * author guide paths in the same units as your canvas layout.
  */
-function applyMotionPath(props: Record<string, unknown>, assets: Map<string, LoadedAsset>): void {
+function applyMotionPath(
+  props: Record<string, unknown>,
+  assets: Map<string, LoadedAsset>,
+  elementsById: Map<string, EvaluatedElement>
+): void {
   const pathAssetName = props['motionPath'];
   if (!pathAssetName) return;
 
   const asset = assets.get(String(pathAssetName));
-  const path = asset?.motionlySvg?.paths[0];
-  if (!path || !path.length) return;
+  const svg = asset?.motionlySvg;
+  const guide = elementsById.get(String(pathAssetName));
+  const guideProps = guide?.render as unknown as Record<string, unknown> | undefined;
+  const path = svg?.vectorSafe ? svg.paths[0] : undefined;
+  const d = path?.d ?? (guide?.kind === 'path' ? String(guideProps?.['path'] ?? '') : '');
+  if (!d) return;
 
-  const element = motionPathElement(path.d);
+  const element = motionPathElement(d);
   if (!element) return;
+  let length = path?.length ?? 0;
+  if (!length) {
+    try {
+      length = element.getTotalLength();
+    } catch {
+      return;
+    }
+  }
 
   const progress = Math.max(0, Math.min(1, finiteNumber(props['motionPathProgress'], 0)));
   let point: { x: number; y: number };
   try {
-    point = element.getPointAtLength(path.length * progress);
+    point = element.getPointAtLength(length * progress);
   } catch {
     return;
   }
 
-  props['x'] = finiteNumber(props['x'], 0) + point.x;
-  props['y'] = finiteNumber(props['y'], 0) + point.y;
+  props['x'] =
+    finiteNumber(props['x'], 0) + point.x + (guide ? finiteNumber(guideProps?.['x'], 0) : 0);
+  props['y'] =
+    finiteNumber(props['y'], 0) + point.y + (guide ? finiteNumber(guideProps?.['y'], 0) : 0);
 
   if (props['motionPathRotate']) {
     const aheadProgress = Math.min(1, progress + 0.001);
     try {
-      const ahead = element.getPointAtLength(path.length * aheadProgress);
+      const ahead = element.getPointAtLength(length * aheadProgress);
       const angle = (Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180) / Math.PI;
       props['rotation'] = finiteNumber(props['rotation'], 0) + angle;
     } catch {
@@ -495,7 +703,7 @@ function drawSvgVector(
     const stroke = String(props['stroke'] ?? path.stroke);
     if (fill !== 'none') {
       ctx.globalAlpha = alpha * path.fillOpacity;
-      ctx.fillStyle = fill;
+      ctx.fillStyle = vectorGradient(ctx, props, svg.width, svg.height) ?? fill;
       ctx.fill(vector);
     }
     if (stroke !== 'none') {
@@ -508,6 +716,27 @@ function drawSvgVector(
     }
   }
   ctx.restore();
+}
+
+function vectorGradient(
+  ctx: CanvasRenderingContext2D,
+  props: Record<string, unknown>,
+  width: number,
+  height: number
+): CanvasGradient | null {
+  const from = props['gradientFrom'];
+  const to = props['gradientTo'];
+  if (!from || !to) return null;
+  const angle = (finiteNumber(props['gradientAngle'], 0) * Math.PI) / 180;
+  const radius = Math.hypot(width, height) / 2;
+  const cx = width / 2;
+  const cy = height / 2;
+  const dx = Math.cos(angle) * radius;
+  const dy = Math.sin(angle) * radius;
+  const gradient = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy);
+  gradient.addColorStop(0, String(from));
+  gradient.addColorStop(1, String(to));
+  return gradient;
 }
 
 const svgPaths = new WeakMap<MotionlySvgData['paths'][number], Path2D>();
@@ -533,7 +762,6 @@ function drawText(
   ctx.fillStyle = (props['color'] as string) ?? '#fff';
   ctx.font = `${props['weight']} ${props['size']}px ${props['font']}`;
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
 
   const center = props['center'] as boolean;
   const x = center
@@ -546,20 +774,95 @@ function drawText(
   const scale = (props['scale'] as number) ?? 1;
   const value =
     typeof props['countDecimals'] === 'number'
-      ? formatCountValue(
+      ? `${String(props['countPrefix'] ?? '')}${formatCountValue(
           props['value'],
           String(props['countSeparator'] ?? ''),
           props['countDecimals']
-        )
+        )}${String(props['countSuffix'] ?? '')}`
       : String(props['value'] ?? '');
   const tracking = (props['tracking'] as number) ?? 0;
+  const boxWidth = Number(props['width']);
+  const boxHeight = Number(props['height']);
 
   ctx.translate(x, y);
   ctx.rotate((rotation * Math.PI) / 180);
   apply3DTilt(ctx, props);
   applySkew(ctx, props);
   ctx.scale(scale, scale);
-  drawTrackedText(ctx, value, 0, 0, tracking);
+  const hasBox = Number.isFinite(boxWidth) && boxWidth > 0;
+  const revealWidth = hasBox ? boxWidth : Math.max(1, ctx.measureText(value).width);
+  const align = String(props['textAlign'] ?? 'center');
+  // Without an explicit box, glyphs run rightward from the origin for
+  // textAlign left (and leftward for right) — anchor the reveal clip to the
+  // same span instead of a box centered on the origin.
+  const revealX =
+    hasBox || align === 'center' ? -revealWidth / 2 : align === 'left' ? 0 : -revealWidth;
+  clipReveal(
+    ctx,
+    revealWidth,
+    Number.isFinite(boxHeight) && boxHeight > 0 ? boxHeight : Number(props['size'] ?? 64) * 1.4,
+    props,
+    revealX
+  );
+  const textAlign = String(props['textAlign'] ?? 'center') as CanvasTextAlign;
+  const verticalAlign = String(props['verticalAlign'] ?? 'middle');
+  const lineHeight =
+    Math.max(0.1, Number(props['lineHeight'] ?? 1.2)) * Number(props['size'] ?? 64);
+  const wrap = String(props['wrap'] ?? 'none');
+  const lines = layoutTextLines(
+    ctx,
+    value,
+    Number.isFinite(boxWidth) && boxWidth > 0 ? boxWidth : Infinity,
+    wrap
+  );
+  const totalHeight = lineHeight * lines.length;
+  const top =
+    Number.isFinite(boxHeight) && boxHeight > 0
+      ? verticalAlign === 'top'
+        ? -boxHeight / 2 + lineHeight / 2
+        : verticalAlign === 'bottom'
+          ? boxHeight / 2 - totalHeight + lineHeight / 2
+          : -totalHeight / 2 + lineHeight / 2
+      : -totalHeight / 2 + lineHeight / 2;
+  ctx.textAlign = textAlign;
+  const lineX =
+    Number.isFinite(boxWidth) && boxWidth > 0
+      ? textAlign === 'left'
+        ? -boxWidth / 2
+        : textAlign === 'right'
+          ? boxWidth / 2
+          : 0
+      : 0;
+  lines.forEach((line, index) =>
+    drawTrackedText(ctx, line, lineX, top + index * lineHeight, tracking, textAlign)
+  );
+}
+
+export function layoutTextLines(
+  ctx: Pick<CanvasRenderingContext2D, 'measureText'>,
+  value: string,
+  width: number,
+  wrap: string
+): string[] {
+  const paragraphs = value.split('\n');
+  if (wrap === 'none' || !Number.isFinite(width)) return paragraphs;
+  const output: string[] = [];
+  for (const paragraph of paragraphs) {
+    const tokens =
+      wrap === 'char' ? Array.from(paragraph) : paragraph.split(/(\s+)/).filter(Boolean);
+    let line = '';
+    for (const token of tokens) {
+      const candidate = line + token;
+      if (line && ctx.measureText(candidate).width > width) {
+        output.push(line.trimEnd());
+        line = token.trimStart();
+      } else {
+        line = candidate;
+      }
+    }
+    output.push(line);
+  }
+  return output.length ? output : [''];
 }
 
 /**
@@ -570,7 +873,8 @@ function drawTrackedText(
   text: string,
   x: number,
   y: number,
-  tracking: number
+  tracking: number,
+  alignment: CanvasTextAlign = 'center'
 ): void {
   if (!tracking) {
     ctx.fillText(text, x, y);
@@ -580,7 +884,7 @@ function drawTrackedText(
   const chars = Array.from(text);
   const widths = chars.map((char) => ctx.measureText(char).width);
   const total = widths.reduce((sum, width) => sum + width, 0) + tracking * (chars.length - 1);
-  let cursor = x - total / 2;
+  let cursor = alignment === 'left' ? x : alignment === 'right' ? x - total : x - total / 2;
   ctx.textAlign = 'left';
 
   for (let index = 0; index < chars.length; index += 1) {
@@ -604,7 +908,8 @@ function drawOverlay(
   elementsById: Map<string, EvaluatedElement>
 ): void {
   const parentId = String(props['parent'] ?? '');
-  if (parentId) {
+  const parent = parentId ? elementsById.get(parentId) : undefined;
+  if (parent && (parent.kind === 'image' || parent.kind === 'asset')) {
     drawImageOverlay(ctx, canvas, props, parentId, assets, elementsById);
     return;
   }
@@ -699,7 +1004,6 @@ function drawImageOverlay(
   const parentOrigin = resolveOrigin(parentProps, box.width, box.height);
 
   ctx.save();
-  ctx.globalAlpha *= parentOpacity;
   ctx.translate(box.x + parentOrigin.x, box.y + parentOrigin.y);
   ctx.rotate((parentRotation * Math.PI) / 180);
   apply3DTilt(ctx, parentProps, box.width, box.height);
@@ -714,10 +1018,10 @@ function drawImageOverlay(
     ctx.clip();
   }
 
-  const x = Number(props['x'] ?? 0);
-  const y = Number(props['y'] ?? 0);
-  const scale = Number(props['scale'] ?? 1);
-  const rotation = Number(props['rotation'] ?? 0);
+  const x = Number(props['imageOverlayX'] ?? props['x'] ?? 0);
+  const y = Number(props['imageOverlayY'] ?? props['y'] ?? 0);
+  const scale = Number(props['imageOverlayScale'] ?? props['scale'] ?? 1);
+  const rotation = Number(props['imageOverlayRotation'] ?? props['rotation'] ?? 0);
   const shape = String(props['shape'] ?? 'rect');
   const shapeWidth = Number(props['width'] ?? 120);
   const shapeHeight = Number(props['height'] ?? 80);
@@ -752,7 +1056,7 @@ function drawVectorPrimitive(
   ctx.lineWidth = strokeWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  if (fill !== 'none') ctx.fillStyle = fill;
+  if (fill !== 'none') ctx.fillStyle = vectorGradient(ctx, props, width, height) ?? fill;
   if (stroke !== 'none') ctx.strokeStyle = stroke;
 
   if (shape === 'text') {
@@ -794,7 +1098,15 @@ function drawVectorPrimitive(
   } else {
     const originX = finiteNumber(props['originX'], 0.5);
     const originY = finiteNumber(props['originY'], 0.5);
-    path.rect(-width * originX, -height * originY, width, height);
+    const corner =
+      props['radius'] !== undefined
+        ? Math.max(0, Math.min(radius, Math.min(width, height) / 2))
+        : 0;
+    if (corner > 0 && typeof path.roundRect === 'function') {
+      path.roundRect(-width * originX, -height * originY, width, height, corner);
+    } else {
+      path.rect(-width * originX, -height * originY, width, height);
+    }
   }
 
   if (fill !== 'none' && progress >= 1) ctx.fill(path);
@@ -927,8 +1239,29 @@ function drawEffect(
     return;
   }
 
+  if (effect === 'grain') {
+    drawNoise(ctx, canvas, props);
+    return;
+  }
+
   if (effect === 'grid' || effect === 'mesh') {
     drawGrid(ctx, canvas, props);
+    return;
+  }
+
+  if (effect === 'gridFade') {
+    drawGrid(ctx, canvas, props);
+    drawVignette(ctx, canvas, { ...props, intensity: Number(props['intensity'] ?? 1) * 0.55 });
+    return;
+  }
+
+  if (effect === 'vignette' || effect === 'edgeFade') {
+    drawVignette(ctx, canvas, props);
+    return;
+  }
+
+  if (effect === 'glass' || effect === 'card' || effect === 'deviceFrame') {
+    drawSurfaceEffect(ctx, canvas, props, effect);
     return;
   }
 
@@ -939,6 +1272,11 @@ function drawEffect(
 
   if (effect === 'prism') {
     drawPrism(ctx, canvas, props);
+    return;
+  }
+
+  if (effect === 'particles') {
+    drawParticles(ctx, canvas, props);
     return;
   }
 
@@ -959,7 +1297,7 @@ function drawGradientMotion(
   const x = canvas.width * (0.18 + 0.68 * offset);
   const y = canvas.height * (0.32 + 0.2 * Math.sin(offset * Math.PI * 2));
   const gradient = ctx.createRadialGradient(x, y, 0, x, y, canvas.width * 0.62);
-  const palette = gradientPalette(effect);
+  const palette = gradientPalette(effect, props);
 
   gradient.addColorStop(0, palette[0]!);
   gradient.addColorStop(0.42, palette[1]!);
@@ -972,11 +1310,93 @@ function drawGradientMotion(
 /**
  * Get gradient color palette
  */
-function gradientPalette(effect: string): [string, string] {
+function gradientPalette(effect: string, props: Record<string, unknown>): [string, string] {
+  const from = props['gradientFrom'];
+  const to = props['gradientTo'];
+  if (from && to) return [String(from), String(to)];
   if (effect === 'aurora') return ['rgba(124, 247, 197, 0.32)', 'rgba(138, 180, 255, 0.2)'];
   if (effect === 'codeGlow') return ['rgba(88, 101, 242, 0.3)', 'rgba(124, 247, 197, 0.14)'];
   if (effect === 'heroGlow') return ['rgba(255, 255, 255, 0.18)', 'rgba(138, 180, 255, 0.18)'];
   return ['rgba(124, 247, 197, 0.34)', 'rgba(138, 180, 255, 0.2)'];
+}
+
+function drawVignette(
+  ctx: CanvasRenderingContext2D,
+  canvas: Canvas,
+  props: Record<string, unknown>
+): void {
+  const intensity = bounded(props['intensity'], 0.6, 0, 1);
+  const gradient = ctx.createRadialGradient(
+    canvas.width / 2,
+    canvas.height / 2,
+    canvas.height * 0.16,
+    canvas.width / 2,
+    canvas.height / 2,
+    Math.hypot(canvas.width, canvas.height) * 0.58
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(0.68, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, `rgba(0,0,0,${0.82 * intensity})`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawSurfaceEffect(
+  ctx: CanvasRenderingContext2D,
+  canvas: Canvas,
+  props: Record<string, unknown>,
+  effect: string
+): void {
+  const width = bounded(props['width'], 760, 1, canvas.width * 2);
+  const height = bounded(props['height'], 420, 1, canvas.height * 2);
+  const x = canvas.width / 2 + finiteNumber(props['x'], 0) - width / 2;
+  const y = canvas.height / 2 + finiteNumber(props['y'], 0) - height / 2;
+  const radius = bounded(
+    props['radius'],
+    effect === 'deviceFrame' ? 34 : 24,
+    0,
+    Math.min(width, height) / 2
+  );
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.fillStyle = String(
+    props['fill'] ??
+      (effect === 'glass' ? 'rgba(255,255,255,.1)' : (props['gradientFrom'] ?? '#12161D'))
+  );
+  ctx.fill();
+  ctx.strokeStyle = String(props['stroke'] ?? props['gradientTo'] ?? 'rgba(255,255,255,.16)');
+  ctx.lineWidth = bounded(props['strokeWidth'], effect === 'deviceFrame' ? 8 : 1.5, 0, 40);
+  ctx.stroke();
+}
+
+/** Deterministic bounded particle field driven by the normal animated offset. */
+function drawParticles(
+  ctx: CanvasRenderingContext2D,
+  canvas: Canvas,
+  props: Record<string, unknown>
+): void {
+  const count = Math.round(bounded(props['particleCount'], 42, 1, 240));
+  const size = bounded(props['particleSize'], 3, 0.5, 20);
+  const intensity = bounded(props['intensity'], 1, 0, 4);
+  const offset = finiteNumber(props['offset'], 0);
+  const color = String(props['color'] ?? props['fill'] ?? '#8ab4ff');
+  ctx.fillStyle = color;
+  const baseAlpha = ctx.globalAlpha;
+
+  for (let index = 0; index < count; index += 1) {
+    const seedX = hash(index * 17 + 11, 0, 0);
+    const seedY = hash(index * 31 + 7, 0, 0);
+    const phase = (offset * (0.18 + hash(index * 13, 0, 0) * 0.42) + seedY) % 1;
+    const x = seedX * canvas.width + Math.sin((phase + seedX) * Math.PI * 2) * 22;
+    const y = canvas.height * (1 - phase);
+    const radius = size * (0.45 + hash(index * 47 + 3, 0, 0) * 0.8);
+    const alpha = Math.min(1, intensity * (0.2 + (1 - Math.abs(phase - 0.5) * 2) * 0.65));
+    ctx.globalAlpha = baseAlpha * alpha;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = baseAlpha;
 }
 
 /**
@@ -1125,7 +1545,9 @@ function drawNoise(
   canvas: Canvas,
   props: Record<string, unknown>
 ): void {
-  const step = 6;
+  const transform = ctx.getTransform();
+  const previewScale = Math.max(0.05, Math.hypot(transform.a, transform.b));
+  const step = Math.max(6, Math.round(6 / previewScale));
   const seed = Math.floor(((props['offset'] as number) ?? 0) * 60);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
@@ -1171,9 +1593,11 @@ function resolveBox(
     const width = assetWidth * scale;
     const height = assetHeight * scale;
 
+    const focalX = bounded(props['focalX'], 0.5, 0, 1);
+    const focalY = bounded(props['focalY'], 0.5, 0, 1);
     return {
-      x: (canvas.width - width) / 2 + propX,
-      y: (canvas.height - height) / 2 + propY,
+      x: (canvas.width - width) * focalX + propX,
+      y: (canvas.height - height) * focalY + propY,
       width,
       height,
     };
@@ -1185,6 +1609,27 @@ function resolveBox(
   const y = center ? (canvas.height - height) / 2 + propY : propY;
 
   return { x, y, width, height };
+}
+
+function isBlendMode(value: string): value is GlobalCompositeOperation {
+  return new Set([
+    'source-over',
+    'multiply',
+    'screen',
+    'overlay',
+    'darken',
+    'lighten',
+    'color-dodge',
+    'color-burn',
+    'hard-light',
+    'soft-light',
+    'difference',
+    'exclusion',
+    'hue',
+    'saturation',
+    'color',
+    'luminosity',
+  ]).has(value);
 }
 
 /**
@@ -1227,14 +1672,26 @@ export function buildCanvasFilter(props: Record<string, unknown>): string {
  * Apply shadow to context
  */
 function drawShadow(ctx: CanvasRenderingContext2D, props: Record<string, unknown>): void {
-  const shadow = props['shadow'] as number | undefined;
+  const glow = finiteNumber(props['glow'], 0);
+  const shadow = finiteNumber(props['shadow'], 0);
+
+  if (glow > 0) {
+    ctx.shadowColor = String(props['glowColor'] ?? props['color'] ?? props['stroke'] ?? '#8ab4ff');
+    ctx.shadowBlur = glow;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    return;
+  }
 
   if (!shadow) {
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     return;
   }
 
   ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
   ctx.shadowBlur = shadow;
+  ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = shadow / 3;
 }

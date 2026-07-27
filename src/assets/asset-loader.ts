@@ -11,7 +11,23 @@ export interface MotionlySvgData {
   width: number;
   height: number;
   animated: boolean;
+  vectorSafe: boolean;
+  title: string;
+  groups: Array<{
+    id: string;
+    label: string;
+    parentId: string;
+  }>;
+  lockedParts: Array<{
+    id: string;
+    label: string;
+    parentId: string;
+    source: string;
+  }>;
   paths: Array<{
+    id: string;
+    label: string;
+    parentId: string;
     d: string;
     fill: string;
     fillOpacity: number;
@@ -61,6 +77,48 @@ export type LoadedCanvasAsset = HTMLCanvasElement &
   };
 export type LoadedAsset = LoadedImageAsset | LoadedVideoAsset | LoadedCanvasAsset;
 
+const dominantColors = new WeakMap<LoadedAsset, string>();
+
+/** Cheap theme seed from a loaded asset; failures stay non-blocking. */
+export function dominantAssetColor(asset: LoadedAsset | undefined): string | undefined {
+  if (!asset) return undefined;
+  const cached = dominantColors.get(asset);
+  if (cached) return cached;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return undefined;
+    const drawable = isLoadedVideo(asset) ? (asset.motionlyPreviewFrame ?? asset) : asset;
+    context.drawImage(drawable, 0, 0, 8, 8);
+    const data = context.getImageData(0, 0, 8, 8).data;
+    let red = 0;
+    let green = 0;
+    let blue = 0;
+    let count = 0;
+    for (let index = 0; index < data.length; index += 4) {
+      if ((data[index + 3] ?? 0) < 32) continue;
+      red += data[index] ?? 0;
+      green += data[index + 1] ?? 0;
+      blue += data[index + 2] ?? 0;
+      count += 1;
+    }
+    if (!count) return undefined;
+    const color = `#${[red, green, blue]
+      .map((value) =>
+        Math.round(value / count)
+          .toString(16)
+          .padStart(2, '0')
+      )
+      .join('')}`;
+    dominantColors.set(asset, color);
+    return color;
+  } catch {
+    return undefined;
+  }
+}
+
 export function isLoadedVideo(asset: LoadedAsset | undefined): asset is LoadedVideoAsset {
   return asset?.motionlyType === 'video';
 }
@@ -85,7 +143,8 @@ export function assetWarnings(assets: Map<string, LoadedAsset>): string[] {
 export async function loadAssets(
   scene: Scene,
   baseUrl: string = document.baseURI,
-  onError?: (name: string, error: unknown) => void
+  onError?: (name: string, error: unknown) => void,
+  previous: Map<string, LoadedAsset> = new Map()
 ): Promise<Map<string, LoadedAsset>> {
   const uploadedByFilename = new Map<string, string>();
   for (const asset of scene.imports) {
@@ -96,6 +155,10 @@ export async function loadAssets(
     scene.imports.map(async (asset): Promise<[string, LoadedAsset] | null> => {
       try {
         const path = uploadedByFilename.get(assetFilename(asset.path)) ?? asset.path;
+        const existing = previous.get(asset.name);
+        if (existing?.motionlySource === resolveAssetUrl(path, baseUrl)) {
+          return [asset.name, existing];
+        }
         return [asset.name, await loadAsset(path, baseUrl, asset.type)];
       } catch (error) {
         console.warn(`Could not load asset ${asset.path}:`, error);
@@ -113,10 +176,7 @@ export async function loadAsset(
   baseUrl: string,
   type: AssetType
 ): Promise<LoadedAsset> {
-  const url = new URL(
-    path.startsWith('/') ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
-    baseUrl
-  ).href;
+  const url = resolveAssetUrl(path, baseUrl);
   const [asset, size] = await Promise.all([
     type === 'video'
       ? loadVideo(url)
@@ -129,6 +189,13 @@ export async function loadAsset(
   ]);
   if (size) asset.motionlySize = size;
   return asset;
+}
+
+function resolveAssetUrl(path: string, baseUrl: string): string {
+  return new URL(
+    path.startsWith('/') ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
+    baseUrl
+  ).href;
 }
 
 async function loadAssetSize(url: string): Promise<number | undefined> {
@@ -679,41 +746,195 @@ async function reliableBrowserVideoDuration(video: LoadedVideoAsset): Promise<nu
   return Number.isFinite(duration) && duration > 0 ? duration : 0;
 }
 
-function parseSvg(source: string): MotionlySvgData {
+export function parseSvg(source: string): MotionlySvgData {
   const svg = new DOMParser().parseFromString(source, 'image/svg+xml').documentElement;
   const viewBox = svg.getAttribute('viewBox')?.split(/\s+/).map(Number);
   const width = viewBox?.[2] ?? Number.parseFloat(svg.getAttribute('width') ?? '1');
   const height = viewBox?.[3] ?? Number.parseFloat(svg.getAttribute('height') ?? '1');
-  const paths = Array.from(svg.querySelectorAll('path[d]')).map((path, index) => {
-    const computed = getComputedSvgStyle(path);
-    const stroke = path.getAttribute('stroke') ?? computed['stroke'] ?? 'none';
-    const fill = path.getAttribute('fill') ?? computed['fill'] ?? '#000000';
+  const unsupported = Array.from(
+    svg.querySelectorAll('text, image, use, foreignObject, [filter], [mask], [clip-path]')
+  ).filter(
+    (element) =>
+      !element.parentElement?.closest(
+        'text, image, use, foreignObject, [filter], [mask], [clip-path]'
+      )
+  );
+  const geometry = Array.from(
+    svg.querySelectorAll('path[d], rect, circle, ellipse, line, polyline, polygon')
+  ).filter(
+    (element) => !element.closest('text, image, use, foreignObject, [filter], [mask], [clip-path]')
+  );
+  const usedNames = new Set<string>();
+  const nameFor = (element: Element, fallback: string) => {
+    const raw =
+      element.getAttribute('data-name') ||
+      element.getAttribute('aria-label') ||
+      element.getAttribute('id') ||
+      element.querySelector(':scope > title')?.textContent ||
+      fallback;
+    const base = raw.trim() || fallback;
+    const sourceName = element.getAttribute('id')?.trim() || base;
+    let id = sourceName.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+    if (/^[0-9]/.test(id)) id = `layer-${id}`;
+    let unique = id;
+    let suffix = 2;
+    while (usedNames.has(unique)) unique = `${id}-${suffix++}`;
+    usedNames.add(unique);
+    return { id: unique, label: base };
+  };
+  const groupName = new Map<Element, { id: string; label: string }>();
+  const groups = Array.from(svg.querySelectorAll('g')).map((element, index) => {
+    const name = nameFor(element, `group-${index + 1}`);
+    groupName.set(element, name);
+    return {
+      ...name,
+      parentId: '',
+    };
+  });
+  for (let index = 0; index < groups.length; index += 1) {
+    const element = Array.from(svg.querySelectorAll('g'))[index];
+    if (!element) continue;
+    const parent = element.parentElement?.closest('g');
+    groups[index]!.parentId = parent ? (groupName.get(parent)?.id ?? '') : '';
+  }
+  const paths = geometry.map((element, index) => {
+    const name = nameFor(element, `path-${index + 1}`);
+    const parent = element.parentElement?.closest('g');
+    const stroke = normalizeSvgPaint(
+      inheritedSvgValue(element, 'stroke', 'stroke', 'none'),
+      index ? '#ffffff' : '#8ab4ff'
+    );
+    const fill = normalizeSvgPaint(
+      inheritedSvgValue(element, 'fill', 'fill', '#000000'),
+      index ? '#ffffff' : '#8ab4ff'
+    );
     let length = width + height;
     try {
-      length = (path as SVGPathElement).getTotalLength();
+      length = (element as SVGGeometryElement).getTotalLength();
     } catch {
       // Detached SVG geometry is unavailable in a few browsers; the reveal still works.
     }
     return {
-      d: path.getAttribute('d') ?? '',
-      fill: fill.startsWith('url(') ? (index ? '#ffffff' : '#8ab4ff') : fill,
+      ...name,
+      parentId: parent ? (groupName.get(parent)?.id ?? '') : '',
+      d: geometryPathData(element),
+      fill,
       fillOpacity: Number.parseFloat(
-        path.getAttribute('fill-opacity') ?? computed['fillOpacity'] ?? '1'
+        inheritedSvgValue(element, 'fill-opacity', 'fillOpacity', '1')
       ),
-      stroke: stroke.startsWith('url(') ? (index ? '#ffffff' : '#8ab4ff') : stroke,
+      stroke,
       strokeWidth: Number.parseFloat(
-        path.getAttribute('stroke-width') ?? computed['strokeWidth'] ?? '1'
+        inheritedSvgValue(element, 'stroke-width', 'strokeWidth', '1')
       ),
       opacity: Number.parseFloat(
-        path.getAttribute('stroke-opacity') ?? computed['strokeOpacity'] ?? '1'
+        inheritedSvgValue(element, 'stroke-opacity', 'strokeOpacity', '1')
       ),
-      lineCap: (path.getAttribute('stroke-linecap') as CanvasLineCap) || 'butt',
-      lineJoin: (path.getAttribute('stroke-linejoin') as CanvasLineJoin) || 'miter',
+      lineCap: inheritedSvgValue(
+        element,
+        'stroke-linecap',
+        'strokeLinecap',
+        'butt'
+      ) as CanvasLineCap,
+      lineJoin: inheritedSvgValue(
+        element,
+        'stroke-linejoin',
+        'strokeLinejoin',
+        'miter'
+      ) as CanvasLineJoin,
       length: Math.max(1, length),
     };
   });
+  const lockedParts = unsupported.map((element, index) => {
+    const name = nameFor(element, `locked-${index + 1}`);
+    const parent = element.parentElement?.closest('g');
+    return {
+      ...name,
+      parentId: parent ? (groupName.get(parent)?.id ?? '') : '',
+      source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${element.outerHTML}</svg>`,
+    };
+  });
   const animated = isAnimatedSvgSource(source, svg);
-  return { width, height, animated, paths };
+  const vectorSafe = !svg.querySelector('[transform], [class], style');
+  return {
+    width,
+    height,
+    animated,
+    vectorSafe,
+    title: svg.querySelector(':scope > title')?.textContent?.trim() ?? '',
+    groups,
+    lockedParts,
+    paths,
+  };
+}
+
+function geometryPathData(element: Element): string {
+  const number = (name: string, fallback = 0) =>
+    Number.parseFloat(element.getAttribute(name) ?? String(fallback));
+  const tag = element.tagName.toLowerCase();
+  if (tag === 'path') return element.getAttribute('d') ?? '';
+  if (tag === 'circle') {
+    const cx = number('cx');
+    const cy = number('cy');
+    const radius = Math.max(0, number('r'));
+    return ellipsePath(cx, cy, radius, radius);
+  }
+  if (tag === 'ellipse') {
+    return ellipsePath(
+      number('cx'),
+      number('cy'),
+      Math.max(0, number('rx')),
+      Math.max(0, number('ry'))
+    );
+  }
+  if (tag === 'line') {
+    return `M${number('x1')} ${number('y1')}L${number('x2')} ${number('y2')}`;
+  }
+  if (tag === 'polyline' || tag === 'polygon') {
+    const points = (element.getAttribute('points') ?? '').trim().replace(/,/g, ' ');
+    if (!points) return '';
+    const values = points.split(/\s+/).map(Number);
+    const commands: string[] = [];
+    for (let index = 0; index + 1 < values.length; index += 2) {
+      commands.push(`${index ? 'L' : 'M'}${values[index]} ${values[index + 1]}`);
+    }
+    return `${commands.join('')}${tag === 'polygon' ? 'Z' : ''}`;
+  }
+
+  const x = number('x');
+  const y = number('y');
+  const width = Math.max(0, number('width'));
+  const height = Math.max(0, number('height'));
+  const rx = Math.min(width / 2, Math.max(0, number('rx', number('ry'))));
+  const ry = Math.min(height / 2, Math.max(0, number('ry', rx)));
+  if (!rx && !ry) return `M${x} ${y}H${x + width}V${y + height}H${x}Z`;
+  return `M${x + rx} ${y}H${x + width - rx}A${rx} ${ry} 0 0 1 ${x + width} ${y + ry}V${y + height - ry}A${rx} ${ry} 0 0 1 ${x + width - rx} ${y + height}H${x + rx}A${rx} ${ry} 0 0 1 ${x} ${y + height - ry}V${y + ry}A${rx} ${ry} 0 0 1 ${x + rx} ${y}Z`;
+}
+
+function ellipsePath(cx: number, cy: number, rx: number, ry: number): string {
+  return `M${cx - rx} ${cy}A${rx} ${ry} 0 1 0 ${cx + rx} ${cy}A${rx} ${ry} 0 1 0 ${cx - rx} ${cy}Z`;
+}
+
+function inheritedSvgValue(
+  element: Element,
+  attribute: string,
+  styleKey: string,
+  fallback: string
+): string {
+  let current: Element | null = element;
+  while (current) {
+    const attributeValue = current.getAttribute(attribute);
+    if (attributeValue) return attributeValue;
+    const styleValue = getComputedSvgStyle(current)[styleKey];
+    if (styleValue) return styleValue;
+    current = current.parentElement;
+  }
+  return fallback;
+}
+
+function normalizeSvgPaint(value: string, currentColor: string): string {
+  if (value === 'currentColor' || value === 'currentcolor') return currentColor;
+  if (value.startsWith('url(')) return currentColor;
+  return value;
 }
 
 export function isAnimatedSvgSource(source: string, root?: Element): boolean {
@@ -738,6 +959,8 @@ function getComputedSvgStyle(path: Element): Record<string, string> {
     stroke: style['stroke'] ?? '',
     strokeOpacity: style['stroke-opacity'] ?? '',
     strokeWidth: style['stroke-width'] ?? '',
+    strokeLinecap: style['stroke-linecap'] ?? '',
+    strokeLinejoin: style['stroke-linejoin'] ?? '',
   };
 }
 

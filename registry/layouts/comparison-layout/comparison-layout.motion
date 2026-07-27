@@ -1,0 +1,66 @@
+// comparisonLayout — Two balanced halves for before/after or us/them.
+canvas {
+  size 1920x1080
+  fps 60
+  duration 4.8s
+}
+
+camera {
+  zoom 1
+}
+
+theme {
+  accent #7CF7C5
+}
+
+beat compose {
+  duration 1.6s
+  focus showcase
+  route stagedReveals
+  label "before after"
+}
+
+beat inspect {
+  duration 1.6s
+  focus showcase
+  zoom 1.12
+  route cameraIntent
+  label "Look closer"
+}
+
+beat settle {
+  duration 1.6s
+  focus showcase
+  zoom 1
+  route cameraIntent
+  label "Settle"
+}
+
+layout showcase {
+  type comparisonLayout
+  columns 2
+  gap 96
+  beat compose
+}
+
+component comparisonLayoutItem1 {
+  parent showcase
+  type browser
+  label "Item 1"
+}
+
+component comparisonLayoutItem2 {
+  parent showcase
+  type dashboard
+  label "Item 2"
+}
+
+text caption {
+  value "before after"
+  center
+  layer text
+  y 430
+  size 30
+  color #8B94A1
+  beat compose
+}

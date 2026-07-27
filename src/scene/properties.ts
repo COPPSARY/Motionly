@@ -26,6 +26,9 @@ const TIME_PROPERTIES = new Set([
   'transitionInDuration',
   'transitionOutDuration',
   'followThroughLag',
+  'at',
+  'enter',
+  'exit',
 ]);
 const NUMBER_PROPERTIES = new Set([
   'x',
@@ -57,6 +60,14 @@ const NUMBER_PROPERTIES = new Set([
   'sepia',
   'invert',
   'shadow',
+  'glow',
+  'gradientAngle',
+  'particleCount',
+  'particleSize',
+  'morphProgress',
+  'relationshipProgress',
+  'relationshipSourceRadius',
+  'relationshipTargetRadius',
   'size',
   'intensity',
   'offset',
@@ -71,8 +82,27 @@ const NUMBER_PROPERTIES = new Set([
   'y2',
   'zoom',
   'followThroughDamping',
+  'depth',
+  'cameraX',
+  'cameraY',
+  'cameraZoom',
+  'cameraRotation',
+  'lineHeight',
+  'rangeStart',
+  'rangeEnd',
+  'stagger',
+  'focalX',
+  'focalY',
 ]);
-const COLOR_PROPERTIES = new Set(['background', 'color', 'fill', 'stroke']);
+const COLOR_PROPERTIES = new Set([
+  'background',
+  'color',
+  'fill',
+  'stroke',
+  'glowColor',
+  'gradientFrom',
+  'gradientTo',
+]);
 
 /**
  * Normalize canvas configuration from AST properties
@@ -168,6 +198,10 @@ export function defaultElementProperties(kind: ElementKind): ElementProperties {
       weight: 600,
       color: '#fff',
       tracking: 0,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      lineHeight: 1.2,
+      wrap: 'none',
     } as TextProperties;
   }
 
@@ -211,6 +245,32 @@ export function defaultElementProperties(kind: ElementKind): ElementProperties {
       intensity: 1,
       layer: 'background',
     } as EffectProperties;
+  }
+
+  if (kind === 'path') {
+    return {
+      ...common,
+      shape: 'path',
+      path: '',
+      fill: '#000',
+      stroke: 'none',
+      strokeWidth: 1,
+      radius: 0,
+      radiusX: 0,
+      radiusY: 0,
+      x2: 0,
+      y2: 0,
+      value: '',
+      font: 'Inter, SF Pro Display, Segoe UI, Arial, sans-serif',
+      size: 48,
+      weight: 700,
+      clip: false,
+      opacity: 1,
+    } as OverlayProperties;
+  }
+
+  if (kind === 'scene' || kind === 'group' || kind === 'svgpart') {
+    return { ...common, cameraZoom: 1, depth: 1 } as ElementProperties;
   }
 
   return common;

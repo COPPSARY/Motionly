@@ -1,0 +1,83 @@
+{
+  "name": "hero",
+  "type": "motionly:archetype",
+  "title": "Hero",
+  "description": "Centered promise with one real focal asset.",
+  "tags": [
+    "archetype",
+    "scene"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "hero",
+    "source": "src/semantic/compiler.ts"
+  },
+  "schema": {
+    "title": {
+      "type": "string",
+      "docs": "Primary headline slot."
+    },
+    "subtitle": {
+      "type": "string",
+      "docs": "Supporting copy slot."
+    },
+    "media": {
+      "type": "asset",
+      "docs": "Primary real asset alias."
+    },
+    "secondary": {
+      "type": "asset",
+      "docs": "Secondary real asset alias."
+    },
+    "logo": {
+      "type": "asset",
+      "docs": "Brand logo alias."
+    },
+    "value": {
+      "type": "string",
+      "docs": "Primary statistic."
+    },
+    "label": {
+      "type": "string",
+      "docs": "Statistic or step label."
+    },
+    "cta": {
+      "type": "string",
+      "docs": "Call-to-action copy."
+    },
+    "start": {
+      "type": "time",
+      "docs": "Scene start."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Scene duration."
+    },
+    "effects": {
+      "type": "list",
+      "docs": "Ordered effect graph, separated by >."
+    },
+    "transitionIn": {
+      "type": "string",
+      "docs": "Paired whole-scene entrance transition."
+    },
+    "transitionOut": {
+      "type": "string",
+      "docs": "Paired whole-scene exit transition."
+    },
+    "frame": {
+      "type": "string",
+      "docs": "Device-frame stub type."
+    },
+    "secondaryLabel": {
+      "type": "string",
+      "docs": "Comparison secondary label."
+    }
+  },
+  "defaults": {
+    "duration": 5,
+    "effects": "meshGradient > grain > vignette"
+  },
+  "manifest": "archetypes/hero/registry-item.json"
+}

@@ -25,9 +25,11 @@ import type {
   Track,
   TrackContent,
   TrackRole,
+  SharedTransition,
 } from '../types/scene';
 import type { ProgramNode, AnimationNode } from '../types/parser';
 import { assetFilename } from '../assets/asset-resolution';
+import { compileSemanticProgram } from '../semantic/compiler';
 
 const LAYER_ORDER: Record<Layer, number> = {
   background: 0,
@@ -42,7 +44,9 @@ const LAYER_ORDER: Record<Layer, number> = {
 /**
  * Build scene graph from parsed AST
  */
-export function buildSceneGraph(ast: ProgramNode): Scene {
+export function buildSceneGraph(sourceAst: ProgramNode): Scene {
+  const semantic = compileSemanticProgram(sourceAst);
+  const ast = semantic.program;
   const canvasNode = ast.body.find((node) => node.type === 'Canvas');
   const cameraNode = ast.body.find((node) => node.type === 'Camera');
   const audioNode = ast.body.find((node) => node.type === 'Audio');
@@ -59,6 +63,8 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
   const elements: Element[] = [];
   const animations: Animation[] = [];
   const clips: import('../types/scene').Clip[] = [];
+  const transitions: SharedTransition[] = [];
+  const authoredLayers = new Set<string>();
 
   for (const node of ast.body) {
     if (node.type === 'Import') {
@@ -70,14 +76,29 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     }
 
     if (node.type === 'Element') {
+      if (node.kind === 'transition') {
+        transitions.push({
+          id: node.name,
+          from: String(node.properties['from'] ?? ''),
+          to: String(node.properties['to'] ?? ''),
+          at: normalizeProperty('at', node.properties['at'] ?? 0) as number,
+          duration: normalizeProperty('duration', node.properties['duration'] ?? 0.8) as number,
+          easing: String(node.properties['easing'] ?? 'power3.inOut'),
+        });
+        continue;
+      }
       const assetName =
         node.kind === 'asset'
           ? node.name
-          : node.kind === 'image'
+          : node.kind === 'image' || node.kind === 'svgpart'
             ? String(node.properties['source'] ?? '')
             : null;
       const asset = assetName ? (imports.get(assetName) ?? null) : null;
       const normalized = normalizeProperties(node.properties);
+      if (node.properties['layer'] !== undefined) authoredLayers.add(node.name);
+      if (node.kind === 'path' && normalized['d'] !== undefined) {
+        normalized['path'] = normalized['d'];
+      }
       elements.push({
         id: node.name,
         kind: node.kind as ElementKind,
@@ -86,9 +107,6 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
         properties: {
           ...defaultElementProperties(node.kind as ElementKind),
           ...normalized,
-          ...(node.kind === 'overlay' && normalized['parent'] && !node.properties['layer']
-            ? { layer: 'details' }
-            : {}),
         },
       });
     }
@@ -126,6 +144,27 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
     }
   }
 
+  const elementsById = new Map(elements.map((element) => [element.id, element]));
+  for (let pass = 0; pass < 64; pass += 1) {
+    let changed = false;
+    for (const element of elements) {
+      if (authoredLayers.has(element.id)) continue;
+      const parent = elementsById.get(String(element.properties.parent ?? ''));
+      if (!parent) continue;
+      const nextLayer =
+        parent.kind === 'scene' || parent.kind === 'group'
+          ? parent.properties.layer
+          : element.kind === 'overlay'
+            ? 'details'
+            : element.properties.layer;
+      if (element.properties.layer !== nextLayer) {
+        element.properties.layer = nextLayer;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
   // Add camera animations from camera node
   if (cameraNode && 'properties' in cameraNode && cameraNode.properties['cameraAnimation']) {
     animations.push(...cameraPresetAnimations(cameraNode.properties['cameraAnimation'] as string));
@@ -136,12 +175,17 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
   const scene = applyAnimationPresets({
     canvas,
     camera,
+    theme: semantic.theme,
     sequences: Array.from(sequences.values()),
     imports: Array.from(imports.values()),
     elements,
     animations,
+    components: semantic.components,
+    relationships: semantic.relationships,
     tracks,
     clips,
+    transitions,
+    beats: semantic.beats,
     audio: audioNode && 'path' in audioNode ? audioNode.path : undefined,
     audioStart: audioNode
       ? (normalizeProperty('start', audioNode.properties['start'] ?? 0) as number)
@@ -150,6 +194,8 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
 
   validateElementMasks(scene.elements);
   validateElementFollowThrough(scene.elements);
+  validateElementMorphTargets(scene.elements, scene.imports);
+  validateHierarchy(scene.elements, scene.transitions);
 
   // Sort elements by layer
   scene.elements.sort(
@@ -158,6 +204,39 @@ export function buildSceneGraph(ast: ProgramNode): Scene {
   );
 
   return scene;
+}
+
+function validateHierarchy(elements: Element[], transitions: SharedTransition[]): void {
+  const byId = new Map(elements.map((element) => [element.id, element]));
+  if (byId.size !== elements.length) throw new Error('Element IDs must be unique.');
+  for (const element of elements) {
+    const parent = String(element.properties.parent ?? '');
+    if (!parent) continue;
+    if (!byId.has(parent))
+      throw new Error(`Element "${element.id}" references missing parent "${parent}".`);
+    const seen = new Set([element.id]);
+    let cursor = parent;
+    while (cursor) {
+      if (seen.has(cursor)) throw new Error(`Hierarchy cycle involving "${element.id}".`);
+      seen.add(cursor);
+      cursor = String(byId.get(cursor)?.properties.parent ?? '');
+      if (seen.size > 64) throw new Error(`Hierarchy for "${element.id}" exceeds 64 levels.`);
+    }
+  }
+  for (const transition of transitions) {
+    if (!transition.from || !byId.has(transition.from)) {
+      throw new Error(
+        `Transition "${transition.id}" references missing source "${transition.from}".`
+      );
+    }
+    if (!transition.to || !byId.has(transition.to)) {
+      throw new Error(
+        `Transition "${transition.id}" references missing destination "${transition.to}".`
+      );
+    }
+    if (!(transition.duration > 0))
+      throw new Error(`Transition "${transition.id}" needs a positive duration.`);
+  }
 }
 
 const TRACK_ROLES = new Set<TrackRole>(['main', 'overlay', 'audio']);
@@ -440,6 +519,23 @@ export function validateElementFollowThrough(elements: Element[]): void {
       throw new Error(
         `Chained followThrough is not supported: "${element.id}" -> "${parentId}" -> "${parentFollowThrough}"`
       );
+    }
+  }
+}
+
+/** Validate deterministic SVG morph targets against imported asset aliases. */
+export function validateElementMorphTargets(elements: Element[], imports: Asset[]): void {
+  const imported = new Set(imports.map((asset) => asset.name));
+  for (const element of elements) {
+    const morphTo = String(
+      (element.properties as unknown as Record<string, unknown>)['morphTo'] ?? ''
+    );
+    if (!morphTo || morphTo === 'none') continue;
+    if (!imported.has(morphTo)) {
+      throw new Error(`Morph target "${morphTo}" referenced by "${element.id}" is not imported`);
+    }
+    if (morphTo === element.assetName) {
+      throw new Error(`Layer "${element.id}" cannot morph to its own asset`);
     }
   }
 }

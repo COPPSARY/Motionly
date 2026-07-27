@@ -1,0 +1,68 @@
+{
+  "name": "gradientMotion",
+  "type": "motionly:effect",
+  "title": "Gradient Motion",
+  "description": "Legacy moving gradient.",
+  "tags": [
+    "effect",
+    "background"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "gradientMotion",
+    "source": "src/render/canvas-renderer.ts"
+  },
+  "schema": {
+    "opacity": {
+      "type": "number",
+      "docs": "Effect opacity."
+    },
+    "intensity": {
+      "type": "number",
+      "docs": "Effect strength."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Loop duration."
+    },
+    "blendMode": {
+      "type": "string",
+      "docs": "Canvas blend mode."
+    },
+    "gradientFrom": {
+      "type": "string",
+      "docs": "Theme gradient start."
+    },
+    "gradientTo": {
+      "type": "string",
+      "docs": "Theme gradient end."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Effect color."
+    },
+    "gridSize": {
+      "type": "number",
+      "docs": "Grid cell size."
+    },
+    "gridThickness": {
+      "type": "number",
+      "docs": "Grid line thickness."
+    },
+    "particleCount": {
+      "type": "number",
+      "docs": "Particle count."
+    },
+    "particleSize": {
+      "type": "number",
+      "docs": "Particle size."
+    }
+  },
+  "defaults": {
+    "opacity": 0.2,
+    "intensity": 1,
+    "duration": 12
+  },
+  "manifest": "effects/gradient-motion/registry-item.json"
+}

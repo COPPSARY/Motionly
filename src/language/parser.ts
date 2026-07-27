@@ -23,9 +23,82 @@ import type {
   AnimationNode,
 } from '../types/parser';
 
-const ELEMENT_KINDS = new Set(['image', 'text', 'overlay', 'effect']);
+const ELEMENT_KINDS = new Set([
+  'image',
+  'text',
+  'overlay',
+  'effect',
+  'component',
+  'scene',
+  'group',
+  'path',
+  'svgpart',
+  'transition',
+  'archetype',
+  'layout',
+  'showcase',
+  'beat',
+]);
 const PROPERTY_NAMES = new Set([
   'background',
+  'version',
+  'title',
+  'subtitle',
+  'media',
+  'secondary',
+  'secondaryLabel',
+  'logo',
+  'frame',
+  'cta',
+  'effects',
+  'blendMode',
+  'focalX',
+  'focalY',
+  'surface',
+  'raised',
+  'edge',
+  'text',
+  'muted',
+  'positive',
+  'warning',
+  'negative',
+  'ink',
+  'displayFont',
+  'monoFont',
+  'titleSize',
+  'bodySize',
+  'weightRegular',
+  'weightBold',
+  'stagger',
+  'cameraZoom',
+  'type',
+  'provider',
+  'role',
+  'intent',
+  'behavior',
+  'connects',
+  'relationship',
+  'accent',
+  'semanticType',
+  'semanticProvider',
+  'semanticRole',
+  'semanticIntent',
+  'semanticBehavior',
+  'relationshipFrom',
+  'relationshipTo',
+  'relationshipType',
+  'relationshipProgress',
+  'relationshipSourceRadius',
+  'relationshipTargetRadius',
+  'glow',
+  'glowColor',
+  'gradientFrom',
+  'gradientTo',
+  'gradientAngle',
+  'particleCount',
+  'particleSize',
+  'morphTo',
+  'morphProgress',
   'backgroundEffect',
   'blur',
   'brightness',
@@ -119,6 +192,45 @@ const PROPERTY_NAMES = new Set([
   'y',
   'y2',
   'zoom',
+  'd',
+  'sourceId',
+  'sourcePath',
+  'locked',
+  'depth',
+  'cameraX',
+  'cameraY',
+  'cameraZoom',
+  'cameraRotation',
+  'at',
+  'from',
+  'to',
+  'easing',
+  // Motion system: layouts, showcases, and beats.
+  'beat',
+  'columns',
+  'itemWidth',
+  'itemHeight',
+  'headline',
+  'caption',
+  'detail',
+  'focus',
+  'focusX',
+  'focusY',
+  'route',
+  'transitionDuration',
+  'showcaseType',
+  'countTo',
+  'values',
+  'labels',
+  'textAlign',
+  'verticalAlign',
+  'lineHeight',
+  'wrap',
+  'split',
+  'rangeStart',
+  'rangeEnd',
+  'stagger',
+  'guide',
 ]);
 
 /**
@@ -167,6 +279,10 @@ class Parser {
 
     if (this.matchWord('camera')) {
       return createCamera(this.parseBlockProperties());
+    }
+
+    if (this.matchWord('theme')) {
+      return createElement('theme', 'theme', this.parseBlockProperties());
     }
 
     if (this.matchWord('audio')) {
@@ -335,6 +451,8 @@ class Parser {
           'mute',
           'hidden',
           'muted',
+          'locked',
+          'guide',
         ].includes(key) &&
         (this.check('Newline') || this.check('RightBrace'))
       ) {
@@ -349,6 +467,7 @@ class Parser {
         'textAnimation',
         'cameraAnimation',
         'backgroundEffect',
+        'behavior',
       ].includes(key);
       properties[key] = this.collectLineValues({ stopAtPropertyName: compactValues }).join(' ');
     }

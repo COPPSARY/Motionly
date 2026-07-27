@@ -1,0 +1,27 @@
+{
+  "name": "motionly",
+  "type": "motionly:preset",
+  "title": "Motionly",
+  "description": "A concise introduction to Motionly and editable .motion projects.",
+  "tags": [
+    "product",
+    "editor",
+    "launch"
+  ],
+  "version": 1,
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 32.1,
+  "files": [
+    {
+      "path": "preset/motionly",
+      "target": "presets/motionly",
+      "type": "motionly:preset"
+    }
+  ],
+  "project": "preset/motionly/motionly.motion",
+  "preview": "preset/motionly/motionly-preset.gif",
+  "manifest": "presets/motionly/registry-item.json"
+}

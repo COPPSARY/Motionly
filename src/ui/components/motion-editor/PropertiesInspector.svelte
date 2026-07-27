@@ -13,6 +13,26 @@
 
   export let selectedTransition: ClipTransitionBoundary | null;
   export let selectedElement: Element | null;
+  export let onCopyMotion: () => void;
+  export let onPasteMotion: (mode: 'relative' | 'absolute') => void;
+  export let canPasteMotion: boolean;
+
+  function bezierValues(): [number, number, number, number] {
+    const easing = String(selectedAnimation?.easing ?? '');
+    const values = easing
+      .match(/^cubic-bezier\(([^)]+)\)$/)?.[1]
+      ?.split(',')
+      .map(Number);
+    return values?.length === 4 && values.every(Number.isFinite)
+      ? values as [number, number, number, number]
+      : [0.25, 0.1, 0.25, 1];
+  }
+
+  function updateBezier(index: number, value: number) {
+    const values = bezierValues();
+    values[index] = value;
+    onUpdateAnimationProperty('easing', `cubic-bezier(${values.map((item) => Number(item.toFixed(2))).join(', ')})`);
+  }
   export let selectedClip: Clip | null;
   export let selectedClipElement: Element | null;
   export let selectedAnimation: Animation | null;
@@ -148,6 +168,54 @@
               <div class="me-number-input-wrapper">
                 <input class="me-number-input" type="number" min="1" value={selectedVisualProperty('size', 72)} on:input={(event) => onUpdateElementProperty('size', Number(event.currentTarget.value))} />
                 <button type="button" class="me-input-suffix me-scrubbable-suffix" on:pointerdown={(event) => onBeginPropertyScrub(event, 'size', 72, 1)} on:keydown={(event) => onPropertyScrubKey(event, 'size', 72, 1)} aria-label="Font size: drag up or down to adjust" title="Drag up or down to adjust font size">px</button>
+              </div>
+            </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Text box width</div>
+                <div class="me-number-input-wrapper">
+                  <input class="me-number-input" type="number" min="1" value={numericProperty(selectedElement, 'width', 720)} on:input={(event) => onUpdateElementProperty('width', Number(event.currentTarget.value))} />
+                  <span class="me-input-suffix">px</span>
+                </div>
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Text box height</div>
+                <div class="me-number-input-wrapper">
+                  <input class="me-number-input" type="number" min="1" value={numericProperty(selectedElement, 'height', 180)} on:input={(event) => onUpdateElementProperty('height', Number(event.currentTarget.value))} />
+                  <span class="me-input-suffix">px</span>
+                </div>
+              </div>
+            </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Alignment</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'textAlign', 'center')} on:change={(event) => onUpdateElementProperty('textAlign', event.currentTarget.value)}>
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Vertical</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'verticalAlign', 'middle')} on:change={(event) => onUpdateElementProperty('verticalAlign', event.currentTarget.value)}>
+                  <option value="top">Top</option>
+                  <option value="middle">Middle</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </div>
+            </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Line height</div>
+                <input class="me-number-input" type="number" min="0.5" max="3" step="0.05" value={numericProperty(selectedElement, 'lineHeight', 1.2)} on:input={(event) => onUpdateElementProperty('lineHeight', Number(event.currentTarget.value))} />
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Wrapping</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'wrap', 'none')} on:change={(event) => onUpdateElementProperty('wrap', event.currentTarget.value)}>
+                  <option value="none">None</option>
+                  <option value="word">Words</option>
+                  <option value="char">Characters</option>
+                </select>
               </div>
             </div>
           {/if}
@@ -365,6 +433,11 @@
         {/if}
 
         <div class="me-section-title">Keyframes</div>
+        <div class="me-property-row">
+          <button type="button" class="me-timeline-command" on:click={onCopyMotion}>Copy motion</button>
+          <button type="button" class="me-timeline-command" disabled={!canPasteMotion} on:click={() => onPasteMotion('relative')}>Paste relative</button>
+          <button type="button" class="me-timeline-command" disabled={!canPasteMotion} on:click={() => onPasteMotion('absolute')}>Paste absolute</button>
+        </div>
         {#if animatedPropertyNames.length}
           <div class="me-animated-properties" aria-label="Animated properties">
             {#each animatedPropertyNames as property}
@@ -498,8 +571,26 @@
             value={String(selectedAnimation?.easing ?? 'soft')}
             placeholder="power3.out or cubic-bezier(...)"
             on:change={(event) => onUpdateAnimationProperty('easing', event.currentTarget.value)}
-            aria-label="Custom animation easing"
-          />
+              aria-label="Custom animation easing"
+            />
+            <div class="me-property-label">Cubic curve handles</div>
+            <div class="me-property-row">
+              {#each bezierValues() as value, index}
+                <div class="me-number-input-wrapper">
+                  <input
+                    class="me-number-input"
+                    type="number"
+                    min={index === 0 || index === 2 ? 0 : -2}
+                    max={index === 0 || index === 2 ? 1 : 2}
+                    step=".05"
+                    value={value}
+                    aria-label={`Bezier ${['x1', 'y1', 'x2', 'y2'][index]}`}
+                    on:input={(event) => updateBezier(index, Number(event.currentTarget.value))}
+                  />
+                  <span class="me-input-suffix">{['x1', 'y1', 'x2', 'y2'][index]}</span>
+                </div>
+              {/each}
+            </div>
         </div>
 
         <div class="me-property-group">

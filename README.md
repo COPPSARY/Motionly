@@ -65,9 +65,10 @@ Motionly combines a canvas, timeline, and visual controls with an editable `.mot
 
 - Preview, select, position, scale, rotate, and style elements visually
 - Edit timing, keyframes, easing, clips, transitions, and audio on the timeline
+- Compose scenes from a semantic component library — terminals, dashboards, browsers, phones, pricing cards, and the Motionly workspace itself — with built-in choreography, customizable down to every generated part
 - Use smooth animation presets for text, images, SVGs, and video
 - Draft editable projects with the optional BYOK AI assistant
-- Save projects as readable `.motion` files and export MP4
+- Save projects as readable `.motion` files (set in the bundled Space Grotesk display face) and export MP4
 
 AI-generated work always goes through Motionly's parser and remains fully editable in the visual editor.
 
@@ -85,6 +86,17 @@ The setup creates a project, optionally installs the Motionly skill for your cod
 cd my-video
 npx @coppsary/motionly dev
 ```
+
+Browse the built-in animation registry or install a complete editable preset:
+
+```bash
+npx @coppsary/motionly catalog --type move --tag text
+npx @coppsary/motionly catalog --type preset
+npx @coppsary/motionly add bsky
+```
+
+Moves, effects, components, and archetypes are built into the engine; preset
+packages install into their own `presets/<name>/` folder.
 
 Want the editor without creating a project?
 

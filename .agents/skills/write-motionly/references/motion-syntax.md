@@ -21,6 +21,173 @@ camera {
 
 Use `size`, not `fontSize`. Use `easing` in explicit animation blocks. Preset calls use the option name `ease`.
 
+## Theme And Archetypes
+
+New AI-drafted scenes should use one project theme and layout-owning archetypes.
+Existing coordinate-based files remain valid.
+
+```motion
+theme {
+  background #050608
+  surface #12161D
+  text #EDF0F4
+  muted #8B94A1
+  accent #7CF7C5
+  secondary #8AB4FF
+  gradientFrom #7CF7C5
+  gradientTo #8AB4FF
+  displayFont "Space Grotesk, Inter, sans-serif"
+  radius 24
+  shadow 24
+  duration .8s
+  stagger .07s
+  easing power3.out
+}
+
+import "./assets/product.png" as product
+
+archetype launch {
+  type hero
+  title "Show the real product."
+  subtitle "The archetype owns layout; the generator fills slots."
+  media product
+  start 0s
+  duration 5s
+  effects "meshGradient > grain > vignette"
+  transitionOut "sceneSlide(direction right duration .5s)"
+}
+```
+
+Types are `hero`, `splitFeature`, `stat`, `walkthrough`, `comparison`,
+`cta`, and `logoReveal`. Media-oriented archetypes accept imported aliases in
+`media`, `secondary`, and `logo`. If required media is absent, the compiler
+uses a semantic device-frame stub rather than fake product geometry.
+
+## Motion System: Beats, Layouts, Showcases
+
+Above archetypes sits a component layer. Select blocks by name; the engine owns
+their geometry, spacing rhythm, hierarchy, and choreography. Everything lowers to
+ordinary `group`, `overlay`, `image`, `text`, `transition`, and animation nodes,
+so the result stays editable source.
+
+```motion
+import "./assets/dashboard.png" as dashShot
+
+beat intro {
+  duration 5s
+  focus title
+  label "Brand introduction"
+}
+
+beat reveal {
+  duration 7s
+  focus product
+  zoom 1.25
+  label "Product reveal"
+}
+
+beat features {
+  duration 8s
+  focus capabilities
+  zoom 1
+  transition layoutMorph
+  from product
+  to capabilities
+  label "Feature showcase"
+}
+
+showcase product {
+  type dashboardShowcase
+  media dashShot
+  headline "Every metric, live"
+  behavior push highlight
+  beat reveal
+}
+
+layout capabilities {
+  type bentoGrid
+  columns 3
+  gap 40
+  beat features
+}
+
+component planCard {
+  parent capabilities
+  type pricingcard
+}
+
+component alert {
+  parent capabilities
+  type notification
+  label "Deployed"
+  detail "Production is live."
+}
+
+component usage {
+  parent capabilities
+  type chart
+}
+```
+
+### Beats
+
+A beat is a change in focus, not a slide. Beats emit no scene root, so nothing is
+cleared between them: objects persist and transform across the whole film.
+
+Properties: `start`, `duration`, `focus`, `zoom`, `cameraX`, `cameraY`,
+`transition`, `from`, `to`, `transitionDuration`, `easing`, `label`.
+
+Omit `start` to run beats back to back. Omit `duration` to split the remaining
+canvas time evenly. Attach any layout, showcase, component, text, or image with
+`beat NAME` and its entrance delay resolves from that beat's start.
+
+### Layouts
+
+Types: `heroLayout`, `splitLayout`, `bentoGrid`, `featureGrid`, `masonryGrid`,
+`deviceStack`, `logoWall`, `comparisonLayout`, `timelineLayout`, `carousel`,
+`gallery`, `floatingCollage`.
+
+Properties: `type`, `columns`, `gap`, `width`, `height`, `itemWidth`,
+`itemHeight`, `order` (`linear`, `center-out`, `reverse`), `stagger`, `beat`,
+`parent`, `delay`, `layer`.
+
+Children declare `parent NAME`. The solver fills position, size, and a staggered
+entrance on an 8px rhythm; an authored value always wins. Fixed-aspect children
+such as semantic components are fitted inside their slot, never stretched. Each
+layout enforces its supported child count.
+
+### Showcases
+
+Types: `productHero`, `phoneShowcase`, `browserShowcase`, `laptopShowcase`,
+`appWindow`, `dashboardShowcase`, `screenshotPresentation`, `uiWalkthrough`.
+
+Properties: `type`, `media`, `headline`, `caption`, `label`, `width`, `behavior`,
+`accent`, `surface`, `focusX`, `focusY`, `beat`, `parent`, `delay`, `duration`,
+`layer`.
+
+Behaviors: `float` (idle drift), `push` (camera push expressed on the subject),
+`highlight` (focus ring at `focusX`/`focusY`), `still` (suppress idle motion).
+
+The screen clips its media, so a tall capture crops rather than distorting. Parts
+are named `NAME__body`, `NAME__screen`, `NAME__media`, `NAME__chrome`,
+`NAME__headline`, and so on, and can be animated directly. With no `media`, the
+showcase renders an "Add product media" empty state instead of fake geometry.
+
+### Beat transitions
+
+`sharedElement`, `objectMorph`, and `layoutMorph` each require `from` and `to`
+naming declared elements. `cameraMove`, `continuous`, and `cut` need no
+endpoints. A focus change with no named transition becomes a camera move; a held
+focus stays continuous. There is no global frame fade.
+
+### Asset kinds
+
+Imports classify as `logo`, `icon`, `screenshot`, `ui`, `illustration`, `photo`,
+`video`, `avatar`, `chart`, or `unknown`. Tall captures are phone screenshots
+(`phoneShowcase`); wide captures are desktop UI (`dashboardShowcase`,
+`browserShowcase`, `laptopShowcase`); many icons become a `bentoGrid` or
+`featureGrid`; many logos become a `logoWall`.
+
 ## Imports And Assets
 
 ```motion
@@ -46,6 +213,75 @@ logo {
 Preserve aspect ratio by setting one of `width` or `height`. Useful properties include `x`, `y`, `width`, `height`, `scale`, `rotation`, `originX`, `originY`, `skewX`, `skewY`, `opacity`, `blur`, `brightness`, `contrast`, `saturation`, `hue`, `grayscale`, `sepia`, `invert`, `shadow`, `center`, `cover`, and `layer`. Transform origins are normalized from `0` to `1`.
 
 Motionly treats PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and `.lottie` as visual assets. Video, Lottie, and supported GIFs seek to project time for preview and export. Animated SVG uses a real-time Canvas SVG runtime; its internal timeline cannot be deterministically frame-seeked, and CSS keyframes may differ from browser DOM playback. Motionly reports those limitations in the editor.
+
+Static SVGs placed from the editor are decomposed into named `group` and
+`path` layers. SVG IDs and Figma `data-name` labels are preserved. Unsupported
+subtrees remain accurate locked `svgpart` leaves; animated SVGs stay as media.
+
+## Scenes, Groups, Paths, And Continuity
+
+```motion
+scene productShot {
+  start 2s
+  duration 3s
+  background #171513
+  cameraX 120
+  cameraY 0
+  cameraZoom 1.12
+}
+
+group phone {
+  parent productShot
+  x 320
+  scale 1
+  opacity 1
+  clip
+}
+
+path logoMark {
+  parent phone
+  d "M0 0L24 0L24 24Z"
+  fill #d97757
+  sourceId "logo-mark"
+  label "Logo mark"
+}
+
+transition cardToPhone {
+  from dashboardCard
+  to phoneCard
+  at 4.5s
+  duration .8s
+  easing power3.inOut
+}
+```
+
+Scene/group child timing is parent-local. Parent position, scale, rotation,
+opacity, clipping, masks, and timing affect descendants. Scene camera
+properties can be keyframed normally; `depth 0` stays fixed and `depth 1`
+follows the scene camera. Shared transitions interpolate compatible transforms,
+colors, radius, and path geometry, with a deterministic move/crossfade fallback.
+
+Pair whole-scene transitions on overlapping scene windows:
+
+```motion
+scene outgoing {
+  start 0s
+  duration 5.5s
+  transitionOut "sceneSlide(direction down duration .5s)"
+}
+
+scene incoming {
+  start 5s
+  duration 5s
+  transitionIn "sceneSlide(direction down duration .5s)"
+}
+```
+
+`sceneSlide` supports `up`, `right`, `down`, and `left`. The direction describes
+camera travel: `down` moves every outgoing child up while the incoming scene
+rises from below. `sceneZoom` zooms the whole outgoing scene through camera and
+resolves the incoming scene from depth. Pair the same transition and duration
+on both sides; a middle scene may declare both properties.
 
 Simple imported path SVGs can use editable fill/stroke overrides:
 
@@ -206,6 +442,12 @@ text title {
 
 Supported text presets:
 
+Text boxes support `width`, `height`, `textAlign left|center|right`,
+`verticalAlign top|middle|bottom`, `lineHeight`, and `wrap none|word|char`.
+Text presets accept `split lines|words|chars`, `rangeStart`, `rangeEnd`, and
+`order forward|reverse|center`. Layout uses measured font metrics in preview
+and export; `maskReveal` uses a real clip.
+
 - `keynoteText`
 - `wordReveal`
 - `charReveal`
@@ -322,6 +564,83 @@ overlay atmosphere {
 
 Background effects currently include `gradientMotion`, `noise`, `grid`, `aurora`, `prism`, `rippleGrid`, `ripple-grid`, and `particles`. Keep opacity restrained behind copy.
 
+## Semantic Components
+
+`component` blocks compile recognizable product subjects into structured,
+editable multi-part vector artwork with staggered entrance choreography —
+never a lone icon or an empty rectangle. Types: `cloud`, `database`,
+`server`, `arrow`, `button`, `dashboard`, `phone`, `browser`, `logo`,
+`chart`, `notification`, `cursor`, `codeeditor`, `website`, `terminal`,
+`pricingcard`, `laptop`, `editor` (the Motionly workspace itself).
+Component text renders in Space Grotesk, the bundled display face, so
+composed scenes share one typographic system. Prefer composing scenes from
+these components over hand-drawing UI.
+
+Every generated part is an ordinary element named `NAME__PART`, and any
+part's base property can be customized inline with a dotted override —
+`price.countPrefix "€"`, `headline.color #ffffff` — or animated directly
+with `animate NAME__PART { ... }`. An unknown part name errors with the
+list of available parts, so overrides are discoverable from source alone.
+
+```motion
+component metrics {
+  type dashboard
+  role main
+  label "Overview"
+  values "$84.9k  12,480  99.98%"
+  labels "Revenue  Users  Uptime"
+  width 560
+  accent #7cf7c5
+}
+
+component deploy {
+  type button
+  label "Deploy"
+  x -420
+  y 200
+  color #D97757
+}
+
+component pointer {
+  type cursor
+  clicks deploy
+  clickAt 2.6s
+}
+
+component toast {
+  type notification
+  reactsTo deploy
+  label "Deployed"
+  detail "Production is live."
+  x -420
+  y -20
+}
+```
+
+- A dashboard compiles to a frame, header, live dot, metric cards with values
+  and captions, and a drawing chart line; a browser gets chrome, traffic
+  dots, an address pill, headline, and CTA; a chart gets axis, growing bars,
+  and a counting total (`countTo`); a codeeditor gets a titlebar, filename,
+  typed code lines, and a status line; a website gets nav, headline, CTA, and
+  a gradient banner; a phone gets frame, screen, notch, and message rows.
+- Structure children are ordinary elements named `NAME__part` — editable and
+  animatable individually.
+- `connects TARGET` draws a connector with a traveling data particle;
+  connectors inherit endpoint visibility (including reveal progress) and hide
+  when an endpoint's scene window is closed.
+- Cause and effect: `clicks TARGET` + `clickAt` moves a cursor onto the
+  control and clicks it (the control compresses and glows); `reactsTo TARGET`
+  enters a component just after that target's click. `exitAt`/`exitDuration`
+  choreograph a deliberate exit.
+- Content props: `label`, `detail`, `headline`, `url`, `cta`, `values`,
+  `labels`, `countTo`, `surface` (panel fill). Separate multi-item
+  `values`/`labels` with two spaces or commas.
+
+Scenes support `enter`/`exit` fade envelopes (`enter .35s`, `exit .5s`) so a
+whole composition enters and leaves cleanly instead of popping at the scene
+boundary. Text elements render animated count-ups with a numeric `value` plus
+`countDecimals`, `countSeparator`, `countPrefix`, and `countSuffix`.
+
 ## UI Components
 
 Cards, buttons, progress bars, badges, and panels are standalone `overlay` shapes (no `parent`) composed with the normal shape/fill/text system above, animated with the presets below. There are no dedicated `button`/`card`/`modal` element kinds — everything is built from `rect`/`text`/`circle` overlays, kept purposeful rather than growing a large widget library.
@@ -397,7 +716,33 @@ Preferred production set:
 - `shapeWipe`: directional full-scene transition.
 - `irisWipe`: circular full-scene transition.
 - `drawSVG`: path progress for simple stroked SVGs only.
+- `focusZoom`: whole-product to feature-detail transition. The focal layer uses `role focus`; surrounding layers can call the same move with `role sibling pushX ... pushY ...`.
+- `zoomThrough`: drive through a focal layer into the next shot.
+- `whipPan`: fast directional travel with a brief blur and clean settle.
+- `sceneSlide`: paired whole-scene push in four directions; all descendants move with the scene root.
+- `sceneZoom`: paired whole-scene zoom-through; tune outgoing `to`, incoming `from`, and optional `xTo`/`yTo` focus.
+- `rackFocus`: bring a soft secondary layer into sharp focus.
+- `depthSwap`: move a layer between background and foreground roles.
+- `cascadeIn`: stagger-friendly cards or media with one restrained settle.
+- `snapMove`: visible UI drag/reposition with one overshoot.
+- `popover`: compact panel opening from its transform origin.
+- `cursorTap`: click/tap feedback for a cursor or control.
+- `shakeReject`: damped blocked-action feedback.
+- `orbitDrift`: deterministic elliptical idle orbit.
 - `heroLogo`, `productPanel`, `rotateReveal`: use selectively.
+
+```motion
+image editorOverview {
+  source editor
+  center
+  animation "focusZoom(delay 3s duration .9s role focus focusScale 1.7 xTo 0 yTo 80 ease power3.inOut)"
+}
+
+component pointer {
+  type cursor
+  animation "cursorTap(delay 2.4s)"
+}
+```
 
 Icon and pop-in motion:
 
@@ -518,7 +863,7 @@ animate pointer {
 }
 ```
 
-`motionPath` names an imported asset (not an element id) — the first `<path>` in that SVG is sampled. `motionPathRotate` (bare boolean) orients the element to the path's tangent direction as it travels. The guide path's own SVG coordinate space is used directly as an x/y offset on top of the element's own `x`/`y` — author guide paths in units matching your canvas layout, centered around `0,0` if the motion should be centered on the element's normal position.
+`motionPath` names either an imported asset or a `path` element marked `guide`. Imported assets sample their first SVG path. Guide paths support M/L/Q/C data and do not appear in export. `motionPathRotate` (bare boolean) orients the element to the path's tangent direction as it travels. The guide path's own SVG coordinate space is used directly as an x/y offset on top of the element's own `x`/`y` — author guide paths in units matching the canvas layout, centered around `0,0` if the motion should be centered on the element's normal position.
 
 Not currently supported: deterministic path morphing (interpolating between two different `d` shapes) and gradient-stop animation. Use matched-shape crossfades for morphing and a static gradient for now; state these as real limitations rather than working around them silently.
 
@@ -528,6 +873,7 @@ Not currently supported: deterministic path morphing (interpolating between two 
 - `pan`: horizontal camera movement.
 - `pull`: settle from a closer view.
 - `speedZoom`: short punch with `from`, `peak`, and `to` zoom values.
+- `sceneSlide`/`sceneZoom` belong on scene or archetype `transitionIn` and `transitionOut`, not inside the global camera block.
 
 Camera movement affects every visible layer. Use it only when the composition has enough safe space.
 

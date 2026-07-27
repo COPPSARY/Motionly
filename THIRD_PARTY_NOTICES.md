@@ -48,3 +48,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Semantic Vector Registry
+
+Motionly's built-in semantic component registry embeds a small, curated set of SVG icon geometry from these upstream projects. The registry records the provider, source icon, source URL, and capabilities for every component definition.
+
+- Phosphor Icons `cloud`: Copyright (c) 2023 Phosphor Icons; MIT license. Source: https://github.com/phosphor-icons/core/blob/main/assets/regular/cloud.svg. License: https://github.com/phosphor-icons/core/blob/main/LICENSE.
+- Lucide `database`, `server`, `chart-line`, `bell`, `mouse-pointer`, `code`, `globe`, `terminal`, `gem`, and `laptop`: Copyright (c) 2026 Lucide Icons and Contributors; ISC license. These icons include Feather-derived work, Copyright (c) 2013-present Cole Bemis, under MIT. Sources: https://github.com/lucide-icons/lucide/tree/main/icons. License and Feather notice: https://github.com/lucide-icons/lucide/blob/main/LICENSE.
+- Heroicons `device-phone-mobile` and `window`: Copyright (c) Tailwind Labs, Inc.; MIT license. Sources: https://github.com/tailwindlabs/heroicons/tree/master/optimized/24/outline. License: https://github.com/tailwindlabs/heroicons/blob/master/LICENSE.
+- Tabler Icons `dashboard` and `arrow-right`: Copyright (c) 2020-2026 Paweł Kuna; MIT license. Sources: https://github.com/tabler/tabler-icons/tree/main/icons/outline. License: https://github.com/tabler/tabler-icons/blob/main/LICENSE.
+
+The Motionly-native `button`, fallback `logo`, and `editor` workspace vectors are original project artwork and do not carry an upstream notice.
+
+## Space Grotesk (bundled font)
+
+- Project: Space Grotesk typeface
+- Author: Florian Karsten
+- Source: https://github.com/floriankarsten/space-grotesk
+- License: SIL Open Font License 1.1 — https://openfontlicense.org
+- Copyright: Copyright 2020 The Space Grotesk Project Authors
+
+Motionly bundles the Space Grotesk variable font (`public/fonts/space-grotesk-latin.woff2` and `public/fonts/space-grotesk-latin-ext.woff2`, served via Google Fonts subsets) as the display face for motion projects and semantic components. The full license text ships beside the files at `public/fonts/OFL.txt`, satisfying the OFL requirement that redistributed copies carry the copyright notice and license. The font is not sold on its own, and the reserved font name "Space Grotesk" is unmodified.

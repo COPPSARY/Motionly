@@ -10,20 +10,24 @@
     "dist",
     "bin",
     "templates",
+    "preset",
+    "registry",
     "motionly-skills",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run registry:generate && tsc && vite build",
     "serve": "node bin/motionly.js",
     "preview": "vite preview",
     "prepublishOnly": "npm run build",
     "inspect:motion": "vite-node scripts/inspect-motion.ts",
+    "registry:generate": "vite-node scripts/generate-registry.ts",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",

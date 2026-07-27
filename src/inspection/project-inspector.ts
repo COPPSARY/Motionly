@@ -2,6 +2,7 @@ import { evaluateScene } from '../animation/evaluator';
 import { parseMotion } from '../language/parser';
 import { serializeProgram } from '../language/serializer';
 import { buildSceneGraph } from '../scene/scene-graph';
+import { auditScene, type MotionAudit } from './motion-audit';
 import type { EvaluatedElement, EvaluatedScene } from '../types/scene';
 
 export interface FrameInspection {
@@ -23,6 +24,8 @@ export interface ProjectInspection {
   representativeFrames: FrameInspection[];
   renderSignature: string;
   roundTripStable: boolean;
+  /** Motion-quality findings: pacing, cascades, coverage, geometry. */
+  audit: MotionAudit;
 }
 
 /**
@@ -68,6 +71,7 @@ export function inspectMotionProject(source: string): ProjectInspection {
     representativeFrames: frames.filter((frame) => representativeIndexes.has(frame.frame)),
     renderSignature: hex(aggregate),
     roundTripStable,
+    audit: auditScene(scene),
   };
 }
 

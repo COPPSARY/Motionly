@@ -1,0 +1,123 @@
+{
+  "name": "laptopShowcase",
+  "type": "motionly:showcase",
+  "title": "Laptop Showcase",
+  "description": "Desktop product on a laptop with lid, base, and grounded shadow. Use for: saas launch, desktop demo, product hero. Presents: ui, screenshot, video.",
+  "tags": [
+    "showcase"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "laptopShowcase",
+    "source": "src/motion-system/showcase.ts"
+  },
+  "schema": {
+    "parent": {
+      "type": "string",
+      "docs": "Parent scene, group, or layout."
+    },
+    "beat": {
+      "type": "string",
+      "docs": "Beat that paces this block."
+    },
+    "x": {
+      "type": "number",
+      "docs": "Offset from the parent center."
+    },
+    "y": {
+      "type": "number",
+      "docs": "Offset from the parent center."
+    },
+    "layer": {
+      "type": "string",
+      "docs": "Compositing layer."
+    },
+    "delay": {
+      "type": "time",
+      "docs": "Entrance delay, added to the beat start."
+    },
+    "opacity": {
+      "type": "number",
+      "docs": "Base opacity."
+    },
+    "scale": {
+      "type": "number",
+      "docs": "Base scale."
+    },
+    "center": {
+      "type": "boolean",
+      "docs": "Center in the parent coordinate space."
+    },
+    "start": {
+      "type": "time",
+      "docs": "Element start time."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Entrance duration."
+    },
+    "track": {
+      "type": "string",
+      "docs": "Timeline row."
+    },
+    "type": {
+      "type": "string",
+      "docs": "Showcase name."
+    },
+    "media": {
+      "type": "asset",
+      "docs": "Imported asset alias placed on the screen."
+    },
+    "headline": {
+      "type": "string",
+      "docs": "Headline beneath the subject."
+    },
+    "caption": {
+      "type": "string",
+      "docs": "Supporting caption."
+    },
+    "label": {
+      "type": "string",
+      "docs": "Step or category chip."
+    },
+    "width": {
+      "type": "number",
+      "docs": "Overall composition width."
+    },
+    "behavior": {
+      "type": "list",
+      "docs": "Showcase behaviors: float, push, highlight, still."
+    },
+    "accent": {
+      "type": "string",
+      "docs": "Accent override."
+    },
+    "surface": {
+      "type": "string",
+      "docs": "Surface override."
+    },
+    "focusX": {
+      "type": "number",
+      "docs": "Highlight focus X inside the screen, 0-1."
+    },
+    "focusY": {
+      "type": "number",
+      "docs": "Highlight focus Y inside the screen, 0-1."
+    }
+  },
+  "defaults": {
+    "width": 1160,
+    "behavior": "push",
+    "duration": 0.78
+  },
+  "duration": 4.5,
+  "files": [
+    {
+      "path": "registry/showcases/laptop-showcase/laptop-showcase.motion",
+      "target": "compositions/laptop-showcase.motion",
+      "type": "motionly:composition"
+    }
+  ],
+  "manifest": "showcases/laptop-showcase/registry-item.json"
+}

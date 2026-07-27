@@ -1,0 +1,115 @@
+{
+  "name": "gallery",
+  "type": "motionly:layout",
+  "title": "Gallery",
+  "description": "Two-row gallery with a wide first row. Use for: media wall, case study. Items 3-10.",
+  "tags": [
+    "layout"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "gallery",
+    "source": "src/motion-system/layout.ts"
+  },
+  "schema": {
+    "parent": {
+      "type": "string",
+      "docs": "Parent scene, group, or layout."
+    },
+    "beat": {
+      "type": "string",
+      "docs": "Beat that paces this block."
+    },
+    "x": {
+      "type": "number",
+      "docs": "Offset from the parent center."
+    },
+    "y": {
+      "type": "number",
+      "docs": "Offset from the parent center."
+    },
+    "layer": {
+      "type": "string",
+      "docs": "Compositing layer."
+    },
+    "delay": {
+      "type": "time",
+      "docs": "Entrance delay, added to the beat start."
+    },
+    "opacity": {
+      "type": "number",
+      "docs": "Base opacity."
+    },
+    "scale": {
+      "type": "number",
+      "docs": "Base scale."
+    },
+    "center": {
+      "type": "boolean",
+      "docs": "Center in the parent coordinate space."
+    },
+    "start": {
+      "type": "time",
+      "docs": "Element start time."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Entrance duration."
+    },
+    "track": {
+      "type": "string",
+      "docs": "Timeline row."
+    },
+    "type": {
+      "type": "string",
+      "docs": "Layout solver name."
+    },
+    "columns": {
+      "type": "number",
+      "docs": "Column count, where the solver uses one."
+    },
+    "gap": {
+      "type": "number",
+      "docs": "Spacing between slots."
+    },
+    "width": {
+      "type": "number",
+      "docs": "Composition frame width."
+    },
+    "height": {
+      "type": "number",
+      "docs": "Composition frame height."
+    },
+    "itemWidth": {
+      "type": "number",
+      "docs": "Explicit slot width."
+    },
+    "itemHeight": {
+      "type": "number",
+      "docs": "Explicit slot height."
+    },
+    "order": {
+      "type": "string",
+      "docs": "Entrance reading order: linear, center-out, reverse."
+    },
+    "stagger": {
+      "type": "time",
+      "docs": "Delay between adjacent slots."
+    }
+  },
+  "defaults": {
+    "columns": 3,
+    "gap": 36,
+    "stagger": 0.06
+  },
+  "duration": 4.8,
+  "files": [
+    {
+      "path": "registry/layouts/gallery/gallery.motion",
+      "target": "compositions/gallery.motion",
+      "type": "motionly:composition"
+    }
+  ],
+  "manifest": "layouts/gallery/registry-item.json"
+}

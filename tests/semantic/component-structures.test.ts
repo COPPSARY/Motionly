@@ -1,0 +1,279 @@
+import { describe, expect, it } from 'vitest';
+import { evaluateScene } from '../../src/animation/evaluator';
+import { parseMotion } from '../../src/language/parser';
+import { serializeProgram } from '../../src/language/serializer';
+import { buildSceneGraph } from '../../src/scene/scene-graph';
+
+const childIds = (source: string, component: string) =>
+  buildSceneGraph(parseMotion(source)).components.find((item) => item.id === component)!
+    .childElementIds;
+
+describe('structured semantic components', () => {
+  it('compiles a dashboard into a structured interface, not one rectangle', () => {
+    const source = `
+      canvas { duration 8s }
+      component metrics {
+        type dashboard
+        role main
+        label "Overview"
+        values "$84.9k  12,480  99.98%"
+        labels "Revenue  Users  Uptime"
+        x 0
+        y 0
+        width 560
+      }
+    `;
+    const ids = childIds(source, 'metrics');
+    expect(ids).toContain('metrics__frame');
+    expect(ids).toContain('metrics__card0');
+    expect(ids).toContain('metrics__card2');
+    expect(ids).toContain('metrics__value0');
+    expect(ids).toContain('metrics__caption2');
+    expect(ids).toContain('metrics__chartline');
+    const scene = buildSceneGraph(parseMotion(source));
+    const value = scene.elements.find((element) => element.id === 'metrics__value0')!;
+    expect(value.properties.value).toBe('$84.9k');
+    const caption = scene.elements.find((element) => element.id === 'metrics__caption1')!;
+    expect(caption.properties.value).toBe('Users');
+    // Cards stagger after the frame; labels land with their cards.
+    const frameEntrance = scene.animations.find(
+      (animation) => animation.target === 'metrics__frame'
+    )!;
+    const card2Entrance = scene.animations.find(
+      (animation) => animation.target === 'metrics__card2'
+    )!;
+    expect(card2Entrance.delay).toBeGreaterThan(frameEntrance.delay);
+  });
+
+  it('gives buttons a surface, a label, and a click compression', () => {
+    const source = `
+      canvas { duration 6s }
+      component cta {
+        type button
+        label "Start free"
+        clickAt 2s
+        color #D97757
+        accent #FFB380
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    const label = scene.elements.find((element) => element.id === 'cta__label')!;
+    expect(label.properties.value).toBe('Start free');
+    const compression = scene.animations.find(
+      (animation) => animation.target === 'cta' && animation.keyframes.length > 0
+    )!;
+    expect(compression.delay).toBeCloseTo(2);
+    const scales = compression.keyframes.map((frame) => Number(frame.properties['scale']));
+    expect(Math.min(...scales)).toBeLessThan(1);
+  });
+
+  it('moves a cursor to its clicked control and compresses the target', () => {
+    const source = `
+      canvas { duration 8s }
+      component cta {
+        type button
+        label "Deploy"
+        x 120
+        y 40
+      }
+      component pointer {
+        type cursor
+        clicks cta
+        clickAt 3s
+      }
+      component toast {
+        type notification
+        reactsTo cta
+        label "Deployed"
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    const move = scene.animations.find(
+      (animation) => animation.target === 'pointer' && animation.from['x'] !== undefined
+    )!;
+    expect(move.delay + move.duration).toBeCloseTo(3, 1);
+    expect(Number(move.to['x'])).toBeGreaterThan(120);
+    const compression = scene.animations.find(
+      (animation) => animation.target === 'cta' && animation.keyframes.length > 0
+    )!;
+    expect(compression.delay).toBeCloseTo(3);
+    // The notification enters as a consequence of the click.
+    const toastEntrance = scene.animations.find((animation) => animation.target === 'toast')!;
+    expect(toastEntrance.delay).toBeGreaterThan(3);
+    expect(toastEntrance.delay).toBeLessThan(4);
+  });
+
+  it('keeps every structured child hidden before the component delay', () => {
+    const source = `
+      canvas { duration 10s }
+      component metrics {
+        type dashboard
+        delay 3s
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    const frame = evaluateScene(scene, 1.5);
+    const structured = frame.elements.filter((element) => element.id.startsWith('metrics__'));
+    expect(structured.length).toBeGreaterThan(5);
+    for (const element of structured) {
+      expect(Number(element.render.opacity ?? 1)).toBe(0);
+    }
+    const later = evaluateScene(scene, 6);
+    const visible = later.elements.filter(
+      (element) => element.id.startsWith('metrics__') && Number(element.render.opacity ?? 0) > 0.5
+    );
+    expect(visible.length).toBeGreaterThan(5);
+  });
+
+  it('hides connectors while their endpoints are outside scene windows', () => {
+    const source = `
+      canvas { duration 12s }
+      scene later {
+        start 5s
+        duration 5s
+      }
+      component api {
+        type server
+        parent later
+        x -300
+        connects store
+      }
+      component store {
+        type database
+        parent later
+        x 300
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    const connectorId = scene.relationships[0]!.connectorElementId;
+    const early = evaluateScene(scene, 2).elements.find((element) => element.id === connectorId);
+    expect(Number(early?.render.opacity ?? 0)).toBe(0);
+    const active = evaluateScene(scene, 8).elements.find((element) => element.id === connectorId);
+    expect(Number(active?.render.opacity)).toBeGreaterThan(0);
+  });
+
+  it('builds terminals, pricing cards, and laptops as structured artwork', () => {
+    const source = `
+      canvas { duration 8s }
+      component agent {
+        type terminal
+        label "claude"
+        detail "> motionly generate launch.motion"
+      }
+      component plan {
+        type pricingcard
+        label "Pro"
+        countTo 19
+        cta "Start free"
+        x -500
+      }
+      component device {
+        type laptop
+        headline "Ship day"
+        x 500
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    expect(scene.components.map((component) => component.type)).toEqual([
+      'terminal',
+      'pricingcard',
+      'laptop',
+    ]);
+    const prompt = scene.elements.find((element) => element.id === 'agent__prompt')!;
+    expect(prompt.properties.value).toBe('> motionly generate launch.motion');
+    const price = scene.elements.find((element) => element.id === 'plan__price')!;
+    expect(price.properties['countPrefix']).toBe('$');
+    const priceCount = scene.animations.find((animation) => animation.target === 'plan__price')!;
+    expect(Number(priceCount.to['value'])).toBe(19);
+    expect(scene.elements.some((element) => element.id === 'device__screen')).toBe(true);
+    expect(scene.elements.some((element) => element.id === 'device__base')).toBe(true);
+    // Component typography uses the shared display face.
+    const headline = scene.elements.find((element) => element.id === 'device__headline')!;
+    expect(String(headline.properties.font)).toContain('Space Grotesk');
+    for (let time = 0; time <= 8; time += 0.5) {
+      expect(() => evaluateScene(scene, time)).not.toThrow();
+    }
+  });
+
+  it('customizes any generated part with dotted overrides from plain source', () => {
+    const source = `
+      canvas { duration 6s }
+      component plan {
+        type pricingcard
+        label "Pro"
+        countTo 19
+        price.countPrefix "€"
+        plan.color #FF88AA
+        cta.fill #22C55E
+      }
+    `;
+    const scene = buildSceneGraph(parseMotion(source));
+    const price = scene.elements.find((element) => element.id === 'plan__price')!;
+    expect(price.properties['countPrefix']).toBe('€');
+    const planLabel = scene.elements.find((element) => element.id === 'plan__plan')!;
+    expect(planLabel.properties['color']).toBe('#FF88AA');
+    const cta = scene.elements.find((element) => element.id === 'plan__cta')!;
+    expect(cta.properties['fill']).toBe('#22C55E');
+    // Overrides never leak onto the component root.
+    const root = scene.elements.find((element) => element.id === 'plan')!;
+    expect(
+      (root.properties as unknown as Record<string, unknown>)['price.countPrefix']
+    ).toBeUndefined();
+    // And they survive serialize -> reparse.
+    const rebuilt = buildSceneGraph(parseMotion(serializeProgram(parseMotion(source))));
+    expect(
+      rebuilt.elements.find((element) => element.id === 'plan__price')!.properties['countPrefix']
+    ).toBe('€');
+  });
+
+  it('rejects overrides for unknown parts with the available part names', () => {
+    expect(() =>
+      buildSceneGraph(
+        parseMotion(`
+          component plan {
+            type pricingcard
+            banner.fill #fff
+          }
+        `)
+      )
+    ).toThrow(/no part "banner".*Available parts:.*price/s);
+  });
+
+  it('round-trips new component types through serialize and reparse', () => {
+    const source = `
+      canvas { duration 8s }
+      component editor {
+        type codeeditor
+        label "auth.ts"
+      }
+      component site {
+        type website
+        headline "Launch faster"
+        cta "Start free"
+      }
+      component growth {
+        type chart
+        label "Signups"
+        countTo 4820
+      }
+    `;
+    const program = parseMotion(source);
+    const reparsed = parseMotion(serializeProgram(program));
+    const scene = buildSceneGraph(reparsed);
+    expect(scene.components.map((component) => component.type)).toEqual([
+      'codeeditor',
+      'website',
+      'chart',
+    ]);
+    expect(scene.elements.some((element) => element.id === 'editor__codeline0')).toBe(true);
+    expect(scene.elements.some((element) => element.id === 'site__headline')).toBe(true);
+    const total = scene.elements.find((element) => element.id === 'growth__total')!;
+    expect(total.properties['countDecimals']).toBe(0);
+    const count = scene.animations.find((animation) => animation.target === 'growth__total')!;
+    expect(Number(count.to['value'])).toBe(4820);
+    // Every frame evaluates without throwing across the timeline.
+    for (let time = 0; time <= 8; time += 0.5) {
+      expect(() => evaluateScene(scene, time)).not.toThrow();
+    }
+  });
+});

@@ -15,6 +15,7 @@ function serializeNode(node: ASTNode): string {
   if (node.type === 'Track') return block(`track ${node.name}`, node.properties);
   if (node.type === 'Import') return `import "${escapeString(node.path)}" as ${node.name}`;
   if (node.type === 'Sequence') return block(`sequence ${node.name}`, node.properties);
+  if (node.type === 'Element') if (node.kind === 'theme') return block('theme', node.properties);
   if (node.type === 'Element')
     return block(
       `${node.kind === 'asset' ? '' : `${node.kind} `}${node.name}`.trim(),

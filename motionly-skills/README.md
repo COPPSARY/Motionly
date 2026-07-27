@@ -13,6 +13,8 @@ Agents should discover skills from [`llms.txt`](llms.txt) and load only the topi
 | Skill | Use it for |
 | --- | --- |
 | `motion-dsl` | Valid `.motion` syntax, parser repair, serialization |
+| `motion-system` | Beats, layouts, showcases, beat transitions, asset-kind selection |
+| `components` | Semantic component library, part overrides, cause-and-effect wiring |
 | `svg` | Native SVG/vector artwork and local cinematic motion |
 | `animation` | Choreography, presets, keyframes, stagger |
 | `easing` | Curves, durations, holds, exit timing |

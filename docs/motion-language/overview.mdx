@@ -155,3 +155,26 @@ Preferred:
 ## Product Rule
 
 Do not make `.motion` authoring the main user workflow. Keep it readable because it is the source of truth, but build UI controls first.
+## Themes and archetypes
+
+New generated projects can declare a `theme` once and compose scenes with
+`archetype` blocks. Archetypes own layout, while titles, media aliases, effects,
+and timing remain editable source. Existing coordinate-based projects continue
+to parse unchanged.
+
+```motion
+theme {
+  background #050608
+  text #EDF0F4
+  accent #7CF7C5
+  displayFont "Space Grotesk, Inter, sans-serif"
+}
+
+archetype launch {
+  type hero
+  title "Make it move."
+  media product
+  duration 5s
+  effects "meshGradient > grain > vignette"
+}
+```
