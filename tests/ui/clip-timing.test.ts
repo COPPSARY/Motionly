@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_STATIC_DURATION,
   moveClip,
   placeMediaClip,
   splitClip,
@@ -33,6 +34,18 @@ describe('clip timing edits', () => {
     });
   });
 
+  it('gives static media the short default instead of the whole timeline', () => {
+    expect(DEFAULT_STATIC_DURATION).toBe(3);
+    // A still dropped at the start of a long project stays 3s, not 30s.
+    expect(placeMediaClip(0, 0, 30)).toEqual({
+      start: 0,
+      duration: 3,
+      timelineDuration: 30,
+    });
+    // Timed sources still win over the default.
+    expect(placeMediaClip(0, 12, 30).duration).toBe(12);
+  });
+
   it('moves only the project range and allows the source to extend past the timeline', () => {
     expect(moveClip(clip, 8, 10)).toEqual({ ...clip, start: 8 });
     expect(moveClip(clip, -2, 10)).toEqual({ ...clip, start: 0 });
@@ -56,6 +69,48 @@ describe('clip timing edits', () => {
     const restored = trimClipEnd(clip, 8, 0.25);
     expect(restored).toEqual({ start: 2, duration: 6, trimIn: 1, trimOut: 0 });
     expect(sourceSpan(restored)).toBe(sourceSpan(clip));
+  });
+
+  it('lets a static source stretch past the source window it was placed with', () => {
+    const still: ClipTiming = { start: 2, duration: 3, trimIn: 0, trimOut: 0 };
+    // A timed source cannot grow past its remaining trimOut...
+    expect(trimClipEnd(still, 20, 0.25)).toEqual(still);
+    // ...but a still has no source end, so the edge follows the pointer.
+    expect(trimClipEnd(still, 20, 0.25, true)).toEqual({
+      start: 2,
+      duration: 18,
+      trimIn: 0,
+      trimOut: 0,
+    });
+    expect(trimClipStart(still, 0, 0.25, true)).toEqual({
+      start: 0,
+      duration: 5,
+      trimIn: 0,
+      trimOut: 0,
+    });
+    // Shortening a still still works, and never banks phantom source.
+    expect(trimClipEnd(still, 3, 0.25, true)).toEqual({
+      start: 2,
+      duration: 1,
+      trimIn: 0,
+      trimOut: 0,
+    });
+    expect(trimClipStart(still, 3, 0.25, true)).toEqual({
+      start: 3,
+      duration: 2,
+      trimIn: 0,
+      trimOut: 0,
+    });
+  });
+
+  it('never drags a static source past the start of the timeline', () => {
+    const still: ClipTiming = { start: 1, duration: 3, trimIn: 0, trimOut: 0 };
+    expect(trimClipStart(still, -5, 0.25, true)).toEqual({
+      start: 0,
+      duration: 4,
+      trimIn: 0,
+      trimOut: 0,
+    });
   });
 
   it('enforces a minimum duration at either edge', () => {

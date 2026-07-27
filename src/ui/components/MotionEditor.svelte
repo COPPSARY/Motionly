@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Sparkles } from 'lucide-svelte';
   import { parseMotion } from '../../language/parser';
-  import { buildSceneGraph } from '../../scene/scene-graph';
+  import { buildSceneGraph, hasIntrinsicDuration } from '../../scene/scene-graph';
   import { evaluateScene } from '../../animation/evaluator';
   import {
     assetWarnings,
@@ -36,7 +36,7 @@
     setKeyframeEasing,
     upsertKeyframe,
   } from '../keyframe-editing';
-  import { placeMediaClip, splitClip, type ClipTiming } from '../clip-timing';
+  import { DEFAULT_STATIC_DURATION, placeMediaClip, splitClip, type ClipTiming } from '../clip-timing';
   import {
     adjacentClipBoundaries,
     applyClipTransition,
@@ -46,7 +46,7 @@
   import { elementWindowProperties, moveElementClip, splitElementClip } from '../element-clips';
   import { restoreEmbeddedAssetPaths } from '../../ai/chat';
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
-  import { editorShortcut } from '../editor-shortcuts';
+  import { editorShortcut, shortcutContext } from '../editor-shortcuts';
   import { cloneClipInProgram, cloneElementInProgram } from '../duplicate-cloning';
   import { copyMotion, pasteMotion, type MotionClipboard } from '../motion-copy';
   import { extractAudioPeaks, waveformBucketCount, waveformPath } from '../audio-waveform';
@@ -239,11 +239,12 @@
     requestAnimationFrame(measureTimeline);
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target instanceof Element ? e.target : null;
-      const interactive = Boolean(target?.closest(
-        'input, textarea, select, button, a, [contenteditable="true"], [role="button"], [role="slider"]'
-      ));
-      const shortcut = editorShortcut(e, interactive);
+      const context = shortcutContext(e.target);
+      if (e.key === 'Escape' && context !== 'global' && e.target instanceof HTMLElement) {
+        e.target.blur();
+        if (context === 'typing') return;
+      }
+      const shortcut = editorShortcut(e, context);
       if (!shortcut || showConfirmDialog) return;
       e.preventDefault();
       if (e.repeat && !shortcut.startsWith('nudge-')) return;
@@ -1667,9 +1668,21 @@
     previewAsset = null;
   }
 
+  /**
+   * Source length in seconds, or 0 for static media (stills, SVG) that has no
+   * length of its own. Drives both the placed duration and whether a clip edge
+   * can be dragged past the source it was cut from.
+   */
+  function assetSourceDuration(assetName: string): number {
+    const duration = assets.get(assetName)?.motionlyDuration ?? 0;
+    return Number.isFinite(duration) && duration > 0 ? duration : 0;
+  }
+
   function handleAssetDragStart(event: DragEvent, asset: Asset) {
     const loaded = assets.get(asset.name);
-    if (!loaded || (asset.type === 'video' && !loaded.motionlyDuration)) {
+    // Video/GIF/Lottie must be placed at their own length, so wait for the
+    // decoder to report one instead of falling back to the static default.
+    if (!loaded || (hasIntrinsicDuration(asset.path) && !loaded.motionlyDuration)) {
       event.preventDefault();
       assetError = `${asset.name} is still loading. Try again in a moment.`;
       return;
@@ -1936,12 +1949,11 @@
     }
     ensureAssetElement(assetName);
     const frame = 1 / (scene?.canvas.fps ?? 60);
-    const loadedAsset = assets.get(assetName);
     const placement = placeMediaClip(
       dropTargetTime,
-      loadedAsset?.motionlyDuration ?? 0,
+      assetSourceDuration(assetName),
       totalDuration,
-      5,
+      DEFAULT_STATIC_DURATION,
       frame
     );
     const { start, duration } = placement;
@@ -2178,8 +2190,11 @@
       selectedClip.id,
       'end',
       requestedEnd,
-      1 / scene.canvas.fps
+      1 / scene.canvas.fps,
+      assetSourceDuration(selectedClip.assetName) === 0
     );
+    const resized = next.find((candidate) => candidate.id === selectedClip?.id);
+    if (resized) extendProjectDuration(resized.start + resized.duration);
     writeClipLayout(next);
   }
 
@@ -2534,6 +2549,8 @@
     const trackId = laneEl.dataset['track'] ?? '';
     beginHistoryGesture();
     const minimum = 1 / (scene?.canvas.fps ?? 60);
+    // Stills have no source to run out of, so their edges stretch freely.
+    const staticSource = assetSourceDuration(clip.assetName) === 0;
     const move = (pointer: PointerEvent) => {
       const rect = timelineLaneRect(trackId) ?? laneEl.getBoundingClientRect();
       const raw = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
@@ -2544,7 +2561,8 @@
         clip.id,
         edge,
         time,
-        minimum
+        minimum,
+        staticSource
       );
       const trimmed = next.find((candidate) => candidate.id === clip.id);
       if (trimmed) {
@@ -3138,6 +3156,12 @@
   function addTextElement() {
     if (!ast) return;
     const name = nextElementName('text');
+    // Text carries no length of its own: give it the short static default
+    // rather than the whole project, and only shorten it on a tiny timeline.
+    const duration = Math.max(
+      1 / (scene?.canvas.fps ?? 60),
+      Math.min(DEFAULT_STATIC_DURATION, totalDuration)
+    );
     ast.body.push({
       type: 'Element',
       kind: 'text',
@@ -3150,7 +3174,7 @@
         color: '#ffffff',
         opacity: 1,
         start: '0s',
-        duration: `${totalDuration.toFixed(3)}s`,
+        duration: `${duration.toFixed(3)}s`,
         track: defaultMainTrack,
       },
     });

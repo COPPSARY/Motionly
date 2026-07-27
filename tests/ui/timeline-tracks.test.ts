@@ -63,4 +63,13 @@ describe('uniform timeline layers', () => {
       ['c', 5],
     ]);
   });
+
+  it('passes the static-source flag through so stills can be lengthened', () => {
+    const still = { ...clip('still', 0, 3), trimOut: 0 };
+    expect(trimClipOnTrack([still], 'still', 'end', 9, 1 / 60)[0]).toMatchObject({ duration: 3 });
+    expect(trimClipOnTrack([still], 'still', 'end', 9, 1 / 60, true)[0]).toMatchObject({
+      duration: 9,
+      trimOut: 0,
+    });
+  });
 });
