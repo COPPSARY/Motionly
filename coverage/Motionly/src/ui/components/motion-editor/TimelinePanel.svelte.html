@@ -1,0 +1,1441 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for Motionly/src/ui/components/motion-editor/TimelinePanel.svelte</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../../../prettify.css" />
+    <link rel="stylesheet" href="../../../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../../../index.html">All files</a> / <a href="index.html">Motionly/src/ui/components/motion-editor</a> TimelinePanel.svelte</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/312</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/312</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a>
+<a name='L322'></a><a href='#L322'>322</a>
+<a name='L323'></a><a href='#L323'>323</a>
+<a name='L324'></a><a href='#L324'>324</a>
+<a name='L325'></a><a href='#L325'>325</a>
+<a name='L326'></a><a href='#L326'>326</a>
+<a name='L327'></a><a href='#L327'>327</a>
+<a name='L328'></a><a href='#L328'>328</a>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a>
+<a name='L383'></a><a href='#L383'>383</a>
+<a name='L384'></a><a href='#L384'>384</a>
+<a name='L385'></a><a href='#L385'>385</a>
+<a name='L386'></a><a href='#L386'>386</a>
+<a name='L387'></a><a href='#L387'>387</a>
+<a name='L388'></a><a href='#L388'>388</a>
+<a name='L389'></a><a href='#L389'>389</a>
+<a name='L390'></a><a href='#L390'>390</a>
+<a name='L391'></a><a href='#L391'>391</a>
+<a name='L392'></a><a href='#L392'>392</a>
+<a name='L393'></a><a href='#L393'>393</a>
+<a name='L394'></a><a href='#L394'>394</a>
+<a name='L395'></a><a href='#L395'>395</a>
+<a name='L396'></a><a href='#L396'>396</a>
+<a name='L397'></a><a href='#L397'>397</a>
+<a name='L398'></a><a href='#L398'>398</a>
+<a name='L399'></a><a href='#L399'>399</a>
+<a name='L400'></a><a href='#L400'>400</a>
+<a name='L401'></a><a href='#L401'>401</a>
+<a name='L402'></a><a href='#L402'>402</a>
+<a name='L403'></a><a href='#L403'>403</a>
+<a name='L404'></a><a href='#L404'>404</a>
+<a name='L405'></a><a href='#L405'>405</a>
+<a name='L406'></a><a href='#L406'>406</a>
+<a name='L407'></a><a href='#L407'>407</a>
+<a name='L408'></a><a href='#L408'>408</a>
+<a name='L409'></a><a href='#L409'>409</a>
+<a name='L410'></a><a href='#L410'>410</a>
+<a name='L411'></a><a href='#L411'>411</a>
+<a name='L412'></a><a href='#L412'>412</a>
+<a name='L413'></a><a href='#L413'>413</a>
+<a name='L414'></a><a href='#L414'>414</a>
+<a name='L415'></a><a href='#L415'>415</a>
+<a name='L416'></a><a href='#L416'>416</a>
+<a name='L417'></a><a href='#L417'>417</a>
+<a name='L418'></a><a href='#L418'>418</a>
+<a name='L419'></a><a href='#L419'>419</a>
+<a name='L420'></a><a href='#L420'>420</a>
+<a name='L421'></a><a href='#L421'>421</a>
+<a name='L422'></a><a href='#L422'>422</a>
+<a name='L423'></a><a href='#L423'>423</a>
+<a name='L424'></a><a href='#L424'>424</a>
+<a name='L425'></a><a href='#L425'>425</a>
+<a name='L426'></a><a href='#L426'>426</a>
+<a name='L427'></a><a href='#L427'>427</a>
+<a name='L428'></a><a href='#L428'>428</a>
+<a name='L429'></a><a href='#L429'>429</a>
+<a name='L430'></a><a href='#L430'>430</a>
+<a name='L431'></a><a href='#L431'>431</a>
+<a name='L432'></a><a href='#L432'>432</a>
+<a name='L433'></a><a href='#L433'>433</a>
+<a name='L434'></a><a href='#L434'>434</a>
+<a name='L435'></a><a href='#L435'>435</a>
+<a name='L436'></a><a href='#L436'>436</a>
+<a name='L437'></a><a href='#L437'>437</a>
+<a name='L438'></a><a href='#L438'>438</a>
+<a name='L439'></a><a href='#L439'>439</a>
+<a name='L440'></a><a href='#L440'>440</a>
+<a name='L441'></a><a href='#L441'>441</a>
+<a name='L442'></a><a href='#L442'>442</a>
+<a name='L443'></a><a href='#L443'>443</a>
+<a name='L444'></a><a href='#L444'>444</a>
+<a name='L445'></a><a href='#L445'>445</a>
+<a name='L446'></a><a href='#L446'>446</a>
+<a name='L447'></a><a href='#L447'>447</a>
+<a name='L448'></a><a href='#L448'>448</a>
+<a name='L449'></a><a href='#L449'>449</a>
+<a name='L450'></a><a href='#L450'>450</a>
+<a name='L451'></a><a href='#L451'>451</a>
+<a name='L452'></a><a href='#L452'>452</a>
+<a name='L453'></a><a href='#L453'>453</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >&lt;script lang="ts"&gt;<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cstat-no" title="statement not covered" >  import './timeline-panel.css';</span>
+<span class="cstat-no" title="statement not covered" >  import { Copy, Ellipsis, Eye, EyeOff, Layers3, Magnet, Minus, Music2, Pause, Play, Plus, Redo2, Undo2, Scissors, SkipBack, Sparkles, Square, Trash2, Type, Upload, Video, Volume2, VolumeX, X } from 'lucide-svelte';</span>
+  import type { LoadedAsset } from '../../../assets/asset-loader';
+  import type { Clip, Element, Scene, Track } from '../../../types/scene';
+  import type { ClipTransitionBoundary } from '../../clip-transitions';
+  import type { PackedClipTrack, TimelineLane } from '../../timeline-lanes';
+<span class="cstat-no" title="statement not covered" >  import { assetPreviewSource, formatPreciseTime, formatTime, stringProperty, timelineLaneLabel } from './helpers';</span>
+  import type { TimelineClipDrag } from './types';
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  export let timelineScroll: HTMLDivElement;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioInput: HTMLInputElement;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioElement: HTMLAudioElement;</span>
+<span class="cstat-no" title="statement not covered" >  export let isPlaying: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let currentTime: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let displayFrame: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedElement: Element | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedClip: Clip | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedElementId: string;</span>
+<span class="cstat-no" title="statement not covered" >  export let editorCanUndo: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let editorCanRedo: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let snapEnabled: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineZoom: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineContentWidth: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineVisibleDuration: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let scene: Scene | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let draggingAsset: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let draggingAudio: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let draggingTransition: 'crossfade' | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let dropTargetTime: number | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineTicks: number[];</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineSnapGuide: number | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineRows: TimelineLane[];</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineClipTracks: PackedClipTrack[];</span>
+<span class="cstat-no" title="statement not covered" >  export let clipDrag: TimelineClipDrag | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let keyframeDragDelta: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedKeyframeOffset: number | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let transitionBoundaries: ClipTransitionBoundary[];</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedTransition: ClipTransitionBoundary | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let projectAudioTrack: Track | null;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioName: string;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioClipDuration: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioWaveformLoading: boolean;</span>
+<span class="cstat-no" title="statement not covered" >  export let audioWaveformPath: string;</span>
+<span class="cstat-no" title="statement not covered" >  export let visibleWaveformPeaks: number;</span>
+<span class="cstat-no" title="statement not covered" >  export let assets: Map&lt;string, LoadedAsset&gt;;</span>
+<span class="cstat-no" title="statement not covered" >  export let onResizeTimeline: (event: PointerEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onResizeTimelineKey: (event: KeyboardEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onReset: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onPlay: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onPause: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onAudioSelected: (event: Event) =&gt; void | Promise&lt;void&gt;;</span>
+<span class="cstat-no" title="statement not covered" >  export let onRemoveAudio: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDuplicateSelected: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDeleteSelected: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onUndo: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onRedo: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSplitSelectedClip: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineRange: (id: string) =&gt; { start: number; end: number };</span>
+<span class="cstat-no" title="statement not covered" >  export let onToggleSnap: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSetTimelineZoom: (zoom: number) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelinePercent: (time: number) =&gt; number;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTimelineDragOver: (event: DragEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTimelineDrop: (event: DragEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTimelineDragLeave: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTimelineWheel: (event: WheelEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSeek: (event: Event) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let timelineTrackDisplayOrder: (track: Track | null | undefined, fallbackId: string) =&gt; number;</span>
+<span class="cstat-no" title="statement not covered" >  export let onUpdateTrack: (track: Track, updates: { hidden?: boolean; muted?: boolean }) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let selectedKeyframeMarkers: { offset: number; easing?: string; properties: string[] }[];</span>
+<span class="cstat-no" title="statement not covered" >  export let keyframeTime: (offset: number) =&gt; number;</span>
+<span class="cstat-no" title="statement not covered" >  export let onMoveTimelineElement: (event: PointerEvent, element: Element) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSelectElement: (id: string, seek?: boolean) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDuplicateElement: (id: string) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onShowMoreOptions: (id: string) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDeleteElement: (id: string) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTrimElement: (event: PointerEvent, id: string, edge: 'start' | 'end') =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDragKeyframe: (event: PointerEvent, offset: number) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSelectKeyframe: (offset: number) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDeleteKeyframeAt: (event: Event, offset: number) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onAddKeyframe: () =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onMoveTimelineAudio: (event: PointerEvent) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onMoveTimelineClip: (event: PointerEvent, clip: Clip) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDuplicateClip: (id: string) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onTrimTimelineClip: (event: PointerEvent, clip: Clip, edge: 'start' | 'end') =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDeleteClip: (id: string) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onDropTransition: (event: DragEvent, boundary: ClipTransitionBoundary) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onSelectTransition: (boundary: ClipTransitionBoundary) =&gt; void;</span>
+<span class="cstat-no" title="statement not covered" >  export let onAudioMetadata: (duration: number) =&gt; void;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  let keyframeAtPlayhead = false;</span>
+<span class="cstat-no" title="statement not covered" >  $: keyframeAtPlayhead = selectedKeyframeMarkers.some(</span>
+<span class="cstat-no" title="statement not covered" >    (frame) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >      Math.abs(keyframeTime(frame.offset) - currentTime) &lt;=</span>
+<span class="cstat-no" title="statement not covered" >      0.5 / (scene?.canvas.fps ?? 60)</span>
+  );
+<span class="cstat-no" title="statement not covered" >&lt;/script&gt;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  &lt;section class="me-timeline-panel"&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;button</span>
+      type="button"
+      class="me-timeline-resizer"
+      aria-label="Resize timeline"
+      title="Drag to resize timeline"
+<span class="cstat-no" title="statement not covered" >      on:pointerdown={onResizeTimeline}</span>
+<span class="cstat-no" title="statement not covered" >      on:keydown={onResizeTimelineKey}</span>
+    &gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;
+<span class="cstat-no" title="statement not covered" >    &lt;div class="me-timeline-toolbar"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div class="me-playback-controls"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button on:click={onReset} class="me-control-btn" title="Go to start (Home)"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;SkipBack size={17} /&gt;</span>
+        &lt;/button&gt;
+<span class="cstat-no" title="statement not covered" >        &lt;button on:click={isPlaying ? onPause : onPlay} class="me-control-btn me-play-btn" title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >          {#if isPlaying}&lt;Pause size={19} /&gt;{:else}&lt;Play size={19} /&gt;{/if}</span>
+        &lt;/button&gt;
+<span class="cstat-no" title="statement not covered" >        &lt;span class="me-timecode"&gt;{formatPreciseTime(currentTime)}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;span class="me-framecode"&gt;Frame {displayFrame}&lt;/span&gt;</span>
+      &lt;/div&gt;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      &lt;div class="me-timeline-context"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;Layers3 size={14} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;span&gt;{selectedElement?.id ?? selectedClip?.assetName ?? 'Timeline'}&lt;/span&gt;</span>
+      &lt;/div&gt;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      &lt;div class="me-timeline-actions"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;input bind:this={audioInput} class="me-file-input" type="file" accept="audio/*" on:change={onAudioSelected} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        {#if audioName}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;span class="me-audio-chip"&gt;&lt;Music2 size={13} /&gt; {audioName}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button class="me-icon-btn" on:click={onRemoveAudio} title="Remove audio"&gt;&lt;Trash2 size={14} /&gt;&lt;/button&gt;</span>
+        {:else}
+<span class="cstat-no" title="statement not covered" >          &lt;button class="me-timeline-command" on:click={() =&gt; audioInput.click()} title="Attach audio"&gt;&lt;Upload size={14} /&gt; Audio&lt;/button&gt;</span>
+        {/if}
+<span class="cstat-no" title="statement not covered" >        {#if selectedElement || selectedClip}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button class="me-icon-btn" on:click={onDuplicateSelected} title="Duplicate selected layer (Ctrl/Cmd+D)" aria-label="Duplicate selected layer"&gt;&lt;Copy size={14} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button class="me-icon-btn me-danger-btn" on:click={onDeleteSelected} title="Delete selected layer (Delete)"&gt;&lt;Trash2 size={14} /&gt;&lt;/button&gt;</span>
+        {/if}
+<span class="cstat-no" title="statement not covered" >        &lt;button class="me-icon-btn" on:click={onUndo} disabled={!editorCanUndo} title="Undo (Ctrl/Cmd+Z)"&gt;&lt;Undo2 size={14} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button class="me-icon-btn" on:click={onRedo} disabled={!editorCanRedo} title="Redo (Ctrl/Cmd+Shift+Z)"&gt;&lt;Redo2 size={14} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button class="me-icon-btn" on:click={onSplitSelectedClip} disabled={!((selectedClip &amp;&amp; currentTime &gt; selectedClip.start &amp;&amp; currentTime &lt; selectedClip.start + selectedClip.duration) || (selectedElement &amp;&amp; currentTime &gt; timelineRange(selectedElement.id).start &amp;&amp; currentTime &lt; timelineRange(selectedElement.id).end))} title="Split selected clip at playhead (S)"&gt;&lt;Scissors size={14} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button class="me-icon-btn" class:me-active={snapEnabled} on:click={onToggleSnap} title={snapEnabled ? 'Disable smart snapping' : 'Enable smart snapping'}&gt;&lt;Magnet size={15} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button on:click={() =&gt; onSetTimelineZoom(timelineZoom / 1.25)} class="me-icon-btn" title="Timeline zoom out"&gt;&lt;Minus size={15} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;span class="me-timeline-zoom-value"&gt;{Math.round(timelineZoom * 100)}%&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button on:click={() =&gt; onSetTimelineZoom(timelineZoom * 1.25)} class="me-icon-btn" title="Timeline zoom in"&gt;&lt;Plus size={15} /&gt;&lt;/button&gt;</span>
+      &lt;/div&gt;
+    &lt;/div&gt;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    &lt;div </span>
+<span class="cstat-no" title="statement not covered" >      bind:this={timelineScroll}</span>
+      class="me-timeline-scroll" 
+<span class="cstat-no" title="statement not covered" >      style={`--timeline-content-width: ${timelineContentWidth}px; --playhead-position: ${timelinePercent(currentTime)}%`}</span>
+<span class="cstat-no" title="statement not covered" >      class:me-drop-target={draggingAsset !== null || draggingAudio}</span>
+      role="region"
+      aria-label="Timeline tracks"
+<span class="cstat-no" title="statement not covered" >      on:dragover={onTimelineDragOver}</span>
+<span class="cstat-no" title="statement not covered" >      on:drop={onTimelineDrop}</span>
+<span class="cstat-no" title="statement not covered" >      on:dragleave={onTimelineDragLeave}</span>
+<span class="cstat-no" title="statement not covered" >      on:wheel={onTimelineWheel}</span>
+    &gt;
+<span class="cstat-no" title="statement not covered" >      &lt;div class="me-ruler-row"&gt;</span>
+        &lt;div class="me-track-label me-ruler-label"&gt;Layers&lt;/div&gt;
+<span class="cstat-no" title="statement not covered" >        &lt;div class="me-ruler"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          {#each timelineTicks as tick}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="me-ruler-tick" style={`left: ${timelinePercent(tick)}%`}&gt;{formatTime(tick)}&lt;/span&gt;</span>
+          {/each}
+          &lt;span class="me-playhead-marker"&gt;&lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >          {#if timelineSnapGuide !== null}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="me-timeline-snap-guide" style={`left: ${timelinePercent(timelineSnapGuide)}%`}&gt;&lt;/span&gt;</span>
+          {/if}
+<span class="cstat-no" title="statement not covered" >          {#if dropTargetTime !== null}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="me-drop-indicator" style={`left: ${timelinePercent(dropTargetTime)}%`}&gt;&lt;/span&gt;</span>
+          {/if}
+<span class="cstat-no" title="statement not covered" >          &lt;input class="me-timeline-scrubber" type="range" min="0" max={timelineVisibleDuration} step={1 / (scene?.canvas.fps ?? 60)} value={currentTime} on:input={onSeek} aria-label="Timeline scrubber" /&gt;</span>
+        &lt;/div&gt;
+      &lt;/div&gt;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      {#each timelineRows as row}</span>
+<span class="cstat-no" title="statement not covered" >        {@const rowTrack = scene?.tracks.find((track) =&gt; track.id === row.trackId)}</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div</span>
+          class="me-timeline-row"
+<span class="cstat-no" title="statement not covered" >          class:me-selected={row.items.some((item) =&gt; item.element.id === selectedElementId)}</span>
+<span class="cstat-no" title="statement not covered" >          style={`min-height: ${row.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(rowTrack, row.trackId)}`}</span>
+        &gt;
+<span class="cstat-no" title="statement not covered" >          &lt;div class="me-track-label" class:me-track-hidden={rowTrack?.hidden}&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="me-track-thumb"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {#if row.items[0].element.kind === 'asset' &amp;&amp; row.items[0].element.asset?.type === 'video'}&lt;Video size={12} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {:else if row.items[0].element.kind === 'asset' &amp;&amp; row.items[0].element.asset?.path}&lt;img src={assetPreviewSource(assets.get(row.items[0].element.assetName ?? ''), row.items[0].element.asset.path)} alt="" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {:else if row.kind === 'text'}&lt;Type size={12} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {:else if row.kind === 'effect'}&lt;Sparkles size={12} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {:else}&lt;Square size={12} /&gt;{/if}</span>
+            &lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >            &lt;span class="me-track-copy"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;strong&gt;{timelineLaneLabel(row)}&lt;/strong&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;small&gt;{row.items.length} {row.items.length === 1 ? 'element' : 'elements'}{row.laneCount &gt; 1 ? ` · ${row.laneCount} stacked` : ''}&lt;/small&gt;</span>
+            &lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >            {#if rowTrack}</span>
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-track-controls"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-track-control" class:me-active={rowTrack.hidden} on:click|stopPropagation={() =&gt; onUpdateTrack(rowTrack, { hidden: !rowTrack.hidden })} title={rowTrack.hidden ? 'Show track' : 'Hide track'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {#if rowTrack.hidden}&lt;EyeOff size={13} /&gt;{:else}&lt;Eye size={13} /&gt;{/if}</span>
+                &lt;/button&gt;
+              &lt;/span&gt;
+            {:else}
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-track-time"&gt;{formatPreciseTime(row.start)} - {formatPreciseTime(row.end)}&lt;/span&gt;</span>
+            {/if}
+          &lt;/div&gt;
+<span class="cstat-no" title="statement not covered" >          &lt;div class="me-track-lane" data-track={row.trackId} style={`min-height: ${row.laneCount * 34 + 7}px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >            {#if clipDrag &amp;&amp; clipDrag.ghostTrackId === row.trackId}</span>
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-clip-ghost" class:me-invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {#if clipDrag.kind === 'element' &amp;&amp; clipDrag.id === selectedElementId &amp;&amp; !row.items.some((item) =&gt; item.element.id === selectedElementId)}</span>
+<span class="cstat-no" title="statement not covered" >                {#each selectedKeyframeMarkers as frame}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-keyframe-marker me-drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"&gt;&lt;/span&gt;</span>
+                {/each}
+              {/if}
+            {/if}
+<span class="cstat-no" title="statement not covered" >            {#each row.items as item}</span>
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-clip me-element-clip" class:me-selected-clip={item.element.id === selectedElementId} style={`left: ${timelinePercent(item.range.start)}%; width: ${Math.max(0.8, timelinePercent(item.range.end - item.range.start))}%; top: ${6 + item.lane * 34}px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {#if item.element.kind === 'asset' &amp;&amp; item.element.asset?.type === 'video'}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-clip-media me-video-clip-media"&gt;&lt;Video size={13} /&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {:else if item.element.kind === 'asset' &amp;&amp; item.element.asset?.path}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span</span>
+                    class="me-clip-media"
+<span class="cstat-no" title="statement not covered" >                    style={`background-image: url('${assetPreviewSource(assets.get(item.element.assetName ?? ''), item.element.asset.path)}')`}</span>
+                  &gt;&lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >                {:else if item.element.kind === 'text'}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-clip-text"&gt;{stringProperty(item.element, 'value', item.element.id)}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {:else if item.element.kind === 'overlay'}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-clip-color" style={`background: ${stringProperty(item.element, 'fill', '#34404e')}`}&gt;&lt;/span&gt;</span>
+                {/if}
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-select" on:pointerdown={(event) =&gt; onMoveTimelineElement(event, item.element)} on:click={() =&gt; onSelectElement(item.element.id, false)} aria-label={`Select or move ${item.element.id}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-duplicate" on:click|stopPropagation={() =&gt; onDuplicateElement(item.element.id)} title="Duplicate layer (Ctrl/Cmd+D)" aria-label={`Duplicate ${item.element.id}`}&gt;&lt;Copy size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-more" on:click|stopPropagation={() =&gt; onShowMoreOptions(item.element.id)} title="More options" aria-label={`Show more options for ${item.element.id}`}&gt;&lt;Ellipsis size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-delete" on:click|stopPropagation={() =&gt; onDeleteElement(item.element.id)} title="Delete layer (Delete)" aria-label={`Delete ${item.element.id}`}&gt;&lt;X size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-trim-handle me-trim-start" on:pointerdown={(event) =&gt; onTrimElement(event, item.element.id, 'start')} aria-label={`Trim start of ${item.element.id}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-trim-handle me-trim-end" on:pointerdown={(event) =&gt; onTrimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}&gt;&lt;/button&gt;</span>
+              &lt;/span&gt;
+            {/each}
+<span class="cstat-no" title="statement not covered" >            {#if row.items.some((item) =&gt; item.element.id === selectedElementId) &amp;&amp; !(clipDrag?.kind === 'element' &amp;&amp; clipDrag.id === selectedElementId &amp;&amp; clipDrag.ghostTrackId !== row.trackId)}</span>
+<span class="cstat-no" title="statement not covered" >              {@const kfLane = row.items.find((item) =&gt; item.element.id === selectedElementId)?.lane ?? 0}</span>
+<span class="cstat-no" title="statement not covered" >              {#each selectedKeyframeMarkers as frame}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button</span>
+                  type="button"
+                  class="me-keyframe-marker"
+<span class="cstat-no" title="statement not covered" >                  class:me-selected-keyframe={selectedKeyframeOffset !== null &amp;&amp; Math.abs(selectedKeyframeOffset - frame.offset) &lt; 0.000001}</span>
+<span class="cstat-no" title="statement not covered" >                  style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}</span>
+<span class="cstat-no" title="statement not covered" >                  title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}</span>
+<span class="cstat-no" title="statement not covered" >                  aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}</span>
+<span class="cstat-no" title="statement not covered" >                  on:pointerdown={(event) =&gt; onDragKeyframe(event, frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                  on:click|stopPropagation={() =&gt; onSelectKeyframe(frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                  on:contextmenu={(event) =&gt; onDeleteKeyframeAt(event, frame.offset)}</span>
+                &gt;&lt;/button&gt;
+              {/each}
+<span class="cstat-no" title="statement not covered" >              {#if !keyframeAtPlayhead}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button</span>
+                  type="button"
+                  class="me-keyframe-add"
+<span class="cstat-no" title="statement not covered" >                  style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}</span>
+                  title="Add keyframe at playhead"
+                  aria-label="Add keyframe at playhead"
+                  on:pointerdown|stopPropagation
+<span class="cstat-no" title="statement not covered" >                  on:click|stopPropagation={onAddKeyframe}</span>
+                &gt;+&lt;/button&gt;
+              {/if}
+            {/if}
+          &lt;/div&gt;
+        &lt;/div&gt;
+      {/each}
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      {#each timelineClipTracks as clipTrack}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div class="me-timeline-row me-clip-row" class:me-selected={clipTrack.clips.some(({ clip }) =&gt; clip.id === selectedElementId) || clipTrack.elements.some(({ item }) =&gt; item.element.id === selectedElementId)} style={`min-height: ${clipTrack.laneCount * 34 + 8}px; order: ${timelineTrackDisplayOrder(clipTrack.metadata, String(clipTrack.track))}`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div class="me-track-label" class:me-track-hidden={clipTrack.metadata?.hidden}&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-track-thumb"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {#if clipTrack.metadata?.role === 'audio'}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;Music2 size={12} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {:else if clipTrack.clips[0]?.clip.asset?.type === 'video'}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;Video size={12} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {:else if clipTrack.clips[0]?.clip.asset?.path}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;img src={assetPreviewSource(assets.get(clipTrack.clips[0].clip.assetName), clipTrack.clips[0].clip.asset?.path)} alt="" /&gt;</span>
+                {:else}
+<span class="cstat-no" title="statement not covered" >                  &lt;Layers3 size={12} /&gt;</span>
+                {/if}
+              &lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >              &lt;span class="me-track-copy"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;strong&gt;{clipTrack.metadata?.label ?? `Legacy Track ${clipTrack.track}`}&lt;/strong&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;small&gt;{clipTrack.metadata?.role ?? 'overlay'} · {clipTrack.clips.length + clipTrack.elements.length} {clipTrack.clips.length + clipTrack.elements.length === 1 ? 'item' : 'items'}&lt;/small&gt;</span>
+              &lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >              {#if clipTrack.metadata}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;span class="me-track-controls"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {#if clipTrack.metadata.role !== 'audio'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;button type="button" class="me-track-control" class:me-active={clipTrack.metadata.hidden} on:click|stopPropagation={() =&gt; onUpdateTrack(clipTrack.metadata!, { hidden: !clipTrack.metadata!.hidden })} title={clipTrack.metadata.hidden ? 'Show track' : 'Hide track'} aria-label={clipTrack.metadata.hidden ? 'Show track' : 'Hide track'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      {#if clipTrack.metadata.hidden}&lt;EyeOff size={13} /&gt;{:else}&lt;Eye size={13} /&gt;{/if}</span>
+                    &lt;/button&gt;
+                  {/if}
+<span class="cstat-no" title="statement not covered" >                  {#if clipTrack.metadata.role === 'audio' || clipTrack.metadata.role === 'main' || clipTrack.metadata.content === 'video'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;button type="button" class="me-track-control" class:me-active={clipTrack.metadata.muted} on:click|stopPropagation={() =&gt; onUpdateTrack(clipTrack.metadata!, { muted: !clipTrack.metadata!.muted })} title={clipTrack.metadata.muted ? 'Unmute track' : 'Mute track'} aria-label={clipTrack.metadata.muted ? 'Unmute track' : 'Mute track'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      {#if clipTrack.metadata.muted}&lt;VolumeX size={13} /&gt;{:else}&lt;Volume2 size={13} /&gt;{/if}</span>
+                    &lt;/button&gt;
+                  {/if}
+                &lt;/span&gt;
+              {/if}
+            &lt;/div&gt;
+<span class="cstat-no" title="statement not covered" >            &lt;div class="me-track-lane" data-track={clipTrack.track} style={`min-height: ${clipTrack.laneCount * 34 + 7}px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {#if clipDrag &amp;&amp; clipDrag.ghostTrackId === String(clipTrack.track)}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;span class="me-clip-ghost" class:me-invalid={!clipDrag.valid} style={`left: ${timelinePercent(clipDrag.ghostStart)}%; width: ${Math.max(0.8, timelinePercent(clipDrag.duration))}%`}&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {#if clipDrag.kind === 'element' &amp;&amp; clipDrag.id === selectedElementId &amp;&amp; !clipTrack.elements.some(({ item }) =&gt; item.element.id === selectedElementId)}</span>
+<span class="cstat-no" title="statement not covered" >                  {#each selectedKeyframeMarkers as frame}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-keyframe-marker me-drag-keyframe" style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: 19.5px`} aria-hidden="true"&gt;&lt;/span&gt;</span>
+                  {/each}
+                {/if}
+              {/if}
+<span class="cstat-no" title="statement not covered" >              {#if clipTrack.metadata?.id === projectAudioTrack?.id &amp;&amp; audioName}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;span class="me-clip me-audio-clip" class:me-muted={projectAudioTrack?.muted} style={`left: ${timelinePercent(scene?.audioStart ?? 0)}%; width: ${timelinePercent(audioClipDuration)}%; top: 6px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-audio-waveform" class:me-loading={audioWaveformLoading} aria-hidden="true"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {#if audioWaveformPath}</span>
+<span class="cstat-no" title="statement not covered" >                      &lt;svg viewBox={`0 0 ${visibleWaveformPeaks} 24`} preserveAspectRatio="none"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;path d={audioWaveformPath}&gt;&lt;/path&gt;</span>
+                      &lt;/svg&gt;
+                    {/if}
+                  &lt;/span&gt;
+<span class="cstat-no" title="statement not covered" >                  &lt;span class="me-clip-text me-audio-clip-label"&gt;{audioName}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-select" on:pointerdown={onMoveTimelineAudio} aria-label={`Move audio ${audioName}`}&gt;&lt;/button&gt;</span>
+                &lt;/span&gt;
+              {/if}
+<span class="cstat-no" title="statement not covered" >              {#each clipTrack.elements as packedElement}</span>
+<span class="cstat-no" title="statement not covered" >                {@const item = packedElement.item}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;span class="me-clip me-element-clip" class:me-selected-clip={item.element.id === selectedElementId} style={`left: ${timelinePercent(item.range.start)}%; width: ${Math.max(0.8, timelinePercent(item.range.end - item.range.start))}%; top: ${6 + packedElement.lane * 34}px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {#if item.element.kind === 'asset' &amp;&amp; item.element.asset?.type === 'video'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-media me-video-clip-media"&gt;&lt;Video size={13} /&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {:else if item.element.kind === 'asset' &amp;&amp; item.element.asset?.path}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-media" style={`background-image: url('${assetPreviewSource(assets.get(item.element.assetName ?? ''), item.element.asset.path)}')`}&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {:else if item.element.kind === 'text'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-text"&gt;{stringProperty(item.element, 'value', item.element.id)}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {:else if item.element.kind === 'overlay'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-color" style={`background: ${stringProperty(item.element, 'fill', '#34404e')}`}&gt;&lt;/span&gt;</span>
+                  {:else}
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-text"&gt;{item.element.id}&lt;/span&gt;</span>
+                  {/if}
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-select" on:pointerdown={(event) =&gt; onMoveTimelineElement(event, item.element)} on:click={() =&gt; onSelectElement(item.element.id, false)} aria-label={`Select or move ${item.element.id}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-duplicate" on:click|stopPropagation={() =&gt; onDuplicateElement(item.element.id)} title="Duplicate layer (Ctrl/Cmd+D)" aria-label={`Duplicate ${item.element.id}`}&gt;&lt;Copy size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-more" on:click|stopPropagation={() =&gt; onShowMoreOptions(item.element.id)} title="More options" aria-label={`Show more options for ${item.element.id}`}&gt;&lt;Ellipsis size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button type="button" class="me-clip-action me-clip-delete" on:click|stopPropagation={() =&gt; onDeleteElement(item.element.id)} title="Delete layer (Delete)" aria-label={`Delete ${item.element.id}`}&gt;&lt;X size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-trim-handle me-trim-start" on:pointerdown={(event) =&gt; onTrimElement(event, item.element.id, 'start')} aria-label={`Trim start of ${item.element.id}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-trim-handle me-trim-end" on:pointerdown={(event) =&gt; onTrimElement(event, item.element.id, 'end')} aria-label={`Trim end of ${item.element.id}`}&gt;&lt;/button&gt;</span>
+                &lt;/span&gt;
+              {/each}
+<span class="cstat-no" title="statement not covered" >              {#if clipTrack.elements.some(({ item }) =&gt; item.element.id === selectedElementId) &amp;&amp; !(clipDrag?.kind === 'element' &amp;&amp; clipDrag.id === selectedElementId &amp;&amp; clipDrag.ghostTrackId !== String(clipTrack.track))}</span>
+<span class="cstat-no" title="statement not covered" >                {@const kfLane = clipTrack.elements.find(({ item }) =&gt; item.element.id === selectedElementId)?.lane ?? 0}</span>
+<span class="cstat-no" title="statement not covered" >                {#each selectedKeyframeMarkers as frame}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button</span>
+                    type="button"
+                    class="me-keyframe-marker"
+<span class="cstat-no" title="statement not covered" >                    class:me-selected-keyframe={selectedKeyframeOffset !== null &amp;&amp; Math.abs(selectedKeyframeOffset - frame.offset) &lt; 0.000001}</span>
+<span class="cstat-no" title="statement not covered" >                    style={`left: ${timelinePercent(keyframeTime(frame.offset) + keyframeDragDelta)}%; top: ${6 + kfLane * 34 + 13.5}px`}</span>
+<span class="cstat-no" title="statement not covered" >                    title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}</span>
+<span class="cstat-no" title="statement not covered" >                    aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}</span>
+<span class="cstat-no" title="statement not covered" >                    on:pointerdown={(event) =&gt; onDragKeyframe(event, frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                    on:click|stopPropagation={() =&gt; onSelectKeyframe(frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                    on:contextmenu={(event) =&gt; onDeleteKeyframeAt(event, frame.offset)}</span>
+                  &gt;&lt;/button&gt;
+                {/each}
+<span class="cstat-no" title="statement not covered" >                {#if !keyframeAtPlayhead}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button</span>
+                    type="button"
+                    class="me-keyframe-add"
+<span class="cstat-no" title="statement not covered" >                    style={`left: ${timelinePercent(currentTime)}%; top: ${6 + kfLane * 34 + 13.5}px`}</span>
+                    title="Add keyframe at playhead"
+                    aria-label="Add keyframe at playhead"
+                    on:pointerdown|stopPropagation
+<span class="cstat-no" title="statement not covered" >                    on:click|stopPropagation={onAddKeyframe}</span>
+                  &gt;+&lt;/button&gt;
+                {/if}
+              {/if}
+<span class="cstat-no" title="statement not covered" >              {#each clipTrack.clips as packedClip}</span>
+<span class="cstat-no" title="statement not covered" >                {@const clip = packedClip.clip}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;span class="me-clip me-timeline-clip" class:me-selected-clip={clip.id === selectedElementId} style={`left: ${timelinePercent(clip.start)}%; width: ${Math.max(0.8, timelinePercent(clip.duration))}%; top: ${6 + packedClip.lane * 34}px`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {#if clip.asset?.type === 'video'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-media me-video-clip-media"&gt;&lt;Video size={13} /&gt;&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  {:else if clip.asset?.path}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span</span>
+                      class="me-clip-media"
+<span class="cstat-no" title="statement not covered" >                      style={`background-image: url('${assetPreviewSource(assets.get(clip.assetName), clip.asset.path)}')`}</span>
+                    &gt;&lt;/span&gt;
+                  {:else}
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-text"&gt;{clip.assetName}&lt;/span&gt;</span>
+                  {/if}
+<span class="cstat-no" title="statement not covered" >                  {#if clip.trimIn &gt; 0 || clip.trimOut &gt; 0}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span class="me-clip-trim-label"&gt;↤ {clip.trimIn.toFixed(2)}s · {clip.trimOut.toFixed(2)}s ↦&lt;/span&gt;</span>
+                  {/if}
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-select" on:pointerdown={(event) =&gt; onMoveTimelineClip(event, clip)} on:click={() =&gt; onSelectElement(clip.id, false)} aria-label={`Select ${clip.assetName} clip`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-action me-clip-duplicate" on:click|stopPropagation={() =&gt; onDuplicateClip(clip.id)} title="Duplicate clip (Ctrl/Cmd+D)" aria-label={`Duplicate ${clip.assetName} clip`}&gt;&lt;Copy size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-action me-clip-more" on:click|stopPropagation={() =&gt; onShowMoreOptions(clip.id)} title="More options" aria-label={`Show more options for ${clip.assetName} clip`}&gt;&lt;Ellipsis size={11} /&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-trim-handle me-trim-start" on:pointerdown={(event) =&gt; onTrimTimelineClip(event, clip, 'start')} aria-label={`Trim start of ${clip.assetName}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-trim-handle me-trim-end" on:pointerdown={(event) =&gt; onTrimTimelineClip(event, clip, 'end')} aria-label={`Trim end of ${clip.assetName}`}&gt;&lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" class="me-clip-action me-clip-delete" on:click|stopPropagation={() =&gt; onDeleteClip(clip.id)} title="Delete clip (Delete)"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;X size={12} /&gt;</span>
+                  &lt;/button&gt;
+                &lt;/span&gt;
+              {/each}
+<span class="cstat-no" title="statement not covered" >              {#if selectedClip &amp;&amp; String(selectedClip.track) === String(clipTrack.track)}</span>
+<span class="cstat-no" title="statement not covered" >                {@const selectedPackedClip = clipTrack.clips.find(({ clip }) =&gt; clip.id === selectedClip?.id)}</span>
+<span class="cstat-no" title="statement not covered" >                {@const selectedClipLane = selectedPackedClip?.lane ?? 0}</span>
+<span class="cstat-no" title="statement not covered" >                {#each selectedKeyframeMarkers as frame}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button</span>
+                    type="button"
+                    class="me-keyframe-marker"
+<span class="cstat-no" title="statement not covered" >                    class:me-selected-keyframe={selectedKeyframeOffset !== null &amp;&amp; Math.abs(selectedKeyframeOffset - frame.offset) &lt; 0.000001}</span>
+<span class="cstat-no" title="statement not covered" >                    style={`left: ${timelinePercent(keyframeTime(frame.offset))}%; top: ${6 + selectedClipLane * 34 + 13.5}px`}</span>
+<span class="cstat-no" title="statement not covered" >                    title={`${frame.properties.join(', ') || 'Keyframe'} · ${Math.round(frame.offset * 100)}%${frame.easing ? ' · ' + frame.easing : ''} — drag to retime, right-click to delete`}</span>
+<span class="cstat-no" title="statement not covered" >                    aria-label={`Keyframe at ${Math.round(frame.offset * 100)} percent`}</span>
+<span class="cstat-no" title="statement not covered" >                    on:pointerdown={(event) =&gt; onDragKeyframe(event, frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                    on:click|stopPropagation={() =&gt; onSelectKeyframe(frame.offset)}</span>
+<span class="cstat-no" title="statement not covered" >                    on:contextmenu={(event) =&gt; onDeleteKeyframeAt(event, frame.offset)}</span>
+                  &gt;&lt;/button&gt;
+                {/each}
+<span class="cstat-no" title="statement not covered" >                {#if !keyframeAtPlayhead}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button</span>
+                    type="button"
+                    class="me-keyframe-add"
+<span class="cstat-no" title="statement not covered" >                    style={`left: ${timelinePercent(currentTime)}%; top: ${6 + selectedClipLane * 34 + 13.5}px`}</span>
+                    title="Add keyframe at playhead"
+                    aria-label="Add keyframe at playhead"
+                    on:pointerdown|stopPropagation
+<span class="cstat-no" title="statement not covered" >                    on:click|stopPropagation={onAddKeyframe}</span>
+                  &gt;+&lt;/button&gt;
+                {/if}
+              {/if}
+<span class="cstat-no" title="statement not covered" >              {#each transitionBoundaries.filter((boundary) =&gt; String(boundary.outgoing.track) === String(clipTrack.track)) as boundary}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;button</span>
+                  type="button"
+                  class="me-transition-cut"
+<span class="cstat-no" title="statement not covered" >                  class:me-has-transition={boundary.type !== null}</span>
+<span class="cstat-no" title="statement not covered" >                  class:me-drop-ready={draggingTransition !== null}</span>
+<span class="cstat-no" title="statement not covered" >                  class:me-selected-transition={selectedTransition?.outgoing.id === boundary.outgoing.id &amp;&amp; selectedTransition?.incoming.id === boundary.incoming.id}</span>
+<span class="cstat-no" title="statement not covered" >                  style={`left: ${timelinePercent(boundary.at)}%`}</span>
+<span class="cstat-no" title="statement not covered" >                  title={boundary.type ? `Crossfade · ${boundary.duration.toFixed(2)}s` : 'Drop a transition here'}</span>
+<span class="cstat-no" title="statement not covered" >                  aria-label={boundary.type ? `Select crossfade between ${boundary.outgoing.assetName} and ${boundary.incoming.assetName}` : `Add transition between ${boundary.outgoing.assetName} and ${boundary.incoming.assetName}`}</span>
+                  on:dragover|preventDefault|stopPropagation
+<span class="cstat-no" title="statement not covered" >                  on:drop={(event) =&gt; onDropTransition(event, boundary)}</span>
+<span class="cstat-no" title="statement not covered" >                  on:click|stopPropagation={() =&gt; onSelectTransition(boundary)}</span>
+                &gt;
+<span class="cstat-no" title="statement not covered" >                  {boundary.type ? '×' : '+'}</span>
+                &lt;/button&gt;
+              {/each}
+            &lt;/div&gt;
+          &lt;/div&gt;
+      {/each}
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      {#if timelineRows.length === 0 &amp;&amp; timelineClipTracks.every((track) =&gt; track.clips.length === 0 &amp;&amp; track.elements.length === 0) &amp;&amp; !audioName}</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div class="me-timeline-empty"&gt;&lt;Layers3 size={16} /&gt;&lt;span&gt;No timeline layers yet. Add text or drag media here to begin.&lt;/span&gt;&lt;/div&gt;</span>
+      {/if}
+    &lt;/div&gt;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    &lt;audio bind:this={audioElement} on:loadedmetadata={() =&gt; onAudioMetadata(audioElement.duration)}&gt;&lt;/audio&gt;</span>
+  &lt;/section&gt;
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-07-27T17:10:21.548Z
+            </div>
+        <script src="../../../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../../../sorter.js"></script>
+        <script src="../../../../../block-navigation.js"></script>
+    </body>
+</html>
+    
