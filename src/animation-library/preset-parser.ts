@@ -51,7 +51,7 @@ function parseOptions(source: string): PresetOptions {
  * Normalize option value based on key
  */
 function normalizeOption(key: string, value: string): number | string {
-  if (['delay', 'duration', 'stagger', 'exitAt', 'exitDuration'].includes(key)) {
+  if (['delay', 'duration', 'stagger', 'exitAt', 'exitDuration', 'anticipation'].includes(key)) {
     return parseTime(value);
   }
 

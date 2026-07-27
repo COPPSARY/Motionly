@@ -33,32 +33,67 @@ export function cloneElementInProgram(
       node.type === 'Element' || node.type === 'Import' ? [node.name] : []
     )
   );
-  const base = `${elementId}_copy`;
-  let id = base;
-  let suffix = 2;
-  while (usedNames.has(id)) id = `${base}_${suffix++}`;
-
-  const sourceImport = program.body.find(
-    (node): node is ImportNode => node.type === 'Import' && node.name === elementId
+  const descendants = new Set([elementId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of program.body) {
+      if (
+        node.type === 'Element' &&
+        descendants.has(String(node.properties['parent'] ?? '')) &&
+        !descendants.has(node.name)
+      ) {
+        descendants.add(node.name);
+        changed = true;
+      }
+    }
+  }
+  const sourceElements = program.body.filter(
+    (node): node is ElementNode => node.type === 'Element' && descendants.has(node.name)
   );
-  const clone: ElementNode = {
-    ...source,
-    name: id,
-    properties: {
-      ...source.properties,
-      x: Number(source.properties['x'] ?? 0) + offset,
-      y: Number(source.properties['y'] ?? 0) + offset,
-    },
+  const idMap = new Map<string, string>();
+  for (const element of sourceElements) {
+    const base = `${element.name}_copy`;
+    let next = base;
+    let suffix = 2;
+    while (usedNames.has(next)) next = `${base}_${suffix++}`;
+    usedNames.add(next);
+    idMap.set(element.name, next);
+  }
+  const id = idMap.get(elementId)!;
+  const remapProperties = (properties: Record<string, unknown>, root: boolean) => {
+    const next = { ...properties };
+    for (const key of ['parent', 'mask', 'followThrough', 'motionPath', 'from', 'to']) {
+      const mapped = idMap.get(String(next[key] ?? ''));
+      if (mapped) next[key] = mapped;
+    }
+    if (root) {
+      next['x'] = Number(next['x'] ?? 0) + offset;
+      next['y'] = Number(next['y'] ?? 0) + offset;
+    }
+    return next;
   };
+  const clones = sourceElements.map((element): ElementNode => ({
+    ...element,
+    name: idMap.get(element.name)!,
+    properties: remapProperties(element.properties, element.name === elementId),
+  }));
   const animations = program.body
-    .filter((node): node is AnimationNode => node.type === 'Animation' && node.target === elementId)
-    .map((animation) => cloneAnimation(animation, id));
+    .filter(
+      (node): node is AnimationNode => node.type === 'Animation' && descendants.has(node.target)
+    )
+    .map((animation) => cloneAnimation(animation, idMap.get(animation.target)!));
 
   const body = [...program.body];
-  const sourceIndex = body.indexOf(source);
+  const sourceIndex = Math.max(...sourceElements.map((element) => body.indexOf(element)));
   const additions: ProgramNode['body'] = [];
-  if (sourceImport) additions.push({ ...sourceImport, name: id });
-  additions.push(clone, ...animations);
+  for (const element of sourceElements) {
+    const sourceImport = program.body.find(
+      (node): node is ImportNode => node.type === 'Import' && node.name === element.name
+    );
+    if (sourceImport) additions.push({ ...sourceImport, name: idMap.get(element.name)! });
+  }
+  additions.push(...clones, ...animations);
   body.splice(sourceIndex + 1, 0, ...additions);
   return { program: { ...program, body }, id };
 }

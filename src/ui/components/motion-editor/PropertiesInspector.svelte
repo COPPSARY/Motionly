@@ -13,6 +13,26 @@
 
   export let selectedTransition: ClipTransitionBoundary | null;
   export let selectedElement: Element | null;
+  export let onCopyMotion: () => void;
+  export let onPasteMotion: (mode: 'relative' | 'absolute') => void;
+  export let canPasteMotion: boolean;
+
+  function bezierValues(): [number, number, number, number] {
+    const easing = String(selectedAnimation?.easing ?? '');
+    const values = easing
+      .match(/^cubic-bezier\(([^)]+)\)$/)?.[1]
+      ?.split(',')
+      .map(Number);
+    return values?.length === 4 && values.every(Number.isFinite)
+      ? values as [number, number, number, number]
+      : [0.25, 0.1, 0.25, 1];
+  }
+
+  function updateBezier(index: number, value: number) {
+    const values = bezierValues();
+    values[index] = value;
+    onUpdateAnimationProperty('easing', `cubic-bezier(${values.map((item) => Number(item.toFixed(2))).join(', ')})`);
+  }
   export let selectedClip: Clip | null;
   export let selectedClipElement: Element | null;
   export let selectedAnimation: Animation | null;
@@ -150,6 +170,54 @@
                 <button type="button" class="me-input-suffix me-scrubbable-suffix" on:pointerdown={(event) => onBeginPropertyScrub(event, 'size', 72, 1)} on:keydown={(event) => onPropertyScrubKey(event, 'size', 72, 1)} aria-label="Font size: drag up or down to adjust" title="Drag up or down to adjust font size">px</button>
               </div>
             </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Text box width</div>
+                <div class="me-number-input-wrapper">
+                  <input class="me-number-input" type="number" min="1" value={numericProperty(selectedElement, 'width', 720)} on:input={(event) => onUpdateElementProperty('width', Number(event.currentTarget.value))} />
+                  <span class="me-input-suffix">px</span>
+                </div>
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Text box height</div>
+                <div class="me-number-input-wrapper">
+                  <input class="me-number-input" type="number" min="1" value={numericProperty(selectedElement, 'height', 180)} on:input={(event) => onUpdateElementProperty('height', Number(event.currentTarget.value))} />
+                  <span class="me-input-suffix">px</span>
+                </div>
+              </div>
+            </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Alignment</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'textAlign', 'center')} on:change={(event) => onUpdateElementProperty('textAlign', event.currentTarget.value)}>
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Vertical</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'verticalAlign', 'middle')} on:change={(event) => onUpdateElementProperty('verticalAlign', event.currentTarget.value)}>
+                  <option value="top">Top</option>
+                  <option value="middle">Middle</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </div>
+            </div>
+            <div class="me-property-row">
+              <div class="me-property-group">
+                <div class="me-property-label">Line height</div>
+                <input class="me-number-input" type="number" min="0.5" max="3" step="0.05" value={numericProperty(selectedElement, 'lineHeight', 1.2)} on:input={(event) => onUpdateElementProperty('lineHeight', Number(event.currentTarget.value))} />
+              </div>
+              <div class="me-property-group">
+                <div class="me-property-label">Wrapping</div>
+                <select class="me-text-input" value={stringProperty(selectedElement, 'wrap', 'none')} on:change={(event) => onUpdateElementProperty('wrap', event.currentTarget.value)}>
+                  <option value="none">None</option>
+                  <option value="word">Words</option>
+                  <option value="char">Characters</option>
+                </select>
+              </div>
+            </div>
           {/if}
           <div class="me-property-group">
             <div class="me-property-label-row">
@@ -263,6 +331,36 @@
             </div>
           </div>
 
+          <div class="me-property-group">
+            <div class="me-property-label-row">
+              <div class="me-property-label">3D Tilt</div>
+              <button type="button" class="me-property-keyframe" class:me-animated-property={isPropertyAnimated(['rotationX', 'rotationY'])} class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead(['rotationX', 'rotationY'])} on:click={() => onTogglePropertyKeyframe(['rotationX', 'rotationY'])} title="Toggle 3D tilt keyframe at playhead" aria-label="Toggle 3D tilt keyframe at playhead" aria-pressed={hasPropertyKeyframeAtPlayhead(['rotationX', 'rotationY'])}><Diamond size={11} fill="currentColor" /></button>
+            </div>
+            <div class="me-property-row">
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" step="1" value={selectedVisualProperty('rotationX', 0)} on:input={(e) => onUpdateElementProperty('rotationX', Number(e.currentTarget.value))} />
+                <span class="me-input-suffix">x°</span>
+              </div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" step="1" value={selectedVisualProperty('rotationY', 0)} on:input={(e) => onUpdateElementProperty('rotationY', Number(e.currentTarget.value))} />
+                <span class="me-input-suffix">y°</span>
+              </div>
+            </div>
+            <div class="me-number-input-wrapper">
+              <input class="me-number-input" type="number" min="1" step="10" value={numericProperty(selectedElement, 'perspective', 800)} on:input={(e) => onUpdateElementProperty('perspective', Number(e.currentTarget.value))} />
+              <span class="me-input-suffix">perspective</span>
+            </div>
+          </div>
+
+          <div class="me-property-group">
+            <div class="me-property-label">Rotation Direction</div>
+            <select class="me-text-input" value={stringProperty(selectedElement, 'rotationDirection', 'auto')} on:change={(e) => onUpdateElementProperty('rotationDirection', e.currentTarget.value)}>
+              <option value="auto">Auto</option>
+              <option value="cw">Clockwise</option>
+              <option value="ccw">Counter-clockwise</option>
+            </select>
+          </div>
+
           {#if selectedElement.asset?.type === 'svg' && !assets.get(selectedElement.assetName ?? '')?.motionlySvg?.animated}
             <div class="me-property-group">
               <div class="me-property-label">SVG Stroke Override</div>
@@ -335,6 +433,11 @@
         {/if}
 
         <div class="me-section-title">Keyframes</div>
+        <div class="me-property-row">
+          <button type="button" class="me-timeline-command" on:click={onCopyMotion}>Copy motion</button>
+          <button type="button" class="me-timeline-command" disabled={!canPasteMotion} on:click={() => onPasteMotion('relative')}>Paste relative</button>
+          <button type="button" class="me-timeline-command" disabled={!canPasteMotion} on:click={() => onPasteMotion('absolute')}>Paste absolute</button>
+        </div>
         {#if animatedPropertyNames.length}
           <div class="me-animated-properties" aria-label="Animated properties">
             {#each animatedPropertyNames as property}
@@ -451,10 +554,10 @@
         <div class="me-property-group">
           <div class="me-property-label">Easing</div>
           <div class="me-easing-options">
-            {#each ['soft', 'power3.out', 'linear', 'ease-out', 'spring', 'smooth'] as easingOption}
-              <button 
-                type="button" 
-                class="me-easing-option" 
+            {#each ['soft', 'power3.out', 'linear', 'ease-out', 'spring', 'spring.soft', 'spring.bouncy', 'spring.stiff', 'smooth'] as easingOption}
+              <button
+                type="button"
+                class="me-easing-option"
                 class:me-active={(selectedAnimation?.easing ?? 'soft') === easingOption}
                 on:click={() => onUpdateAnimationProperty('easing', easingOption)}
               >
@@ -468,8 +571,52 @@
             value={String(selectedAnimation?.easing ?? 'soft')}
             placeholder="power3.out or cubic-bezier(...)"
             on:change={(event) => onUpdateAnimationProperty('easing', event.currentTarget.value)}
-            aria-label="Custom animation easing"
-          />
+              aria-label="Custom animation easing"
+            />
+            <div class="me-property-label">Cubic curve handles</div>
+            <div class="me-property-row">
+              {#each bezierValues() as value, index}
+                <div class="me-number-input-wrapper">
+                  <input
+                    class="me-number-input"
+                    type="number"
+                    min={index === 0 || index === 2 ? 0 : -2}
+                    max={index === 0 || index === 2 ? 1 : 2}
+                    step=".05"
+                    value={value}
+                    aria-label={`Bezier ${['x1', 'y1', 'x2', 'y2'][index]}`}
+                    on:input={(event) => updateBezier(index, Number(event.currentTarget.value))}
+                  />
+                  <span class="me-input-suffix">{['x1', 'y1', 'x2', 'y2'][index]}</span>
+                </div>
+              {/each}
+            </div>
+        </div>
+
+        <div class="me-property-group">
+          <div class="me-property-label">Repeat</div>
+          <div class="me-property-row">
+            <div class="me-number-input-wrapper">
+              <input
+                class="me-number-input"
+                type="text"
+                value={String(selectedAnimation?.repeat ?? '')}
+                placeholder="off"
+                on:change={(event) => onUpdateAnimationProperty('repeat', event.currentTarget.value)}
+                aria-label="Repeat count, or 'infinite'"
+              />
+              <span class="me-input-suffix">×</span>
+            </div>
+            <select
+              class="me-text-input"
+              value={selectedAnimation?.repeatType ?? 'loop'}
+              disabled={!selectedAnimation?.repeat}
+              on:change={(event) => onUpdateAnimationProperty('repeatType', event.currentTarget.value)}
+            >
+              <option value="loop">Loop</option>
+              <option value="yoyo">Yoyo</option>
+            </select>
+          </div>
         </div>
           </div>
         </details>

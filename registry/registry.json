@@ -1,0 +1,1841 @@
+{
+  "name": "motionly",
+  "version": 1,
+  "items": [
+    {
+      "name": "keynoteText",
+      "type": "motionly:move",
+      "title": "Keynote Text",
+      "description": "Line-masked hero text reveal.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/keynote-text/registry-item.json"
+    },
+    {
+      "name": "wordReveal",
+      "type": "motionly:move",
+      "title": "Word Reveal",
+      "description": "Readable word-by-word reveal.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/word-reveal/registry-item.json"
+    },
+    {
+      "name": "charReveal",
+      "type": "motionly:move",
+      "title": "Char Reveal",
+      "description": "Fast character treatment.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/char-reveal/registry-item.json"
+    },
+    {
+      "name": "splitReveal",
+      "type": "motionly:move",
+      "title": "Split Reveal",
+      "description": "Split text reveal.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/split-reveal/registry-item.json"
+    },
+    {
+      "name": "blurReveal",
+      "type": "motionly:move",
+      "title": "Blur Reveal",
+      "description": "Short blur, rise, and opacity reveal.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/blur-reveal/registry-item.json"
+    },
+    {
+      "name": "fadeUp",
+      "type": "motionly:move",
+      "title": "Fade Up",
+      "description": "Subtle upward text entrance.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fade-up/registry-item.json"
+    },
+    {
+      "name": "slideIn",
+      "type": "motionly:move",
+      "title": "Slide In",
+      "description": "Directional text entrance.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-in/registry-item.json"
+    },
+    {
+      "name": "scaleText",
+      "type": "motionly:move",
+      "title": "Scale Text",
+      "description": "Restrained scale text entrance.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scale-text/registry-item.json"
+    },
+    {
+      "name": "typewriter",
+      "type": "motionly:move",
+      "title": "Typewriter",
+      "description": "Character typing treatment.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/typewriter/registry-item.json"
+    },
+    {
+      "name": "maskReveal",
+      "type": "motionly:move",
+      "title": "Mask Reveal",
+      "description": "Clipped line or media reveal.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/mask-reveal/registry-item.json"
+    },
+    {
+      "name": "gradientReveal",
+      "type": "motionly:move",
+      "title": "Gradient Reveal",
+      "description": "Accent-colored text reveal.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/gradient-reveal/registry-item.json"
+    },
+    {
+      "name": "countUp",
+      "type": "motionly:move",
+      "title": "Count Up",
+      "description": "Animate a numeric text value from zero.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/count-up/registry-item.json"
+    },
+    {
+      "name": "softReveal",
+      "type": "motionly:move",
+      "title": "Soft Reveal",
+      "description": "Opacity, position, scale, and blur on offset timing.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/soft-reveal/registry-item.json"
+    },
+    {
+      "name": "springIn",
+      "type": "motionly:move",
+      "title": "Spring In",
+      "description": "Soft spring entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/spring-in/registry-item.json"
+    },
+    {
+      "name": "float",
+      "type": "motionly:move",
+      "title": "Float",
+      "description": "Slow sine-like idle motion.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/float/registry-item.json"
+    },
+    {
+      "name": "pulse",
+      "type": "motionly:move",
+      "title": "Pulse",
+      "description": "Restrained emphasis loop.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pulse/registry-item.json"
+    },
+    {
+      "name": "heroLogo",
+      "type": "motionly:move",
+      "title": "Hero Logo",
+      "description": "Protected logo entrance without CTA-style overshoot.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/hero-logo/registry-item.json"
+    },
+    {
+      "name": "drawSVG",
+      "type": "motionly:move",
+      "title": "Draw Svg",
+      "description": "Draw a simple stroked SVG path.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/draw-svg/registry-item.json"
+    },
+    {
+      "name": "scaleReveal",
+      "type": "motionly:move",
+      "title": "Scale Reveal",
+      "description": "Small elastic scale entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scale-reveal/registry-item.json"
+    },
+    {
+      "name": "dynamicSlide",
+      "type": "motionly:move",
+      "title": "Dynamic Slide",
+      "description": "Directional slide with a settled arrival.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/dynamic-slide/registry-item.json"
+    },
+    {
+      "name": "shapeWipe",
+      "type": "motionly:move",
+      "title": "Shape Wipe",
+      "description": "Full-frame directional wipe.",
+      "tags": [
+        "move",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/shape-wipe/registry-item.json"
+    },
+    {
+      "name": "irisWipe",
+      "type": "motionly:move",
+      "title": "Iris Wipe",
+      "description": "Circular scene wipe.",
+      "tags": [
+        "move",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/iris-wipe/registry-item.json"
+    },
+    {
+      "name": "slowPush",
+      "type": "motionly:move",
+      "title": "Slow Push",
+      "description": "Restrained camera push.",
+      "tags": [
+        "move",
+        "camera"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slow-push/registry-item.json"
+    },
+    {
+      "name": "push",
+      "type": "motionly:move",
+      "title": "Push",
+      "description": "Alias for a restrained camera push.",
+      "tags": [
+        "move",
+        "camera"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/push/registry-item.json"
+    },
+    {
+      "name": "pan",
+      "type": "motionly:move",
+      "title": "Pan",
+      "description": "Purposeful camera pan.",
+      "tags": [
+        "move",
+        "camera"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pan/registry-item.json"
+    },
+    {
+      "name": "pull",
+      "type": "motionly:move",
+      "title": "Pull",
+      "description": "Settle from a closer camera view.",
+      "tags": [
+        "move",
+        "camera"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pull/registry-item.json"
+    },
+    {
+      "name": "speedZoom",
+      "type": "motionly:move",
+      "title": "Speed Zoom",
+      "description": "One short camera punch.",
+      "tags": [
+        "move",
+        "camera"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/speed-zoom/registry-item.json"
+    },
+    {
+      "name": "productPanel",
+      "type": "motionly:move",
+      "title": "Product Panel",
+      "description": "Product panel entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/product-panel/registry-item.json"
+    },
+    {
+      "name": "focusZoom",
+      "type": "motionly:move",
+      "title": "Focus Zoom",
+      "description": "Focus mode scales and recenters the hero; sibling mode pushes surrounding layers outward with a coordinated fade.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/focus-zoom/registry-item.json"
+    },
+    {
+      "name": "zoomThrough",
+      "type": "motionly:move",
+      "title": "Zoom Through",
+      "description": "Drive through the focal layer to reveal the next shot.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/zoom-through/registry-item.json"
+    },
+    {
+      "name": "whipPan",
+      "type": "motionly:move",
+      "title": "Whip Pan",
+      "description": "Fast directional travel with brief blur and a clean settle.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/whip-pan/registry-item.json"
+    },
+    {
+      "name": "sceneSlide",
+      "type": "motionly:move",
+      "title": "Scene Slide",
+      "description": "Push the whole outgoing scene out while the incoming scene moves in from the same direction.",
+      "tags": [
+        "move",
+        "scene",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-slide/registry-item.json"
+    },
+    {
+      "name": "sceneZoom",
+      "type": "motionly:move",
+      "title": "Scene Zoom",
+      "description": "Zoom the whole outgoing scene through camera while the incoming scene resolves from depth.",
+      "tags": [
+        "move",
+        "scene",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-zoom/registry-item.json"
+    },
+    {
+      "name": "rackFocus",
+      "type": "motionly:move",
+      "title": "Rack Focus",
+      "description": "Shift a soft secondary layer into sharp visual focus.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rack-focus/registry-item.json"
+    },
+    {
+      "name": "depthSwap",
+      "type": "motionly:move",
+      "title": "Depth Swap",
+      "description": "Move a layer between background and foreground depth roles.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/depth-swap/registry-item.json"
+    },
+    {
+      "name": "cascadeIn",
+      "type": "motionly:move",
+      "title": "Cascade In",
+      "description": "Stagger-friendly card or media entrance with one restrained settle.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/cascade-in/registry-item.json"
+    },
+    {
+      "name": "snapMove",
+      "type": "motionly:move",
+      "title": "Snap Move",
+      "description": "Reposition a UI layer with one directional overshoot and settle.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/snap-move/registry-item.json"
+    },
+    {
+      "name": "popover",
+      "type": "motionly:move",
+      "title": "Popover",
+      "description": "Open a panel from its transform origin with a compact spring settle.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/popover/registry-item.json"
+    },
+    {
+      "name": "cursorTap",
+      "type": "motionly:move",
+      "title": "Cursor Tap",
+      "description": "Compact press-and-release feedback for a cursor or control.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/cursor-tap/registry-item.json"
+    },
+    {
+      "name": "shakeReject",
+      "type": "motionly:move",
+      "title": "Shake Reject",
+      "description": "Restrained damped rejection feedback for a blocked action.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/shake-reject/registry-item.json"
+    },
+    {
+      "name": "orbitDrift",
+      "type": "motionly:move",
+      "title": "Orbit Drift",
+      "description": "Deterministic elliptical idle orbit around the resting position.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/orbit-drift/registry-item.json"
+    },
+    {
+      "name": "sceneExit",
+      "type": "motionly:move",
+      "title": "Scene Exit",
+      "description": "Fast scene exit.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-exit/registry-item.json"
+    },
+    {
+      "name": "bounceIn",
+      "type": "motionly:move",
+      "title": "Bounce In",
+      "description": "Compact bounce entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/bounce-in/registry-item.json"
+    },
+    {
+      "name": "morph",
+      "type": "motionly:move",
+      "title": "Morph",
+      "description": "Restrained matched-shape fallback.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/morph/registry-item.json"
+    },
+    {
+      "name": "spinIn",
+      "type": "motionly:move",
+      "title": "Spin In",
+      "description": "Single spin entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/spin-in/registry-item.json"
+    },
+    {
+      "name": "rotateReveal",
+      "type": "motionly:move",
+      "title": "Rotate Reveal",
+      "description": "Rotation and opacity entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rotate-reveal/registry-item.json"
+    },
+    {
+      "name": "rotateOut",
+      "type": "motionly:move",
+      "title": "Rotate Out",
+      "description": "Rotation exit.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rotate-out/registry-item.json"
+    },
+    {
+      "name": "swing",
+      "type": "motionly:move",
+      "title": "Swing",
+      "description": "Damped swing emphasis.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/swing/registry-item.json"
+    },
+    {
+      "name": "pendulum",
+      "type": "motionly:move",
+      "title": "Pendulum",
+      "description": "Pendulum loop.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pendulum/registry-item.json"
+    },
+    {
+      "name": "rollIn",
+      "type": "motionly:move",
+      "title": "Roll In",
+      "description": "Rolling entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/roll-in/registry-item.json"
+    },
+    {
+      "name": "rotateScale",
+      "type": "motionly:move",
+      "title": "Rotate Scale",
+      "description": "Rotation with restrained scale.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rotate-scale/registry-item.json"
+    },
+    {
+      "name": "logoSpinReveal",
+      "type": "motionly:move",
+      "title": "Logo Spin Reveal",
+      "description": "Protected logo spin reveal.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/logo-spin-reveal/registry-item.json"
+    },
+    {
+      "name": "spin",
+      "type": "motionly:move",
+      "title": "Spin",
+      "description": "Continuous linear rotation.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/spin/registry-item.json"
+    },
+    {
+      "name": "kenBurns",
+      "type": "motionly:move",
+      "title": "Ken Burns",
+      "description": "Slow media pan and scale.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/ken-burns/registry-item.json"
+    },
+    {
+      "name": "tiltReveal",
+      "type": "motionly:move",
+      "title": "Tilt Reveal",
+      "description": "Perspective-style media entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/tilt-reveal/registry-item.json"
+    },
+    {
+      "name": "cardReveal",
+      "type": "motionly:move",
+      "title": "Card Reveal",
+      "description": "Card rise with surface elevation.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/card-reveal/registry-item.json"
+    },
+    {
+      "name": "buttonPop",
+      "type": "motionly:move",
+      "title": "Button Pop",
+      "description": "Fast control entrance.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/button-pop/registry-item.json"
+    },
+    {
+      "name": "progressFill",
+      "type": "motionly:move",
+      "title": "Progress Fill",
+      "description": "Left-anchored progress growth.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/progress-fill/registry-item.json"
+    },
+    {
+      "name": "productReveal",
+      "type": "motionly:move",
+      "title": "Product Reveal",
+      "description": "Restrained product reveal.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/product-reveal/registry-item.json"
+    },
+    {
+      "name": "appleHero",
+      "type": "motionly:move",
+      "title": "Apple Hero",
+      "description": "Restrained hero fallback.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/apple-hero/registry-item.json"
+    },
+    {
+      "name": "startupLaunch",
+      "type": "motionly:move",
+      "title": "Startup Launch",
+      "description": "Restrained launch fallback.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/startup-launch/registry-item.json"
+    },
+    {
+      "name": "highlight-circle-reveal",
+      "type": "motionly:move",
+      "title": "Highlight Circle Reveal",
+      "description": "Draw a structural focus ring.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/highlight-circle-reveal/registry-item.json"
+    },
+    {
+      "name": "animated-arrow-point",
+      "type": "motionly:move",
+      "title": "Animated Arrow Point",
+      "description": "Draw a structural connector arrow.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/animated-arrow-point/registry-item.json"
+    },
+    {
+      "name": "callout-text-pop",
+      "type": "motionly:move",
+      "title": "Callout Text Pop",
+      "description": "Reveal a structural callout.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/callout-text-pop/registry-item.json"
+    },
+    {
+      "name": "spotlight-mask",
+      "type": "motionly:move",
+      "title": "Spotlight Mask",
+      "description": "Open a structural spotlight mask.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/spotlight-mask/registry-item.json"
+    },
+    {
+      "name": "gradientMotion",
+      "type": "motionly:effect",
+      "title": "Gradient Motion",
+      "description": "Legacy moving gradient.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/gradient-motion/registry-item.json"
+    },
+    {
+      "name": "grid",
+      "type": "motionly:effect",
+      "title": "Grid",
+      "description": "Structural background grid.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/grid/registry-item.json"
+    },
+    {
+      "name": "particles",
+      "type": "motionly:effect",
+      "title": "Particles",
+      "description": "Deterministic ambient particles.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/particles/registry-item.json"
+    },
+    {
+      "name": "prism",
+      "type": "motionly:effect",
+      "title": "Prism",
+      "description": "Restrained prismatic light.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/prism/registry-item.json"
+    },
+    {
+      "name": "rippleGrid",
+      "type": "motionly:effect",
+      "title": "Ripple Grid",
+      "description": "Animated structural ripple grid.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/ripple-grid/registry-item.json"
+    },
+    {
+      "name": "ripple-grid",
+      "type": "motionly:effect",
+      "title": "Ripple Grid",
+      "description": "Alias for rippleGrid.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/ripple-grid-2/registry-item.json"
+    },
+    {
+      "name": "meshGradient",
+      "type": "motionly:effect",
+      "title": "Mesh Gradient",
+      "description": "Soft moving multi-color background.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/mesh-gradient/registry-item.json"
+    },
+    {
+      "name": "radialGlow",
+      "type": "motionly:effect",
+      "title": "Radial Glow",
+      "description": "Single focal radial glow.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/radial-glow/registry-item.json"
+    },
+    {
+      "name": "aurora",
+      "type": "motionly:effect",
+      "title": "Aurora",
+      "description": "Slow ambient aurora.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/aurora/registry-item.json"
+    },
+    {
+      "name": "gridFade",
+      "type": "motionly:effect",
+      "title": "Grid Fade",
+      "description": "Grid that fades toward the frame edge.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/grid-fade/registry-item.json"
+    },
+    {
+      "name": "noise",
+      "type": "motionly:effect",
+      "title": "Noise",
+      "description": "Deterministic fine noise.",
+      "tags": [
+        "effect",
+        "background"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/noise/registry-item.json"
+    },
+    {
+      "name": "vignette",
+      "type": "motionly:effect",
+      "title": "Vignette",
+      "description": "Subtle edge darkening.",
+      "tags": [
+        "effect",
+        "atmosphere"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/vignette/registry-item.json"
+    },
+    {
+      "name": "grain",
+      "type": "motionly:effect",
+      "title": "Grain",
+      "description": "Fine animated film grain.",
+      "tags": [
+        "effect",
+        "atmosphere"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/grain/registry-item.json"
+    },
+    {
+      "name": "edgeFade",
+      "type": "motionly:effect",
+      "title": "Edge Fade",
+      "description": "Transparent center with a quiet edge fade.",
+      "tags": [
+        "effect",
+        "atmosphere"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/edge-fade/registry-item.json"
+    },
+    {
+      "name": "bloom",
+      "type": "motionly:effect",
+      "title": "Bloom",
+      "description": "Additive ambient bloom.",
+      "tags": [
+        "effect",
+        "atmosphere"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/bloom/registry-item.json"
+    },
+    {
+      "name": "glass",
+      "type": "motionly:effect",
+      "title": "Glass",
+      "description": "Theme-styled translucent surface.",
+      "tags": [
+        "effect",
+        "surface"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/glass/registry-item.json"
+    },
+    {
+      "name": "card",
+      "type": "motionly:effect",
+      "title": "Card",
+      "description": "Theme-styled card surface.",
+      "tags": [
+        "effect",
+        "surface"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/card/registry-item.json"
+    },
+    {
+      "name": "deviceFrame",
+      "type": "motionly:effect",
+      "title": "Device Frame",
+      "description": "Theme-styled device surround.",
+      "tags": [
+        "effect",
+        "surface"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/device-frame/registry-item.json"
+    },
+    {
+      "name": "cloud",
+      "type": "motionly:component",
+      "title": "Cloud",
+      "description": "cloud: float, pulse, glow, receiveData, sendData, connect. Parts: glyph, glow.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/cloud/registry-item.json"
+    },
+    {
+      "name": "database",
+      "type": "motionly:component",
+      "title": "Database",
+      "description": "database: stackReveal, pulse, glow, receiveData, sendData, connect. Parts: stack, activity.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/database/registry-item.json"
+    },
+    {
+      "name": "server",
+      "type": "motionly:component",
+      "title": "Server",
+      "description": "server: stackReveal, pulse, glow, receiveData, sendData, connect. Parts: chassis, status.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/server/registry-item.json"
+    },
+    {
+      "name": "arrow",
+      "type": "motionly:component",
+      "title": "Arrow",
+      "description": "arrow: draw, travel, connect, followPath, guideAttention. Parts: shaft, head.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/arrow/registry-item.json"
+    },
+    {
+      "name": "phone",
+      "type": "motionly:component",
+      "title": "Phone",
+      "description": "phone: screenReveal, notification, tap, glow. Parts: frame, screen, status.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/phone/registry-item.json"
+    },
+    {
+      "name": "browser",
+      "type": "motionly:component",
+      "title": "Browser",
+      "description": "browser: screenReveal, highlight, cursor, connect. Parts: chrome, viewport, controls.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/browser/registry-item.json"
+    },
+    {
+      "name": "dashboard",
+      "type": "motionly:component",
+      "title": "Dashboard",
+      "description": "dashboard: screenReveal, cardStagger, chartGrowth, count, highlight. Parts: frame, cards, chart, metric, highlight.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/dashboard/registry-item.json"
+    },
+    {
+      "name": "button",
+      "type": "motionly:component",
+      "title": "Button",
+      "description": "button: popIn, hoverLift, clickCompression, attentionGlow. Parts: surface, label, highlight.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/button/registry-item.json"
+    },
+    {
+      "name": "logo",
+      "type": "motionly:component",
+      "title": "Logo",
+      "description": "logo: draw, reveal, glow, morph. Parts: mark, glow.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/logo/registry-item.json"
+    },
+    {
+      "name": "chart",
+      "type": "motionly:component",
+      "title": "Chart",
+      "description": "chart: chartGrowth, count, highlight, connect. Parts: panel, axis, bars, line, metric.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/chart/registry-item.json"
+    },
+    {
+      "name": "notification",
+      "type": "motionly:component",
+      "title": "Notification",
+      "description": "notification: popIn, reactsTo, glow, dismiss. Parts: card, stripe, icon, copy.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/notification/registry-item.json"
+    },
+    {
+      "name": "cursor",
+      "type": "motionly:component",
+      "title": "Cursor",
+      "description": "cursor: moveTo, click, ripple. Parts: pointer, ripple.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/cursor/registry-item.json"
+    },
+    {
+      "name": "codeeditor",
+      "type": "motionly:component",
+      "title": "Codeeditor",
+      "description": "codeeditor: typeIn, screenReveal, highlight, connect. Parts: frame, titlebar, lines, status.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/codeeditor/registry-item.json"
+    },
+    {
+      "name": "website",
+      "type": "motionly:component",
+      "title": "Website",
+      "description": "website: screenReveal, highlight, cursor, connect. Parts: frame, nav, hero, cta, banner.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/website/registry-item.json"
+    },
+    {
+      "name": "terminal",
+      "type": "motionly:component",
+      "title": "Terminal",
+      "description": "terminal: typeIn, progress, connect. Parts: frame, titlebar, prompt, progress, status.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/terminal/registry-item.json"
+    },
+    {
+      "name": "pricingcard",
+      "type": "motionly:component",
+      "title": "Pricingcard",
+      "description": "pricingcard: popIn, count, highlight. Parts: card, plan, price, features, cta.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/pricingcard/registry-item.json"
+    },
+    {
+      "name": "laptop",
+      "type": "motionly:component",
+      "title": "Laptop",
+      "description": "laptop: screenReveal, highlight, cursor, connect. Parts: lid, screen, nav, hero, cta, base.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/laptop/registry-item.json"
+    },
+    {
+      "name": "editor",
+      "type": "motionly:component",
+      "title": "Editor",
+      "description": "editor: screenReveal, typeIn, cardStagger, chartGrowth, count, highlight. Parts: frame, rail, topbar, canvas, timeline, panel, draft.",
+      "tags": [
+        "component"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/editor/registry-item.json"
+    },
+    {
+      "name": "productHero",
+      "type": "motionly:showcase",
+      "title": "Product Hero",
+      "description": "Hero presentation of one product asset with a glow bed and headline. Use for: opening shot, product reveal, brand promise. Presents: logo, ui, screenshot, illustration, photo.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/product-hero/product-hero.motion",
+          "target": "compositions/product-hero.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/product-hero/registry-item.json"
+    },
+    {
+      "name": "phoneShowcase",
+      "type": "motionly:showcase",
+      "title": "Phone Showcase",
+      "description": "Mobile app screen inside a phone frame with bezel, notch, and screen glare. Use for: app launch, mobile demo, app store reveal. Presents: screenshot, ui, video.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/phone-showcase/phone-showcase.motion",
+          "target": "compositions/phone-showcase.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/phone-showcase/registry-item.json"
+    },
+    {
+      "name": "browserShowcase",
+      "type": "motionly:showcase",
+      "title": "Browser Showcase",
+      "description": "Web product inside a browser window with chrome, traffic lights, and URL pill. Use for: saas launch, website reveal, web demo. Presents: ui, screenshot, video.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/browser-showcase/browser-showcase.motion",
+          "target": "compositions/browser-showcase.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/browser-showcase/registry-item.json"
+    },
+    {
+      "name": "laptopShowcase",
+      "type": "motionly:showcase",
+      "title": "Laptop Showcase",
+      "description": "Desktop product on a laptop with lid, base, and grounded shadow. Use for: saas launch, desktop demo, product hero. Presents: ui, screenshot, video.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/laptop-showcase/laptop-showcase.motion",
+          "target": "compositions/laptop-showcase.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/laptop-showcase/registry-item.json"
+    },
+    {
+      "name": "appWindow",
+      "type": "motionly:showcase",
+      "title": "App Window",
+      "description": "Native app window with a slim titlebar, for desktop application shots. Use for: desktop app, tool demo, editor reveal. Presents: ui, screenshot, video.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/app-window/app-window.motion",
+          "target": "compositions/app-window.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/app-window/registry-item.json"
+    },
+    {
+      "name": "dashboardShowcase",
+      "type": "motionly:showcase",
+      "title": "Dashboard Showcase",
+      "description": "Software dashboard in a window with a sidebar rail and a camera push into data. Use for: saas launch, product demo, analytics explainer. Presents: ui, chart, screenshot.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/dashboard-showcase/dashboard-showcase.motion",
+          "target": "compositions/dashboard-showcase.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/dashboard-showcase/registry-item.json"
+    },
+    {
+      "name": "screenshotPresentation",
+      "type": "motionly:showcase",
+      "title": "Screenshot Presentation",
+      "description": "Frameless media presentation with elevation and a soft floor reflection. Use for: illustration, photography, flat asset reveal. Presents: photo, illustration, screenshot, avatar, unknown.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/screenshot-presentation/screenshot-presentation.motion",
+          "target": "compositions/screenshot-presentation.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/screenshot-presentation/registry-item.json"
+    },
+    {
+      "name": "uiWalkthrough",
+      "type": "motionly:showcase",
+      "title": "Ui Walkthrough",
+      "description": "One product step: window, step label, and a focus ring on the acting region. Use for: product walkthrough, onboarding step, feature demo. Presents: ui, screenshot.",
+      "tags": [
+        "showcase"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.5,
+      "files": [
+        {
+          "path": "registry/showcases/ui-walkthrough/ui-walkthrough.motion",
+          "target": "compositions/ui-walkthrough.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "showcases/ui-walkthrough/registry-item.json"
+    },
+    {
+      "name": "heroLayout",
+      "type": "motionly:layout",
+      "title": "Hero Layout",
+      "description": "One focal subject with stacked supporting copy beneath it. Use for: opening shot, product hero, brand promise. Items 1-4.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/hero-layout/hero-layout.motion",
+          "target": "compositions/hero-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/hero-layout/registry-item.json"
+    },
+    {
+      "name": "splitLayout",
+      "type": "motionly:layout",
+      "title": "Split Layout",
+      "description": "Editorial copy on one side, media on the other. Use for: feature explanation, walkthrough step. Items 2-4.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/split-layout/split-layout.motion",
+          "target": "compositions/split-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/split-layout/registry-item.json"
+    },
+    {
+      "name": "bentoGrid",
+      "type": "motionly:layout",
+      "title": "Bento Grid",
+      "description": "Asymmetric grid with one large focal tile and smaller support tiles. Use for: feature showcase, capability overview, saas launch. Items 3-9.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/bento-grid/bento-grid.motion",
+          "target": "compositions/bento-grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/bento-grid/registry-item.json"
+    },
+    {
+      "name": "featureGrid",
+      "type": "motionly:layout",
+      "title": "Feature Grid",
+      "description": "Uniform grid of equal-weight feature cards. Use for: feature list, icon showcase, benefits. Items 2-12.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/feature-grid/feature-grid.motion",
+          "target": "compositions/feature-grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/feature-grid/registry-item.json"
+    },
+    {
+      "name": "masonryGrid",
+      "type": "motionly:layout",
+      "title": "Masonry Grid",
+      "description": "Column-packed grid for many screenshots of differing height. Use for: screenshot gallery, portfolio, press collage. Items 3-12.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/masonry-grid/masonry-grid.motion",
+          "target": "compositions/masonry-grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/masonry-grid/registry-item.json"
+    },
+    {
+      "name": "deviceStack",
+      "type": "motionly:layout",
+      "title": "Device Stack",
+      "description": "Overlapping device fan with the center device in focus. Use for: multi-platform reveal, app showcase. Items 2-5.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/device-stack/device-stack.motion",
+          "target": "compositions/device-stack.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/device-stack/registry-item.json"
+    },
+    {
+      "name": "logoWall",
+      "type": "motionly:layout",
+      "title": "Logo Wall",
+      "description": "Dense grid of customer or integration logos. Use for: social proof, integrations, trusted by. Items 3-20.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/logo-wall/logo-wall.motion",
+          "target": "compositions/logo-wall.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/logo-wall/registry-item.json"
+    },
+    {
+      "name": "comparisonLayout",
+      "type": "motionly:layout",
+      "title": "Comparison Layout",
+      "description": "Two balanced halves for before/after or us/them. Use for: before after, competitor comparison. Items 2-4.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/comparison-layout/comparison-layout.motion",
+          "target": "compositions/comparison-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/comparison-layout/registry-item.json"
+    },
+    {
+      "name": "timelineLayout",
+      "type": "motionly:layout",
+      "title": "Timeline Layout",
+      "description": "Horizontal sequence of ordered steps along one baseline. Use for: process, roadmap, onboarding steps. Items 2-6.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/timeline-layout/timeline-layout.motion",
+          "target": "compositions/timeline-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/timeline-layout/registry-item.json"
+    },
+    {
+      "name": "carousel",
+      "type": "motionly:layout",
+      "title": "Carousel",
+      "description": "Center-weighted horizontal row that bleeds off frame. Use for: screenshot tour, testimonials. Items 2-7.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/carousel/carousel.motion",
+          "target": "compositions/carousel.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/carousel/registry-item.json"
+    },
+    {
+      "name": "gallery",
+      "type": "motionly:layout",
+      "title": "Gallery",
+      "description": "Two-row gallery with a wide first row. Use for: media wall, case study. Items 3-10.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/gallery/gallery.motion",
+          "target": "compositions/gallery.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/gallery/registry-item.json"
+    },
+    {
+      "name": "floatingCollage",
+      "type": "motionly:layout",
+      "title": "Floating Collage",
+      "description": "Deterministic depth collage of floating cards. Use for: ambient background, brand collage. Items 3-9.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/floating-collage/floating-collage.motion",
+          "target": "compositions/floating-collage.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/floating-collage/registry-item.json"
+    },
+    {
+      "name": "beat",
+      "type": "motionly:beat",
+      "title": "Beat",
+      "description": "A change in focus. Beats never clear the composition; objects persist and transform across them.",
+      "tags": [
+        "beat"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "beats/beat/registry-item.json"
+    },
+    {
+      "name": "hero",
+      "type": "motionly:archetype",
+      "title": "Hero",
+      "description": "Centered promise with one real focal asset.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/hero/registry-item.json"
+    },
+    {
+      "name": "splitFeature",
+      "type": "motionly:archetype",
+      "title": "Split Feature",
+      "description": "Editorial copy and media split.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/split-feature/registry-item.json"
+    },
+    {
+      "name": "stat",
+      "type": "motionly:archetype",
+      "title": "Stat",
+      "description": "One large statistic with a short explanation.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/stat/registry-item.json"
+    },
+    {
+      "name": "walkthrough",
+      "type": "motionly:archetype",
+      "title": "Walkthrough",
+      "description": "One product step with real media and a step label.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/walkthrough/registry-item.json"
+    },
+    {
+      "name": "comparison",
+      "type": "motionly:archetype",
+      "title": "Comparison",
+      "description": "Before/after media comparison.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/comparison/registry-item.json"
+    },
+    {
+      "name": "cta",
+      "type": "motionly:archetype",
+      "title": "Cta",
+      "description": "Closing brand promise and CTA.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/cta/registry-item.json"
+    },
+    {
+      "name": "logoReveal",
+      "type": "motionly:archetype",
+      "title": "Logo Reveal",
+      "description": "Protected logo reveal with optional title.",
+      "tags": [
+        "archetype",
+        "scene"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "archetypes/logo-reveal/registry-item.json"
+    },
+    {
+      "name": "motionly",
+      "type": "motionly:preset",
+      "title": "Motionly",
+      "description": "A concise introduction to Motionly and editable .motion projects.",
+      "tags": [
+        "product",
+        "editor",
+        "launch"
+      ],
+      "version": 1,
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration": 32.1,
+      "files": [
+        {
+          "path": "preset/motionly",
+          "target": "presets/motionly",
+          "type": "motionly:preset"
+        }
+      ],
+      "project": "preset/motionly/motionly.motion",
+      "preview": "preset/motionly/motionly-preset.gif",
+      "manifest": "presets/motionly/registry-item.json"
+    }
+  ]
+}

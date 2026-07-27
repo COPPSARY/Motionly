@@ -1,4 +1,6 @@
 import { appUrl } from '../../../app/routing';
+import { PRESET_CATALOG } from '../../../presets/catalog';
+import { effectRegistry, moveRegistry } from '../../../semantic/catalog';
 import type { AnimationPresetDef } from './types';
 
 export const ADJUSTMENT_CONTROLS = [
@@ -12,38 +14,26 @@ export const ADJUSTMENT_CONTROLS = [
   { property: 'invert', label: 'Invert', min: 0, max: 1, step: 0.01, fallback: 0 },
 ] as const;
 
-export const ANIMATION_PRESETS: AnimationPresetDef[] = [
-  { name: 'splitReveal', description: 'Split character reveal', category: 'text' },
-  { name: 'blurReveal', description: 'Blur and fade reveal', category: 'text' },
-  { name: 'fadeUp', description: 'Fade up from bottom', category: 'text' },
-  { name: 'slideIn', description: 'Slide in from side', category: 'text' },
-  { name: 'typewriter', description: 'Typewriter effect', category: 'text' },
-  { name: 'keynoteText', description: 'Keynote-style text reveal', category: 'text' },
-  { name: 'charReveal', description: 'Character-by-character reveal', category: 'text' },
-  { name: 'wordReveal', description: 'Word-by-word reveal', category: 'text' },
-  { name: 'heroLogo', description: 'Hero logo entrance', category: 'object' },
-  { name: 'softReveal', description: 'Soft fade and scale reveal', category: 'object' },
-  { name: 'springIn', description: 'Spring entrance', category: 'object' },
-  { name: 'float', description: 'Floating motion', category: 'object' },
-  { name: 'pulse', description: 'Pulsing scale', category: 'object' },
-  { name: 'drawSVG', description: 'SVG path drawing', category: 'object' },
-  { name: 'scaleReveal', description: 'Scale up reveal', category: 'object' },
-  { name: 'shapeWipe', description: 'Directional wipe transition', category: 'transition' },
-  { name: 'irisWipe', description: 'Circular iris wipe', category: 'transition' },
-  { name: 'maskReveal', description: 'Masked reveal transition', category: 'transition' },
-  { name: 'dynamicSlide', description: 'Dynamic slide transition', category: 'transition' },
-  { name: 'slowPush', description: 'Slow camera push', category: 'camera' },
-  { name: 'pan', description: 'Camera pan', category: 'camera' },
-  { name: 'speedZoom', description: 'Speed zoom punch', category: 'camera' },
-];
+export const ANIMATION_PRESETS: AnimationPresetDef[] = moveRegistry().flatMap((entry) =>
+  entry.category
+    .split(' ')
+    .filter((category): category is AnimationPresetDef['category'] =>
+      ['text', 'object', 'transition', 'camera'].includes(category)
+    )
+    .map((category) => ({ name: entry.name, description: entry.docs, category }))
+);
 
-export const AVAILABLE_PRESETS = [
-  {
-    name: 'Motionly',
-    path: appUrl('preset/motionly/motionly.motion'),
-    gifPath: appUrl('preset/motionly/motionly-preset.gif'),
-  },
-];
+export const EFFECT_PRESETS: AnimationPresetDef[] = effectRegistry().map((entry) => ({
+  name: entry.name,
+  description: entry.docs,
+  category: entry.category as AnimationPresetDef['category'],
+}));
+
+export const AVAILABLE_PRESETS = PRESET_CATALOG.map((preset) => ({
+  name: preset.title,
+  path: appUrl(preset.projectPath),
+  gifPath: appUrl(preset.previewPath),
+}));
 
 export const KEYFRAME_EASINGS = [
   { value: 'linear', label: 'Linear' },

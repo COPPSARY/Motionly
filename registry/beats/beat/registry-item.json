@@ -1,0 +1,71 @@
+{
+  "name": "beat",
+  "type": "motionly:beat",
+  "title": "Beat",
+  "description": "A change in focus. Beats never clear the composition; objects persist and transform across them.",
+  "tags": [
+    "beat"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "beat",
+    "source": "src/motion-system/beats.ts"
+  },
+  "schema": {
+    "start": {
+      "type": "time",
+      "docs": "Absolute beat start; omit to follow the previous beat."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Beat length; omit to share remaining canvas time."
+    },
+    "focus": {
+      "type": "string",
+      "docs": "Focal element the camera frames."
+    },
+    "zoom": {
+      "type": "number",
+      "docs": "Camera zoom for this beat."
+    },
+    "cameraX": {
+      "type": "number",
+      "docs": "Camera X for this beat."
+    },
+    "cameraY": {
+      "type": "number",
+      "docs": "Camera Y for this beat."
+    },
+    "transition": {
+      "type": "string",
+      "docs": "Transition into this beat."
+    },
+    "from": {
+      "type": "string",
+      "docs": "Transition source element."
+    },
+    "to": {
+      "type": "string",
+      "docs": "Transition destination element."
+    },
+    "transitionDuration": {
+      "type": "time",
+      "docs": "Transition duration."
+    },
+    "easing": {
+      "type": "string",
+      "docs": "Transition easing."
+    },
+    "route": {
+      "type": "string",
+      "docs": "Sustained-motion route: stagedReveals, cameraIntent, uiLife, sequence, cursorLed, or hold."
+    },
+    "label": {
+      "type": "string",
+      "docs": "Storyboard label shown in the editor."
+    }
+  },
+  "defaults": {},
+  "manifest": "beats/beat/registry-item.json"
+}

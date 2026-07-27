@@ -40,7 +40,8 @@ export type AssetType = 'svg' | 'image' | 'video' | 'lottie';
 /**
  * Element kinds that can be rendered
  */
-export type ElementKind = 'asset' | 'image' | 'text' | 'overlay' | 'effect';
+export type ElementKind =
+  'asset' | 'image' | 'text' | 'overlay' | 'effect' | 'scene' | 'group' | 'path' | 'svgpart';
 
 /**
  * SVG-compatible primitives available to image overlay sublayers.
@@ -53,9 +54,19 @@ export type OverlayShape =
  */
 export type EffectType =
   | 'gradientMotion'
+  | 'meshGradient'
+  | 'radialGlow'
   | 'noise'
+  | 'grain'
   | 'grid'
+  | 'gridFade'
   | 'aurora'
+  | 'vignette'
+  | 'edgeFade'
+  | 'bloom'
+  | 'glass'
+  | 'card'
+  | 'deviceFrame'
   | 'prism'
   | 'rippleGrid'
   | 'ripple-grid'
@@ -68,6 +79,10 @@ export interface Asset {
   name: string;
   path: string;
   type: AssetType;
+  width?: number;
+  height?: number;
+  dominantColor?: string;
+  layers?: Array<{ id: string; label: string; parentId: string; kind: 'group' | 'path' }>;
 }
 
 /**
@@ -80,8 +95,14 @@ export interface BaseElementProperties {
   height: number | null;
   scale: number;
   rotation: number;
+  rotationX: number;
+  rotationY: number;
+  perspective: number;
+  rotationDirection: 'auto' | 'cw' | 'ccw';
   originX: number;
   originY: number;
+  originXPixel?: number;
+  originYPixel?: number;
   opacity: number;
   blur: number;
   brightness: number;
@@ -94,11 +115,28 @@ export interface BaseElementProperties {
   mask?: string;
   maskInvert?: boolean;
   maskVisible?: boolean;
+  followThrough?: string;
+  followThroughLag?: number;
+  followThroughDamping?: number;
   shadow: number;
+  glow?: number;
+  glowColor?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientAngle?: number;
+  morphTo?: string;
+  morphProgress?: number;
   layer: Layer;
   center: boolean;
   cover: boolean;
+  focalX?: number;
+  focalY?: number;
+  blendMode?: string;
   pathProgress?: number;
+  trimStart?: number;
+  motionPath?: string;
+  motionPathProgress?: number;
+  motionPathRotate?: boolean;
   revealProgress?: number;
   revealStyle?: string;
   revealDirection?: string;
@@ -108,6 +146,19 @@ export interface BaseElementProperties {
   mediaTrimOut?: number;
   mediaVolume?: number;
   mediaMuted?: boolean;
+  parent?: string;
+  start?: number;
+  duration?: number;
+  depth?: number;
+  clip?: boolean;
+  locked?: boolean;
+  label?: string;
+  sourceId?: string;
+  sourcePath?: string;
+  cameraX?: number;
+  cameraY?: number;
+  cameraZoom?: number;
+  cameraRotation?: number;
 }
 
 /**
@@ -123,6 +174,10 @@ export interface TextProperties extends BaseElementProperties {
   countSeparator?: string;
   countDecimals?: number;
   countTo?: number;
+  textAlign: 'left' | 'center' | 'right';
+  verticalAlign: 'top' | 'middle' | 'bottom';
+  lineHeight: number;
+  wrap: 'none' | 'word' | 'char';
 }
 
 /**
@@ -197,6 +252,7 @@ export interface Sequence {
   delay: number;
   gap: number;
   items: string[];
+  hierarchy: 'linear' | 'wave' | 'center-out';
 }
 
 /**
@@ -239,20 +295,57 @@ export interface Clip {
   sourceOrder: number;
 }
 
+export interface SemanticComponent {
+  id: string;
+  type: import('../semantic/vector-registry').SemanticComponentType;
+  provider: import('../semantic/vector-registry').VectorProvider | 'custom';
+  role: 'main' | 'supporting' | 'connection' | 'background';
+  intent: string;
+  behaviors: string[];
+  rootElementId: string;
+  childElementIds: string[];
+  capabilities: string[];
+  source: string;
+}
+
+export interface SemanticRelationship {
+  id: string;
+  from: string;
+  to: string;
+  type: string;
+  connectorElementId: string;
+  particleElementIds: string[];
+}
+
 /**
  * Complete scene graph
  */
 export interface Scene {
   canvas: Canvas;
   camera: Camera;
+  theme: import('../semantic/catalog').MotionTheme;
   sequences: Sequence[];
   imports: Asset[];
   elements: Element[];
   animations: Animation[];
+  components: SemanticComponent[];
+  relationships: SemanticRelationship[];
   tracks: Track[];
   clips: Clip[];
+  transitions: SharedTransition[];
+  /** Storyboard beats, present when the project uses the beat system. */
+  beats?: import('../motion-system').BeatPlan[];
   audio?: string; // Path to audio file
   audioStart: number;
+}
+
+export interface SharedTransition {
+  id: string;
+  from: string;
+  to: string;
+  at: number;
+  duration: number;
+  easing: EasingName;
 }
 
 /**
@@ -300,4 +393,6 @@ export interface Animation {
   duration: number;
   easing: EasingName;
   sequence?: string;
+  repeat?: number | 'infinite';
+  repeatType?: 'loop' | 'yoyo';
 }

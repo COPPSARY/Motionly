@@ -1,0 +1,72 @@
+// carousel — Center-weighted horizontal row that bleeds off frame.
+canvas {
+  size 1920x1080
+  fps 60
+  duration 4.8s
+}
+
+camera {
+  zoom 1
+}
+
+theme {
+  accent #7CF7C5
+}
+
+beat compose {
+  duration 1.6s
+  focus showcase
+  route stagedReveals
+  label "screenshot tour"
+}
+
+beat inspect {
+  duration 1.6s
+  focus showcase
+  zoom 1.12
+  route cameraIntent
+  label "Look closer"
+}
+
+beat settle {
+  duration 1.6s
+  focus showcase
+  zoom 1
+  route cameraIntent
+  label "Settle"
+}
+
+layout showcase {
+  type carousel
+  columns 1
+  gap 56
+  beat compose
+}
+
+component carouselItem1 {
+  parent showcase
+  type phone
+  label "Item 1"
+}
+
+component carouselItem2 {
+  parent showcase
+  type phone
+  label "Item 2"
+}
+
+component carouselItem3 {
+  parent showcase
+  type phone
+  label "Item 3"
+}
+
+text caption {
+  value "screenshot tour"
+  center
+  layer text
+  y 430
+  size 30
+  color #8B94A1
+  beat compose
+}

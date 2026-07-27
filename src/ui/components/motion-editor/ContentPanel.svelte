@@ -5,7 +5,7 @@
   import type { Asset, Element, Scene } from '../../../types/scene';
   import AiConfigPanel from '../AiConfigPanel.svelte';
   import BrandConfigPanel from '../BrandConfigPanel.svelte';
-  import { ANIMATION_PRESETS, AVAILABLE_PRESETS } from './constants';
+  import { ANIMATION_PRESETS, AVAILABLE_PRESETS, EFFECT_PRESETS } from './constants';
   import { assetPreviewSource, elementDetail } from './helpers';
   import type { AnimationPresetDef, EditorNavTab } from './types';
 
@@ -142,6 +142,23 @@
       selectedTextIds = new Set(textElements.slice(start, end + 1).map((item) => item.id));
     }
     onSelectElement(element.id);
+  }
+
+  function hierarchyDepth(element: Element): number {
+    const byId = new Map(sourceElements.map((item) => [item.id, item]));
+    let depth = 0;
+    let parent = String(propertiesOfElement(element)['parent'] ?? '');
+    const seen = new Set<string>();
+    while (parent && !seen.has(parent) && depth < 12) {
+      seen.add(parent);
+      depth += 1;
+      parent = String(propertiesOfElement(byId.get(parent))['parent'] ?? '');
+    }
+    return depth;
+  }
+
+  function propertiesOfElement(element: Element | undefined): Record<string, unknown> {
+    return (element?.properties ?? {}) as unknown as Record<string, unknown>;
   }
 </script>
 
@@ -415,6 +432,19 @@
         </div>
         <div class="me-panel-content">
           <div class="me-effects-categories">
+            {#each ['background', 'atmosphere', 'surface'] as category}
+              <div class="me-effects-category">
+                <div class="me-category-title">{category[0]?.toUpperCase()}{category.slice(1)} Effects</div>
+                <div class="me-effects-list">
+                  {#each EFFECT_PRESETS.filter(p => p.category === category) as preset}
+                    <button type="button" class="me-effect-item" title={preset.description} disabled={!canApplyLibraryPreset(preset)} on:click={() => onApplyLibraryPreset(preset)}>
+                      <Sparkles size={14} />
+                      <span>{preset.name}</span>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/each}
             <div class="me-effects-category">
               <div class="me-category-title">Text Effects</div>
               <div class="me-effects-list">
@@ -483,19 +513,18 @@
           <h3 class="me-panel-heading-title">Scenes</h3>
         </div>
         <div class="me-panel-content">
-          <p class="me-panel-description">
-            Backgrounds, overlays, and full-canvas effects that define the visual context of your animation. Use scenes to create atmosphere, transitions, and environmental layers.
-          </p>
+          <p class="me-panel-description">Select scenes, groups, SVG paths, and ordinary layers. Child transforms stay local to their parent.</p>
           <div class="me-layer-list">
-            {#each sourceElements.filter(el => el.kind === 'effect' || el.kind === 'overlay') as element}
+            {#each sourceElements as element}
               <button
                 type="button"
                 class="me-layer-row"
                 class:me-selected={selectedElementId === element.id}
+                style={`padding-left: ${12 + hierarchyDepth(element) * 14}px`}
                 on:click={() => onSelectElement(element.id)}
               >
                 <span class="me-layer-icon">
-                  <Square size={14} />
+                  {#if element.kind === 'scene' || element.kind === 'group'}<LayoutGrid size={14} />{:else}<Square size={14} />{/if}
                 </span>
                 <span class="me-layer-copy">
                   <strong>{element.id}</strong>

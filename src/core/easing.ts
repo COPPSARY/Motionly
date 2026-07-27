@@ -17,6 +17,9 @@ const EASE_ALIASES: Record<string, string> = {
   'soft-spring': 'back.out(1.05)',
   spring: 'elastic.out(0.55, 0.42)',
   bounceOut: 'bounce.out',
+  'spring.soft': 'back.out(1.2)',
+  'spring.bouncy': 'elastic.out(0.7, 0.4)',
+  'spring.stiff': 'back.out(2.4)',
 };
 
 /**

@@ -47,3 +47,47 @@ Recommended semantic layers:
 - `text`
 - `effects`
 
+## Semantic Vector Components
+
+Use `component` when the object has meaning and natural motion—not merely geometry. Components remain editable `.motion` source and compile into normal imported SVG, overlay, and `AnimationNode` layers before evaluation.
+
+```motion
+component cloudHub {
+  type cloud
+  provider phosphor
+  role main
+  intent focus
+  behavior premiumReveal float glow
+  x 0
+  y -60
+  width 280
+  color #8ab4ff
+  accent #7cf7c5
+  connects dataStore
+  relationship dataFlow
+}
+
+component dataStore {
+  type database
+  provider lucide
+  role supporting
+  behavior stackReveal pulse
+  x 420
+  y 140
+  width 170
+  color #ffffff
+  delay 700ms
+}
+```
+
+Supported types are `cloud`, `database`, `server`, `arrow`, `button`, `dashboard`, `phone`, `browser`, `logo`, `chart`, `notification`, `cursor`, `codeeditor`, `website`, `terminal`, `pricingcard`, `laptop`, and `editor` (the Motionly workspace itself). The built-in registry uses Phosphor, Lucide, Heroicons, and Tabler vectors plus Motionly-native artwork. Set `source` on a component to use an existing imported SVG instead.
+
+Structured types compile into multi-part interfaces — frames, toolbars, metric cards, typed prompts, growing charts, code lines — with built-in staggered choreography, never a lone icon or an empty panel. Content properties fill them: `label`, `detail`, `headline`, `url`, `cta`, `values`, `labels`, and `countTo` (separate multi-item `values`/`labels` with two spaces). Component text renders in Space Grotesk, the bundled display face.
+
+Every generated part is an ordinary element named `NAME__PART`. Customize any part's base property inline with a dotted override — `price.countPrefix "€"`, `headline.color #ffffff` — or animate it directly with `animate NAME__PART { ... }`. Unknown part names error with the list of available parts.
+
+`role` accepts `main`, `supporting`, `connection`, or `background`. `intent` is preserved semantic metadata. Natural behaviors include `premiumReveal`, `float`, `pulse`, `glow`, `activate`, `stackReveal`, `screenReveal`, `dashboardReveal`, `buttonPop`, and `draw`. Cause-and-effect wiring: a `cursor` with `clicks TARGET` and `clickAt TIME` travels to the control and clicks it; `reactsTo TARGET` enters a component just after that target's click; `exitAt`/`exitDuration` choreograph a deliberate exit.
+
+`connects TARGET` compiles a relationship into a draw-on connector and a deterministic traveling data particle. The target must be another declared component. Component positions remain the source of truth, so visual position edits rebuild connector geometry automatically.
+
+Vector components support the normal `fill`, `stroke`, `strokeWidth`, mask, trim-path, motion-path, filter, and transform properties. `gradientFrom`, `gradientTo`, and `gradientAngle` create a vector fill gradient; `glow` and `glowColor` create zero-offset luminous depth. Compatible SVG path topology can use `morphTo ALIAS` with `animation "morph(...)"`; incompatible topology intentionally falls back to a matched crossfade.

@@ -1,0 +1,102 @@
+{
+  "name": "website",
+  "type": "motionly:component",
+  "title": "Website",
+  "description": "website: screenReveal, highlight, cursor, connect. Parts: frame, nav, hero, cta, banner.",
+  "tags": [
+    "component"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "website",
+    "source": "src/semantic/component-structures.ts"
+  },
+  "schema": {
+    "label": {
+      "type": "string",
+      "docs": "Primary label slot."
+    },
+    "detail": {
+      "type": "string",
+      "docs": "Supporting detail slot."
+    },
+    "headline": {
+      "type": "string",
+      "docs": "Headline slot."
+    },
+    "cta": {
+      "type": "string",
+      "docs": "Action slot."
+    },
+    "source": {
+      "type": "asset",
+      "docs": "Optional real asset alias."
+    },
+    "width": {
+      "type": "number",
+      "docs": "Component width."
+    },
+    "x": {
+      "type": "number",
+      "docs": "Legacy component X position."
+    },
+    "y": {
+      "type": "number",
+      "docs": "Legacy component Y position."
+    },
+    "role": {
+      "type": "string",
+      "docs": "Semantic role."
+    },
+    "intent": {
+      "type": "string",
+      "docs": "Story intent."
+    },
+    "behavior": {
+      "type": "list",
+      "docs": "Built-in behaviors."
+    },
+    "parent": {
+      "type": "string",
+      "docs": "Parent scene or group."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Primary themed color override."
+    },
+    "accent": {
+      "type": "string",
+      "docs": "Accent override."
+    },
+    "surface": {
+      "type": "string",
+      "docs": "Surface override."
+    },
+    "delay": {
+      "type": "time",
+      "docs": "Entrance delay."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Entrance duration."
+    },
+    "values": {
+      "type": "list",
+      "docs": "Value slots."
+    },
+    "labels": {
+      "type": "list",
+      "docs": "Label slots."
+    },
+    "countTo": {
+      "type": "number",
+      "docs": "Animated statistic target."
+    }
+  },
+  "defaults": {
+    "width": 720,
+    "behavior": "screenReveal"
+  },
+  "manifest": "components/website/registry-item.json"
+}

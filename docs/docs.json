@@ -44,6 +44,7 @@
               "motion-language/overview",
               "motion-language/canvas-camera",
               "motion-language/elements",
+              "motion-language/motion-system",
               "motion-language/text",
               "motion-language/sequences"
             ]
@@ -51,6 +52,7 @@
           {
             "group": "Animation",
             "pages": [
+              "animation/motion-doctrine",
               "animation/presets",
               "animation/text-presets",
               "animation/keyframes",

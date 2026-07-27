@@ -15,6 +15,8 @@ open `references/llms.txt` and load the focused skills it lists**, then follow
 `references/AGENTS.md` for routing by intent:
 
 - `references/skills/motion-dsl/SKILL.md` — canvas, imports, elements, tracks, clips, audio, animations, keyframes, validation (load this first for any authoring or repair)
+- `references/skills/motion-system/SKILL.md` — beats (pacing and focus), layouts (composition), showcases (product presentation), beat transitions, asset-kind driven selection
+- `references/skills/components/SKILL.md` — semantic component library: terminals, dashboards, browsers, phones, pricing cards, the Motionly workspace; content props, dotted part overrides, clicks/reactsTo wiring
 - `references/skills/svg/SKILL.md` — logos, icons, diagrams, vector artwork, drawSVG, fill/stroke, local zoom/pan
 - `references/skills/animation/SKILL.md` and `references/skills/easing/SKILL.md` — choreography, presets, keyframes, timing
 - `references/skills/camera/SKILL.md` — global camera vs. local artwork focus
@@ -107,7 +109,7 @@ animate title {
 
 Keyframes are percentage blocks inside `keyframes` inside `animate`. Persistent timeline rows use `track NAME { ... }`; media clips use `clip ALIAS { track NAME start 0s duration 5s trimIn 0s trimOut 0s }`. Project audio is `audio "./assets/music.mp3" { start 0s }`.
 
-Prefer `power3.out`. Useful text presets: `keynoteText`, `wordReveal`, `charReveal`, `splitReveal`, `blurReveal`, `fadeUp`, `slideIn`, `scaleText`, `typewriter`, `maskReveal`, `gradientReveal`. Useful object/transition presets: `softReveal`, `maskReveal`, `dynamicSlide`, `shapeWipe`, `irisWipe`, `drawSVG`, `sceneExit`, `scaleReveal`. Use `drawSVG` only for simple stroked SVG logos. Camera presets include `slowPush`, `pan`, `pull`, and `speedZoom`.
+Prefer `power3.out`. Useful text presets: `keynoteText`, `wordReveal`, `charReveal`, `splitReveal`, `blurReveal`, `fadeUp`, `slideIn`, `scaleText`, `typewriter`, `maskReveal`, `gradientReveal`. Useful object/transition presets: `softReveal`, `maskReveal`, `dynamicSlide`, `focusZoom`, `zoomThrough`, `whipPan`, `sceneSlide`, `sceneZoom`, `rackFocus`, `depthSwap`, `cascadeIn`, `snapMove`, `popover`, `cursorTap`, `shakeReject`, `orbitDrift`, `shapeWipe`, `irisWipe`, `drawSVG`, `sceneExit`, `scaleReveal`. Pair scene `transitionOut` and `transitionIn` with the same `sceneSlide` direction or `sceneZoom` treatment so every child layer moves together. Use `focusZoom` for whole-product to feature-detail shots, `snapMove` for visible UI drags, `cursorTap` for presses, and `drawSVG` only for simple stroked SVG logos. Camera presets include `slowPush`, `pan`, `pull`, and `speedZoom`.
 
 ## SVG and professional motion
 

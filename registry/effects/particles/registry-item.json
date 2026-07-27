@@ -1,0 +1,68 @@
+{
+  "name": "particles",
+  "type": "motionly:effect",
+  "title": "Particles",
+  "description": "Deterministic ambient particles.",
+  "tags": [
+    "effect",
+    "background"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "particles",
+    "source": "src/render/canvas-renderer.ts"
+  },
+  "schema": {
+    "opacity": {
+      "type": "number",
+      "docs": "Effect opacity."
+    },
+    "intensity": {
+      "type": "number",
+      "docs": "Effect strength."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Loop duration."
+    },
+    "blendMode": {
+      "type": "string",
+      "docs": "Canvas blend mode."
+    },
+    "gradientFrom": {
+      "type": "string",
+      "docs": "Theme gradient start."
+    },
+    "gradientTo": {
+      "type": "string",
+      "docs": "Theme gradient end."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Effect color."
+    },
+    "gridSize": {
+      "type": "number",
+      "docs": "Grid cell size."
+    },
+    "gridThickness": {
+      "type": "number",
+      "docs": "Grid line thickness."
+    },
+    "particleCount": {
+      "type": "number",
+      "docs": "Particle count."
+    },
+    "particleSize": {
+      "type": "number",
+      "docs": "Particle size."
+    }
+  },
+  "defaults": {
+    "opacity": 0.16,
+    "intensity": 0.7,
+    "duration": 8
+  },
+  "manifest": "effects/particles/registry-item.json"
+}

@@ -95,6 +95,8 @@ export interface AnimationNode extends BaseNode {
   duration?: number | string;
   easing?: string;
   sequence?: string;
+  repeat?: number | string;
+  repeatType?: string;
 }
 
 /**

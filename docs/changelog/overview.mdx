@@ -26,6 +26,33 @@ Faster asset management in the editor, with selection, cleanup, and layout optio
 
 </Update>
 
+<Update label="July 25, 2026 — Icon, image, UI, and SVG animation">
+
+Four more building blocks toward professional, non-slideshow motion: icons, images, UI components, and SVG.
+
+## New features
+
+- **Real icon presets** — `springIn`, `bounceIn`, and `scaleReveal` now have distinct, real implementations (they previously fell through to a generic fallback). New `spinIn` gives logos/icons a full-rotation entrance with overshoot and settle.
+- **Image/media presets** — `kenBurns` for a continuous per-element pan+zoom independent of the global camera, and `tiltReveal` for a skew/rotation "perspective" card entrance. `followThrough` (from the motion-quality primitives) is the documented parallax mechanism for a background layer lagging behind foreground/camera movement.
+- **Standalone UI shapes** — `overlay` shapes no longer require a `parent` image; a shape overlay with no parent now positions itself relative to canvas center like any other element, instead of silently filling the whole frame. `rect` also respects `originX`/`originY` for its anchor, enabling left-anchored bars and panels.
+- **UI-component presets** — `cardReveal` (rise + scale + rising shadow elevation) and `buttonPop` (fast elastic tap-scale) for cards/buttons, and `progressFill` (animates `width` from 0) for progress bars. Notifications, modals, tables, and menus are documented composition recipes built from these plus existing presets (`dynamicSlide`, `scaleReveal`, `sequence`), rather than a growing list of one-off preset names.
+- **SVG trim paths and motion paths** — `trimStart` generalizes the existing `drawSVG` stroke reveal into a partial-arc "trim" (a moving trimmed segment, not just draw-from-start). A new `motionPath`/`motionPathProgress`/`motionPathRotate` lets any element travel along an imported path asset's geometry. Real path morphing and gradient-stop animation remain unsupported and are documented as such.
+
+</Update>
+
+<Update label="July 25, 2026 — Motion-quality primitives">
+
+The first step toward richer, less "slide transition" motion: opt-in physicality for any preset.
+
+## New features
+
+- **Overshoot and anticipation** — `heroLogo`, `softReveal`, `productPanel`, `rotateReveal`, and other two-state object presets now accept `overshoot <multiplier>` (settle past the target then ease back) and `anticipation <time>` (a small counter-motion before the main move). Both are additive; existing projects render unchanged unless you add the options. See the [motion language reference](/motion-language).
+- **Secondary motion with `followThrough`** — any element can lag and dampen behind a parent's motion with `followThrough <parentId>`, `followThroughLag`, and `followThroughDamping`, for a label or glow that trails its icon instead of moving in lockstep.
+- **Hierarchy-aware `sequence` stagger** — `sequence` blocks gained a `hierarchy` option (`linear`, `wave`, `center-out`) and now drive delay for preset-driven elements too, not just explicit `animate` blocks, so a row of icons or cards can be staggered from one place instead of hand-computed per-element delays.
+- **Motionly preset refreshed** — the built-in Motionly preset now uses `heroLogo` with overshoot/anticipation for both logo reveals, a `sequence` block with `hierarchy wave` for the three agent icons, and `followThrough` on their labels, as a working example of all three.
+
+</Update>
+
 <Update label="July 25, 2026 — One drag, one undo">
 
 A tidier undo history when you edit interactively.

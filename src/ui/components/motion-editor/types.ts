@@ -3,7 +3,7 @@ export type EditorNavTab = 'media' | 'audio' | 'text' | 'effects' | 'scenes' | '
 export interface AnimationPresetDef {
   name: string;
   description: string;
-  category: 'text' | 'object' | 'transition' | 'camera';
+  category: 'text' | 'object' | 'transition' | 'camera' | 'background' | 'atmosphere' | 'surface';
 }
 
 export interface AssetPreview {

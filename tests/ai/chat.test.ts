@@ -77,8 +77,15 @@ describe('AI chat helpers', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer local-key');
     expect(String(init.body)).toContain('/assets/logo.svg');
     expect(String(init.body)).toContain('local-model');
-    expect(String(init.body)).toContain('NEVER write image name');
+    expect(String(init.body)).toContain('Do not invent image, video, rect, or layer block kinds');
     expect(String(init.body)).toContain('Render an imported asset with its alias directly');
+    expect(String(init.body)).toContain('group owns parent');
+    expect(String(init.body)).toContain('Shared continuity is transition');
+    expect(String(init.body)).toContain('component name { type cloud ... }');
+    expect(String(init.body)).toContain('Use connects TARGET');
+    expect(String(init.body)).toContain('Archetypes (catalog v1)');
+    expect(String(init.body)).toContain('archetype NAME');
+    expect(String(init.body)).toContain('role=logo');
   });
 
   it('routes Gemini keys to Google OpenAI compatibility', async () => {

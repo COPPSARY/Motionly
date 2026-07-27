@@ -1,0 +1,55 @@
+// uiWalkthrough — One product step: window, step label, and a focus ring on the acting region.
+canvas {
+  size 1920x1080
+  fps 60
+  duration 4.5s
+}
+
+camera {
+  zoom 1
+}
+
+theme {
+  accent #7CF7C5
+}
+
+beat reveal {
+  duration 1.5s
+  focus subject
+  route stagedReveals
+  label "product walkthrough"
+}
+
+beat push {
+  duration 1.5s
+  focus subject
+  zoom 1.14
+  route cameraIntent
+  label "Push in"
+}
+
+beat settle {
+  duration 1.5s
+  focus subject
+  zoom 1
+  route cameraIntent
+  label "Settle"
+}
+
+showcase subject {
+  type uiWalkthrough
+  headline "Show the real product"
+  caption "Import your asset and set media to replace this frame."
+  beat reveal
+  behavior push highlight
+}
+
+text hint {
+  value "product walkthrough"
+  center
+  layer text
+  y 470
+  size 28
+  color #8B94A1
+  beat reveal
+}

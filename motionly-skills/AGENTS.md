@@ -4,6 +4,8 @@ Use [`llms.txt`](llms.txt) as the discovery index. Load only skills relevant to 
 
 Always load `skills/motion-dsl/SKILL.md` before creating or repairing `.motion` syntax. Then load focused skills by intent:
 
+- storyboarding a whole film, pacing, focus changes, composition placement, product presentation: `motion-system`
+- interfaces, dashboards, terminals, devices, pricing, the Motionly workspace: `components`
 - vector/logo/icon/diagram work: `svg`
 - choreography or keyframes: `animation` and `easing`
 - push/pan/zoom decisions: `camera`

@@ -15,6 +15,7 @@ const root = normalize(join(here, '..'));
 const dist = join(root, 'dist');
 const skillTemplatePath = join(root, 'templates', 'motionly-skill', 'SKILL.md');
 const projectTemplateRoot = join(root, 'templates', 'project');
+const registryManifestPath = join(root, 'registry', 'registry.json');
 // The full, maintained skill library (llms.txt index + focused SKILL.md files).
 // It ships inside the published package and is installed beside the top-level
 // SKILL.md as a `references/` bundle so agents get real depth, not one file.
@@ -71,6 +72,12 @@ function parsePort(argv) {
 
 function optionValues(argv, name) {
   return argv.flatMap((arg, index) => (arg === name && argv[index + 1] ? [argv[index + 1]] : []));
+}
+
+function optionValue(argv, name) {
+  const values = optionValues(argv, name);
+  if (values.length > 1) throw new Error(`Choose only one ${name}.`);
+  return values[0];
 }
 
 function firstPositional(argv) {
@@ -168,6 +175,108 @@ async function copyReferenceLibrary(source, destination) {
     }
   }
   return copied;
+}
+
+async function readRegistry() {
+  return JSON.parse(await readFile(registryManifestPath, 'utf8'));
+}
+
+function registryType(value) {
+  return String(value).replace(/^motionly:/, '').replace(/s$/, '');
+}
+
+async function catalogRegistry(argv) {
+  const type = optionValue(argv, '--type');
+  const tag = optionValue(argv, '--tag');
+  const registry = await readRegistry();
+
+  // `--show NAME` prints a block's example composition straight to stdout.
+  // Blocks themselves are built into the engine and need no install; this is
+  // just the fastest way for a person or an agent to read a working example.
+  const show = optionValue(argv, '--show');
+  if (show) {
+    const item = registry.items.find((candidate) => candidate.name === show);
+    if (!item) throw new Error(`Unknown registry item "${show}". Run "motionly catalog".`);
+    const file = item.files?.find((entry) => extname(entry.path) === '.motion');
+    if (!file) {
+      console.log(
+        `${item.name} has no example composition. It is built into Motionly — use it directly in .motion.`
+      );
+      return;
+    }
+    console.log(await readFile(resolve(root, file.path), 'utf8'));
+    return;
+  }
+
+  const items = registry.items.filter(
+    (item) =>
+      (!type || registryType(item.type) === registryType(type)) &&
+      (!tag || item.tags?.includes(tag))
+  );
+  if (argv.includes('--json')) {
+    console.log(JSON.stringify({ version: registry.version, items }, null, 2));
+    return;
+  }
+  if (!items.length) {
+    console.log('No registry items matched.');
+    return;
+  }
+  const width = Math.max(4, ...items.map((item) => item.name.length));
+  for (const item of items) {
+    const example = item.files?.length ? ' [example]' : '';
+    console.log(
+      `${item.name.padEnd(width)}  ${registryType(item.type).padEnd(9)}  ${item.description}${example}`
+    );
+  }
+}
+
+async function copyRegistryPath(source, target, presetName) {
+  const sourceStat = await stat(source);
+  if (sourceStat.isDirectory()) {
+    await mkdir(target, { recursive: true });
+    let copied = 0;
+    for (const entry of await readdir(source)) {
+      copied += await copyRegistryPath(join(source, entry), join(target, entry), presetName);
+    }
+    return copied;
+  }
+  await mkdir(dirname(target), { recursive: true });
+  try {
+    const data = await readFile(source);
+    const content =
+      extname(source) === '.motion'
+        ? data.toString('utf8').replaceAll(`"/preset/${presetName}/`, '"./')
+        : data;
+    await writeFile(target, content, { flag: 'wx' });
+    return 1;
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    console.log(`Kept ${target}: already exists`);
+    return 0;
+  }
+}
+
+async function addRegistryItem(name, argv) {
+  if (!name || name.startsWith('-'))
+    throw new Error('Usage: npx @coppsary/motionly add <registry-name> [--dir <folder>]');
+  const registry = await readRegistry();
+  const item = registry.items.find((candidate) => candidate.name === name);
+  if (!item) throw new Error(`Unknown registry item "${name}". Run "motionly catalog".`);
+  if (!item.files?.length) {
+    console.log(`${item.name} is built into Motionly; use it directly in .motion.`);
+    return;
+  }
+  const base = resolve(optionValue(argv, '--dir') ?? '.');
+  let copied = 0;
+  for (const file of item.files) {
+    const source = resolve(root, file.path);
+    const target = resolve(base, file.target);
+    if (!source.startsWith(`${root}${sep}`) || !target.startsWith(`${base}${sep}`)) {
+      throw new Error(`Unsafe registry path in "${item.name}".`);
+    }
+    copied += await copyRegistryPath(source, target, item.name);
+  }
+  console.log(`Added ${item.name}: ${copied} file${copied === 1 ? '' : 's'} in ${base}`);
 }
 
 async function choose(terminal, question, options) {
@@ -457,6 +566,9 @@ function printHelp() {
   npx @coppsary/motionly skills add                       Install agent skills into an existing project
   npx @coppsary/motionly skills add --all
   npx @coppsary/motionly skills add --provider <codex|claude|gemini|opencode|kiro|rayu>
+  npx @coppsary/motionly catalog [--type move|effect|component|showcase|layout|beat|archetype|preset] [--tag <tag>] [--json]
+  npx @coppsary/motionly catalog --show <name>            Print a block's example composition (nothing is installed)
+  npx @coppsary/motionly add <registry-name> [--dir <folder>]  Install a preset; built-ins need no install
   npx @coppsary/motionly dev [project-folder]             Reopen and edit a local project
 
 Options: --scope <project|global>, --port <number>, --no-open`);
@@ -476,6 +588,14 @@ async function main() {
   }
   if (command === 'init') {
     await initProject(argv[1], argv.slice(2));
+    return;
+  }
+  if (command === 'catalog') {
+    await catalogRegistry(argv.slice(1));
+    return;
+  }
+  if (command === 'add') {
+    await addRegistryItem(argv[1], argv.slice(2));
     return;
   }
   if (command === 'dev') {

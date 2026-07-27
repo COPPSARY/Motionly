@@ -6,6 +6,7 @@
   import { evaluateScene } from '../../animation/evaluator';
   import {
     assetWarnings,
+    dominantAssetColor,
     disposeAssets,
     loadAssets,
     isLoadedVideo,
@@ -14,6 +15,7 @@
   } from '../../assets/asset-loader';
   import type { LoadedAsset } from '../../assets/asset-loader';
   import { assetFilename, significantlyDifferentAsset, tagEmbeddedAssetPath } from '../../assets/asset-resolution';
+  import { decomposeSvg } from '../../assets/svg-decomposition';
   import type { AssetIdentity } from '../../assets/asset-resolution';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
   import { canExport, exportVideo } from '../../export/exporter';
@@ -46,6 +48,7 @@
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
   import { editorShortcut, shortcutContext } from '../editor-shortcuts';
   import { cloneClipInProgram, cloneElementInProgram } from '../duplicate-cloning';
+  import { copyMotion, pasteMotion, type MotionClipboard } from '../motion-copy';
   import { extractAudioPeaks, waveformBucketCount, waveformPath } from '../audio-waveform';
   import { moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
   import { anchoredTimelineScroll, clampTimelineZoom, playbackTimeFromClock, quantizeTimelineTime as quantizeFrameTime } from '../timeline-viewport';
@@ -211,6 +214,7 @@
   let deleteResultSource: string | null = null;
   let keyframeNotice = '';
   let keyframeNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  let motionClipboard: MotionClipboard | null = null;
 
 
 
@@ -478,7 +482,28 @@
     : null;
   $: timelineTicks = Array.from({ length: 7 }, (_, index) => (timelineVisibleDuration * index) / 6);
   $: displayFrame = Math.round(currentTime * (scene?.canvas.fps ?? 60));
-  $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets);
+  $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets).map((asset) => {
+    const loaded = assets.get(asset.name);
+    const svg = loaded?.motionlySvg;
+    const metadata = loaded
+      ? { width: loaded.width, height: loaded.height, dominantColor: dominantAssetColor(loaded) }
+      : {};
+    return svg && !svg.animated
+      ? {
+          ...asset,
+          ...metadata,
+          layers: [
+            ...svg.groups.map((layer) => ({ ...layer, kind: 'group' as const })),
+            ...svg.paths.map((layer) => ({
+              id: layer.id,
+              label: layer.label,
+              parentId: layer.parentId,
+              kind: 'path' as const,
+            })),
+          ],
+        }
+      : { ...asset, ...metadata };
+  });
   $: canvasWidth = scene?.canvas.width ?? 1920;
   $: canvasHeight = scene?.canvas.height ?? 1080;
   $: aiProjectInfo = {
@@ -625,12 +650,19 @@
     const previousAssets = assets;
     const failures: string[] = [];
     try {
-      const loaded = await loadAssets(nextScene, document.baseURI, (name, error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        failures.push(`${name}: ${message}`);
-      });
+      const loaded = await loadAssets(
+        nextScene,
+        document.baseURI,
+        (name, error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push(`${name}: ${message}`);
+        },
+        previousAssets
+      );
       if (loadId !== assetLoadId) {
-        disposeAssets(loaded);
+        disposeAssets(
+          new Map([...loaded].filter(([name, asset]) => previousAssets.get(name) !== asset))
+        );
         return;
       }
       for (const asset of nextScene.imports) {
@@ -1111,10 +1143,25 @@
   function deleteElement(id: string) {
     if (!ast) return;
     const previousSource = code;
+    const ids = new Set([id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const node of ast.body) {
+        if (
+          node.type === 'Element' &&
+          ids.has(String(node.properties['parent'] ?? '')) &&
+          !ids.has(node.name)
+        ) {
+          ids.add(node.name);
+          changed = true;
+        }
+      }
+    }
     ast.body = ast.body.filter(
       (node) =>
-        !(node.type === 'Element' && node.name === id) &&
-        !(node.type === 'Animation' && node.target === id)
+        !(node.type === 'Element' && (ids.has(node.name) || ids.has(String(node.properties['from'] ?? '')) || ids.has(String(node.properties['to'] ?? '')))) &&
+        !(node.type === 'Animation' && ids.has(node.target))
     );
     selectedElementId = '';
     const resultSource = serializeProgram(ast);
@@ -1212,6 +1259,20 @@
 
   function updateElementProperty(key: string, value: string | number | boolean) {
     updateElementProperties(selectedAnimationTarget(), { [key]: value });
+  }
+
+  function copySelectedMotion() {
+    if (!ast || !selectedAnimationTarget()) return;
+    motionClipboard = copyMotion(ast, selectedAnimationTarget());
+    showKeyframeNotice(motionClipboard ? 'Motion copied' : 'This layer has no motion to copy');
+  }
+
+  function pasteSelectedMotion(mode: 'relative' | 'absolute') {
+    if (!ast || !motionClipboard || !selectedAnimationTarget()) return;
+    if (selectedAnimationAst() && !window.confirm('Replace this layer’s existing motion?')) return;
+    pasteMotion(ast, motionClipboard, selectedAnimationTarget(), mode);
+    code = serializeProgram(ast);
+    showKeyframeNotice(mode === 'relative' ? 'Motion pasted relative to layer' : 'Motion pasted at absolute values');
   }
 
   function updateElementProperties(
@@ -1480,11 +1541,39 @@
     const hiddenMasks = hiddenMaskSourceIds(currentFrame.elements);
     const editable = currentFrame.elements
       .filter((element) => !hiddenMasks.has(element.id))
-      .filter((element) => element.kind === 'text' || element.kind === 'asset')
+      .filter(
+        (element) =>
+          element.kind === 'text' ||
+          element.kind === 'asset' ||
+          element.kind === 'image' ||
+          element.kind === 'overlay' ||
+          element.kind === 'path'
+      )
       .filter((element) => numericProperty(element, 'opacity', 1) > 0)
       .reverse();
 
     return editable.find((element) => {
+      if (element.kind === 'path') {
+        const props = propertiesOf(element);
+        const d = String(props['path'] ?? props['d'] ?? '');
+        if (d) {
+          try {
+            const cx = canvasWidth / 2 + numericProperty(element, 'x', 0);
+            const cy = canvasHeight / 2 + numericProperty(element, 'y', 0);
+            const scale = numericProperty(element, 'scale', 1) || 1;
+            const angle = (-numericProperty(element, 'rotation', 0) * Math.PI) / 180;
+            const dx = x - cx;
+            const dy = y - cy;
+            const localX = (dx * Math.cos(angle) - dy * Math.sin(angle)) / scale;
+            const localY = (dx * Math.sin(angle) + dy * Math.cos(angle)) / scale;
+            const path = new Path2D(d);
+            const context = canvas.getContext('2d');
+            if (context?.isPointInPath(path, localX, localY) || context?.isPointInStroke(path, localX, localY)) return true;
+          } catch {
+            // Invalid path data is reported by normal project validation.
+          }
+        }
+      }
       const bounds = elementBounds(element);
       return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
     }) ?? null;
@@ -1836,6 +1925,28 @@
     if (!draggingAsset) return;
     
     const assetName = draggingAsset.name;
+    const loadedForPlacement = assets.get(assetName);
+    if (
+      draggingAsset.type === 'svg' &&
+      loadedForPlacement?.motionlySvg &&
+      !loadedForPlacement.motionlySvg.animated
+    ) {
+      const frame = 1 / (scene?.canvas.fps ?? 60);
+      const placement = placeMediaClip(dropTargetTime, 0, totalDuration, 5, frame);
+      const targetTrack = ensureLayerTrack(String(dropTargetTrack || defaultMainTrack));
+      ast.body.push(
+        ...decomposeSvg(ast, assetName, loadedForPlacement.motionlySvg, {
+          start: placement.start,
+          duration: placement.duration,
+          track: targetTrack.id,
+        })
+      );
+      code = serializeProgram(ast);
+      draggingAsset = null;
+      dropTargetTime = null;
+      dropTargetTrack = '';
+      return;
+    }
     ensureAssetElement(assetName);
     const frame = 1 / (scene?.canvas.fps ?? 60);
     const placement = placeMediaClip(
@@ -2598,7 +2709,7 @@
   }
 
   function elementBounds(element: Element | EvaluatedElement): { x: number; y: number; width: number; height: number } {
-    if (element.kind === 'overlay' || element.kind === 'effect') {
+    if (element.kind === 'effect') {
       return { x: 0, y: 0, width: canvasWidth, height: canvasHeight };
     }
     const center = elementCenter(element);
@@ -3117,6 +3228,7 @@
   }
 
   function canApplyLibraryPreset(preset: AnimationPresetDef): boolean {
+    if (['background', 'atmosphere', 'surface'].includes(preset.category)) return true;
     if (preset.category === 'camera') return true;
     if (!selectedElement) return false;
     if (preset.category === 'text') return selectedElement.kind === 'text';
@@ -3126,7 +3238,25 @@
 
   function applyLibraryPreset(preset: AnimationPresetDef) {
     if (!ast || !canApplyLibraryPreset(preset)) return;
-    if (preset.category === 'camera') {
+    if (['background', 'atmosphere', 'surface'].includes(preset.category)) {
+      const name = nextElementName('effect');
+      ast.body.push({
+        type: 'Element',
+        kind: 'overlay',
+        name,
+        properties: {
+          layer: preset.category === 'surface' ? 'content' : 'background',
+          width: preset.category === 'surface' ? 760 : canvasWidth,
+          height: preset.category === 'surface' ? 420 : canvasHeight,
+          radius: preset.category === 'surface' ? 24 : 0,
+          gradientFrom: scene?.theme.surface ?? '#12161D',
+          gradientTo: scene?.theme.edge ?? '#2A313C',
+          opacity: 0,
+          backgroundEffect: `${preset.name}(duration ${preset.category === 'surface' ? '1s' : `${Math.max(4, totalDuration)}s`})`,
+        },
+      });
+      selectedElementId = name;
+    } else if (preset.category === 'camera') {
       let camera = ast.body.find((node): node is CameraNode => node.type === 'Camera');
       if (!camera) {
         camera = { type: 'Camera', properties: {} };
@@ -3271,6 +3401,9 @@
       onAlignSelected={alignSelected}
       {selectedVisualProperty}
       {selectedVisualStringProperty}
+      onCopyMotion={copySelectedMotion}
+      onPasteMotion={pasteSelectedMotion}
+      canPasteMotion={motionClipboard !== null}
       {animatedPropertyNames}
       {isPropertyAnimated}
       {hasPropertyKeyframeAtPlayhead}

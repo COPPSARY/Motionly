@@ -76,4 +76,27 @@ describe('editor duplication helpers', () => {
     expect(clone?.transitionInDuration).toBe(0);
     expect(clone?.transitionOutDuration).toBe(0);
   });
+
+  it('duplicates a complete group subtree and remaps parents and motion', () => {
+    const program = parseMotion(`
+      group phone { x 10 }
+      overlay screen { parent phone shape rect }
+      text label { parent screen value "Ready" }
+      animate screen { from { opacity 0 } to { opacity 1 } }
+    `);
+    const result = cloneElementInProgram(program, 'phone', 24)!;
+    const screen = result.program.body.find(
+      (node) => node.type === 'Element' && node.name === 'screen_copy'
+    );
+    const label = result.program.body.find(
+      (node) => node.type === 'Element' && node.name === 'label_copy'
+    );
+    expect(screen && screen.type === 'Element' ? screen.properties['parent'] : '').toBe(
+      'phone_copy'
+    );
+    expect(label && label.type === 'Element' ? label.properties['parent'] : '').toBe('screen_copy');
+    expect(
+      result.program.body.some((node) => node.type === 'Animation' && node.target === 'screen_copy')
+    ).toBe(true);
+  });
 });

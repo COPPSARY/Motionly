@@ -96,3 +96,58 @@ describe('split text positioning', () => {
     ).toBe(420);
   });
 });
+
+describe('object preset entrance timing', () => {
+  it('holds delayed entrances in their hidden state without changing exits or idle motion', async () => {
+    const { evaluateScene } = await import('../../src/animation/evaluator');
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 5s }
+        overlay card {
+          shape rect
+          y 40
+          opacity 1
+          animation cardReveal(delay 2s duration 1s)
+        }
+        overlay slide {
+          shape rect
+          x 80
+          opacity 1
+          animation dynamicSlide(delay 2s duration 1s direction left)
+        }
+        overlay wipe {
+          shape rect
+          opacity 0
+          animation shapeWipe(delay 2s duration 1s direction right)
+        }
+        overlay exitOnly {
+          shape rect
+          opacity 1
+          animation sceneExit(delay 2s duration 1s)
+        }
+        overlay idle {
+          shape rect
+          scale 1.2
+          animation pulse(delay 2s duration 1s)
+        }
+      `)
+    );
+    const before = evaluateScene(scene, 1);
+    const after = evaluateScene(scene, 3);
+    const render = (frame: typeof before, id: string) =>
+      frame.elements.find((element) => element.id === id)?.render as unknown as Record<
+        string,
+        unknown
+      >;
+
+    expect(render(before, 'card')['opacity']).toBe(0);
+    expect(render(before, 'slide')['opacity']).toBe(0);
+    expect(render(before, 'wipe')['revealProgress']).toBe(0);
+    expect(render(before, 'exitOnly')['opacity']).toBe(1);
+    expect(render(before, 'idle')['scale']).toBe(1.2);
+
+    expect(render(after, 'card')['opacity']).toBe(1);
+    expect(render(after, 'slide')['opacity']).toBe(1);
+    expect(render(after, 'wipe')['revealProgress']).toBe(1);
+  });
+});

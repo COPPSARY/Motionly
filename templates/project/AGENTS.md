@@ -9,8 +9,8 @@ Read the installed `motionly` skill before creating or substantially editing `pr
 Installing the skill placed it at `.<agent>/skills/motionly/SKILL.md` (Codex uses
 `.agents/`, plus `.claude/`, `.gemini/`, `.opencode/`, `.kiro/`, or `.rayu/`). That file is the
 quick contract; a full reference library sits beside it under `references/` (`llms.txt`
-index plus focused skills: `motion-dsl`, `svg`, `animation`, `easing`, `camera`, `composition`,
-`typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`).
+index plus focused skills: `motion-dsl`, `components`, `svg`, `animation`, `easing`, `camera`,
+`composition`, `typography`, `transitions`, `timeline`, `assets`, `rendering`, `templates`).
 
 Before writing or repairing `.motion` beyond a trivial edit:
 
@@ -79,6 +79,32 @@ animate title {
 Prefer these properties: `x`, `y`, `scale`, `rotation`, `opacity`, `blur`, `size`, `color`, `center`, `duration`, `delay`, `easing`.
 
 Use `size`, not `fontSize`. Use `easing`, not `ease`.
+
+## Semantic Components
+
+Compose interfaces from the built-in component library before hand-drawing UI
+(read the `components` reference skill first):
+
+```motion
+component board {
+  type dashboard
+  role main
+  label "Production"
+  values "$18.4k  4,812  99.9%"
+  labels "Revenue  Signups  Uptime"
+  width 1040
+  accent #3E8BFF
+  price.countPrefix "€"
+}
+```
+
+Types: `cloud`, `database`, `server`, `arrow`, `button`, `dashboard`, `phone`,
+`browser`, `logo`, `chart`, `notification`, `cursor`, `codeeditor`, `website`,
+`terminal`, `pricingcard`, `laptop`, `editor` (the Motionly workspace). Each
+compiles into structured, professionally choreographed elements named
+`NAME__PART`. Customize any part with a dotted override (`PART.PROPERTY VALUE`)
+or animate it directly (`animate NAME__PART { ... }`). Wire cause and effect
+with `connects`, `clicks` + `clickAt`, `reactsTo`, and `exitAt`.
 
 ## Preset Guidance
 

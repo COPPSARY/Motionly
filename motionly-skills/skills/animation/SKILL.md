@@ -61,6 +61,15 @@ Use a sequence for a semantic group, not every object in the project. Reveal log
 - `drawSVG`: simple stroked vector hero.
 - `shapeWipe`/`irisWipe`: real scene change.
 - `sceneExit`: deliberate cleanup.
+- `focusZoom`: move from the whole product into one feature; use `role sibling` on surrounding layers for coordinated outward parallax.
+- `zoomThrough`/`whipPan`: fast, motivated shot transitions.
+- Paired `sceneSlide`/`sceneZoom`: animate scene roots so backgrounds, media, text, and effects travel together through the handoff.
+- `rackFocus`/`depthSwap`: transfer attention without cutting.
+- `cascadeIn`: staggered related media or cards.
+- `snapMove`: show a drag or reposition action.
+- `popover`: open an inspector, menu, or floating panel.
+- `cursorTap`/`shakeReject`: click feedback and blocked-action feedback.
+- `orbitDrift`: deterministic elliptical motion when orbit is the subject.
 
 ## Avoid Generic Motion
 
