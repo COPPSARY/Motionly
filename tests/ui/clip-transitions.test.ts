@@ -20,6 +20,9 @@ function clip(overrides: Partial<Clip> = {}): Clip {
     trimOut: 0,
     transitionInDuration: 0,
     transitionOutDuration: 0,
+    fadeIn: 0,
+    fadeOut: 0,
+    speed: 1,
     sourceOrder: 0,
     ...overrides,
   };

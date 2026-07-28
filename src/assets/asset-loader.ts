@@ -1,10 +1,11 @@
-/** Typed visual asset loading for still images, animated images/SVG, Lottie, and video. */
+/** Typed asset loading for still images, animated images/SVG, Lottie, video, and audio. */
 
 import type { Canvg } from 'canvg';
 import type { DotLottie } from '@lottiefiles/dotlottie-web';
 import { decompressFrames, parseGIF } from 'gifuct-js';
 import type { AssetType, EvaluatedScene, Scene } from '../types/scene';
 import { assetFilename } from './asset-resolution';
+import { extractAudioPeaks, waveformBucketCount, type AudioPeak } from './audio-waveform';
 import type { DemuxedMp4Video } from './mp4-video';
 
 export interface MotionlySvgData {
@@ -75,13 +76,36 @@ export type LoadedCanvasAsset = HTMLCanvasElement &
     motionlyType: 'gif' | 'lottie' | 'svg';
     motionlyDuration: number;
   };
-export type LoadedAsset = LoadedImageAsset | LoadedVideoAsset | LoadedCanvasAsset;
+export type LoadedAudioAsset = HTMLAudioElement &
+  LoadedAssetMetadata & {
+    motionlyType: 'audio';
+    motionlyDuration: number;
+    /** Normalized waveform peaks over the whole file, filled in after decode. */
+    motionlyPeaks?: AudioPeak[];
+  };
+export type LoadedAsset =
+  LoadedImageAsset | LoadedVideoAsset | LoadedCanvasAsset | LoadedAudioAsset;
+
+/** Loaded assets the canvas can size and draw — everything except audio. */
+export type DrawableAsset = LoadedImageAsset | LoadedVideoAsset | LoadedCanvasAsset;
+
+export function isLoadedAudio(asset: LoadedAsset | undefined): asset is LoadedAudioAsset {
+  return asset?.motionlyType === 'audio';
+}
+
+/** Pixel dimensions of a drawable asset, or null for audio, which has none. */
+export function assetPixelSize(
+  asset: LoadedAsset | undefined | null
+): { width: number; height: number } | null {
+  if (!asset || isLoadedAudio(asset)) return null;
+  return { width: asset.width, height: asset.height };
+}
 
 const dominantColors = new WeakMap<LoadedAsset, string>();
 
 /** Cheap theme seed from a loaded asset; failures stay non-blocking. */
 export function dominantAssetColor(asset: LoadedAsset | undefined): string | undefined {
-  if (!asset) return undefined;
+  if (!asset || isLoadedAudio(asset)) return undefined;
   const cached = dominantColors.get(asset);
   if (cached) return cached;
   try {
@@ -178,13 +202,15 @@ export async function loadAsset(
 ): Promise<LoadedAsset> {
   const url = resolveAssetUrl(path, baseUrl);
   const [asset, size] = await Promise.all([
-    type === 'video'
-      ? loadVideo(url)
-      : type === 'lottie'
-        ? loadLottie(url)
-        : isGif(url)
-          ? loadGif(url)
-          : loadImage(url, type === 'svg'),
+    type === 'audio'
+      ? loadAudio(url)
+      : type === 'video'
+        ? loadVideo(url)
+        : type === 'lottie'
+          ? loadLottie(url)
+          : isGif(url)
+            ? loadGif(url)
+            : loadImage(url, type === 'svg'),
     loadAssetSize(url),
   ]);
   if (size) asset.motionlySize = size;
@@ -274,6 +300,47 @@ async function loadAnimatedSvg(
   };
   canvas.motionlyResume = () => canvas.motionlyCanvg?.start(options);
   return canvas;
+}
+
+/**
+ * Load an audio file as a playable element. Metadata is awaited so the clip can
+ * be placed at its true length. Finish the waveform before exposing the asset
+ * so its first timeline render is complete instead of depending on a later edit.
+ */
+async function loadAudio(url: string): Promise<LoadedAudioAsset> {
+  const audio = document.createElement('audio') as LoadedAudioAsset;
+  audio.motionlyType = 'audio';
+  audio.motionlySource = url;
+  audio.preload = 'auto';
+  audio.crossOrigin = 'anonymous';
+  audio.src = url;
+  audio.load();
+  if (audio.readyState < HTMLMediaElement.HAVE_METADATA) await mediaEvent(audio, 'loadedmetadata');
+  audio.motionlyDuration = Number.isFinite(audio.duration) ? Math.max(0, audio.duration) : 0;
+  await decodeAudioPeaks(audio, url);
+  return audio;
+}
+
+async function decodeAudioPeaks(audio: LoadedAudioAsset, url: string): Promise<void> {
+  let context: AudioContext | null = null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    context = new AudioContext();
+    const buffer = await context.decodeAudioData(await response.arrayBuffer());
+    // decodeAudioData knows the true length even when the element's metadata
+    // reports Infinity (common for streamed or headerless files).
+    if (buffer.duration > 0) audio.motionlyDuration = buffer.duration;
+    audio.motionlyPeaks = await extractAudioPeaks(
+      Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index)),
+      waveformBucketCount(buffer.duration)
+    );
+  } catch (error) {
+    audio.motionlyWarning = 'Could not read this audio file’s waveform.';
+    console.warn('Could not decode audio waveform:', error);
+  } finally {
+    void context?.close();
+  }
 }
 
 async function loadVideo(url: string): Promise<LoadedVideoAsset> {
@@ -428,7 +495,7 @@ interface GifDecoderState {
 }
 
 function mediaEvent(
-  video: HTMLVideoElement,
+  video: HTMLMediaElement,
   event: 'loadedmetadata' | 'loadeddata' | 'seeked'
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -442,7 +509,7 @@ function mediaEvent(
     };
     const fail = () => {
       cleanup();
-      reject(video.error ?? new Error(`Video failed during ${event}`));
+      reject(video.error ?? new Error(`Media failed during ${event}`));
     };
     video.addEventListener(event, complete, { once: true });
     video.addEventListener('error', fail, { once: true });

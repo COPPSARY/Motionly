@@ -45,7 +45,7 @@ async function handleExportRequest(request, response, url) {
     await createJob(request, response);
     return;
   }
-  const match = /^\/api\/exports\/([a-z0-9-]+)(?:\/(frames\/(\d+)|audio|finish))?$/.exec(
+  const match = /^\/api\/exports\/([a-z0-9-]+)(?:\/(frames\/(\d+)|audio(?:\/(\d+))?|finish))?$/.exec(
     url.pathname
   );
   if (!match) return respond(response, 404, 'Unknown export endpoint');
@@ -81,10 +81,14 @@ async function handleExportRequest(request, response, url) {
     return;
   }
 
-  if (request.method === 'PUT' && action === 'audio') {
-    if (!job.hasAudio) return respond(response, 409, 'This export was not created with audio');
-    await writeRequest(request, join(job.directory, 'audio-input'), MAX_AUDIO_BYTES);
-    job.audioReceived = true;
+  if (request.method === 'PUT' && action?.startsWith('audio')) {
+    // `/audio` is the pre-multitrack path and means the first (only) clip.
+    const index = match[4] === undefined ? 0 : Number(match[4]);
+    if (!Number.isInteger(index) || index < 0 || index >= job.audioClips.length) {
+      return respond(response, 409, `This export has no audio clip ${index}`);
+    }
+    await writeRequest(request, join(job.directory, `audio-${index}`), MAX_AUDIO_BYTES);
+    job.receivedAudio.add(index);
     respond(response, 204);
     return;
   }
@@ -97,8 +101,12 @@ async function handleExportRequest(request, response, url) {
         `Missing ${job.totalFrames - job.receivedFrames.size} export frames`
       );
     }
-    if (job.hasAudio && !job.audioReceived) {
-      return respond(response, 409, 'The attached audio file was not uploaded');
+    if (job.receivedAudio.size !== job.audioClips.length) {
+      return respond(
+        response,
+        409,
+        `Missing ${job.audioClips.length - job.receivedAudio.size} audio clip uploads`
+      );
     }
     await finishJob(id, job, response);
     return;
@@ -114,7 +122,7 @@ async function createJob(request, response) {
   const fps = positiveNumber(input.fps, 'fps', 240);
   const duration = positiveNumber(input.duration, 'duration', 24 * 60 * 60);
   const totalFrames = positiveInteger(input.totalFrames, 'totalFrames', 24 * 60 * 60 * 240);
-  const audioStart = nonNegativeNumber(input.audioStart ?? 0, 'audioStart', duration);
+  const audioClips = normalizeAudioClips(input, duration);
   const expectedFrames = Math.max(1, Math.ceil(duration * fps));
   if (totalFrames !== expectedFrames) throw new Error(`Expected ${expectedFrames} frames`);
   const id = randomUUID();
@@ -125,9 +133,8 @@ async function createJob(request, response) {
     duration,
     totalFrames,
     receivedFrames: new Set(),
-    hasAudio: input.hasAudio === true,
-    audioStart,
-    audioReceived: false,
+    audioClips,
+    receivedAudio: new Set(),
   });
   response.statusCode = 201;
   response.setHeader('content-type', 'application/json');
@@ -149,11 +156,14 @@ async function finishJob(id, job, response) {
     '-i',
     framePattern,
   ];
-  if (job.hasAudio) {
-    args.push('-itsoffset', String(job.audioStart), '-i', join(job.directory, 'audio-input'));
+  for (let index = 0; index < job.audioClips.length; index += 1) {
+    args.push('-i', join(job.directory, `audio-${index}`));
   }
   args.push('-map', '0:v:0');
-  if (job.hasAudio) args.push('-map', '1:a:0', '-c:a', 'aac', '-b:a', '192k');
+  const mix = audioMixFilter(job.audioClips);
+  if (mix) {
+    args.push('-filter_complex', mix, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k');
+  }
   args.push(
     '-c:v',
     'libx264',
@@ -233,6 +243,85 @@ async function readRequest(request, maxBytes) {
     chunks.push(buffer);
   }
   return Buffer.concat(chunks);
+}
+
+/**
+ * Read the audio clip list, tolerating the pre-multitrack `hasAudio` shape so an
+ * older editor build served by this CLI still exports its single audio track.
+ */
+export function normalizeAudioClips(input, duration) {
+  const raw = Array.isArray(input.audioClips)
+    ? input.audioClips
+    : input.hasAudio === true
+      ? [{ start: input.audioStart ?? 0 }]
+      : [];
+  if (raw.length > 64) throw new Error('Too many audio clips');
+  return raw.map((clip, index) => {
+    const start = nonNegativeNumber(clip.start ?? 0, `audioClips[${index}].start`, duration);
+    return {
+      start,
+      // A clip without a duration plays to the end of the project, which is
+      // what the single background track used to do.
+      duration:
+        clip.duration === undefined
+          ? Math.max(0, duration - start)
+          : nonNegativeNumber(clip.duration, `audioClips[${index}].duration`, duration),
+      trimIn: nonNegativeNumber(clip.trimIn ?? 0, `audioClips[${index}].trimIn`, 24 * 60 * 60),
+      fadeIn: nonNegativeNumber(clip.fadeIn ?? 0, `audioClips[${index}].fadeIn`, duration),
+      fadeOut: nonNegativeNumber(clip.fadeOut ?? 0, `audioClips[${index}].fadeOut`, duration),
+      // Preview clamps element volume to 1, so the export must not boost
+      // either. Clamp rather than reject: a loud value should not fail a render.
+      volume: Math.min(
+        1,
+        nonNegativeNumber(clip.volume ?? 1, `audioClips[${index}].volume`, 64)
+      ),
+      speed: Math.min(16, Math.max(0.0625, positiveNumber(clip.speed ?? 1, `audioClips[${index}].speed`, 16))),
+    };
+  });
+}
+
+/** ffmpeg only accepts atempo between 0.5 and 2, so extreme rates are chained. */
+function tempoFilters(speed) {
+  const factors = [];
+  let remaining = speed;
+  while (remaining > 2) {
+    factors.push(2);
+    remaining /= 2;
+  }
+  while (remaining < 0.5) {
+    factors.push(0.5);
+    remaining /= 0.5;
+  }
+  if (Math.abs(remaining - 1) > 1e-6) factors.push(remaining);
+  return factors.map((factor) => `atempo=${factor.toFixed(6)}`);
+}
+
+/**
+ * Trim, retime, fade, level and delay each clip onto the project timeline, then
+ * sum them. `normalize=0` keeps a single clip at its authored level instead of
+ * amix quietening everything by the number of inputs.
+ */
+export function audioMixFilter(clips) {
+  if (clips.length === 0) return '';
+  const chains = clips.map((clip, index) => {
+    const sourceEnd = clip.trimIn + clip.duration * clip.speed;
+    const steps = [
+      `atrim=start=${clip.trimIn.toFixed(6)}:end=${sourceEnd.toFixed(6)}`,
+      'asetpts=PTS-STARTPTS',
+      ...tempoFilters(clip.speed),
+    ];
+    if (clip.volume !== 1) steps.push(`volume=${clip.volume.toFixed(6)}`);
+    if (clip.fadeIn > 0) steps.push(`afade=t=in:st=0:d=${clip.fadeIn.toFixed(6)}`);
+    if (clip.fadeOut > 0) {
+      const from = Math.max(0, clip.duration - clip.fadeOut);
+      steps.push(`afade=t=out:st=${from.toFixed(6)}:d=${clip.fadeOut.toFixed(6)}`);
+    }
+    const delayMs = Math.round(clip.start * 1000);
+    if (delayMs > 0) steps.push(`adelay=${delayMs}:all=1`);
+    return `[${index + 1}:a]${steps.join(',')}[a${index}]`;
+  });
+  const inputs = clips.map((_, index) => `[a${index}]`).join('');
+  return `${chains.join(';')};${inputs}amix=inputs=${clips.length}:normalize=0[aout]`;
 }
 
 function positiveInteger(value, name, max) {

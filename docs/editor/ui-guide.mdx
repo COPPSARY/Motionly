@@ -20,7 +20,7 @@ Motionly uses one focused editor screen.
 Icon-based tabs for quick access to tools and content. The content panel that opens next to the rail is horizontally resizable — drag its right edge to resize any panel (Media, Audio, Text, Effects, Scenes, AI Config, or Settings) without affecting the preview or timeline.
 
 - **Media** - Assets panel with organized folders (Images & Graphics)
-- **Audio** - Audio assets panel
+- **Audio** - Audio library, filtered to the project's sound files
 - **Text** - Text tools
 - **Effects** - Animation presets library (text, object, transition, camera)
 - **Scenes** - Scene backgrounds and overlays
@@ -34,7 +34,7 @@ Browse and manage project assets:
 - Click thumbnails for full-screen preview (temporary, no timeline disruption)
 - Import PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV/M4V, and Lottie files
 - See explicit browser/renderer warnings when an animated format cannot be frame-seeked or decoded
-- Organized folder structure showing visual assets (audio lives in the Audio panel, not the Assets panel)
+- Organized folder structure showing every imported asset. Audio can be imported here or in the Audio panel — both accept the same drops, and the Audio panel simply filters the library down to sound files.
 - Drag assets directly onto timeline to create clips
 - Green drop indicator shows where clips will be placed
 - Use the view switcher above the asset list to toggle between **grid** and **list** views. Grid shows large thumbnails for visual browsing. List shows a denser row layout that's easier to scan by name.
@@ -124,7 +124,9 @@ The lower panel contains playback and layer-based clip editing.
 
 - Every visual track behaves as a simple layer. Existing role/content metadata remains compatible but does not change drag behavior.
 - Overlaps are allowed and remain visible for the user to arrange.
-- Audio stays on the bottom track and drags horizontally to change its persisted start time. Imported audio clips render a normalized waveform preview so you can align beats and dialogue visually.
+- Audio behaves like any other clip. Importing a sound only adds it to the library; drag it onto the timeline to place it, and drag it again to place a second copy. Music, dialogue and effects can run on separate audio tracks at the same time.
+- Audio clips move, trim, split, stack and select exactly like visual clips, and draw a waveform of the portion they actually play, so trimming redraws the bar.
+- Selecting an audio clip opens its properties: volume with a decibel readout, mute, fade in and fade out, speed, start, duration, and trim. Muting a track silences every clip on it.
 - Scrubbable ruler and frame-accurate playhead anchor Split and trim operations.
 - Drag clips horizontally to change time and vertically to move between visual layers.
 - Trim handles work for media, text, images, overlays, and effects.

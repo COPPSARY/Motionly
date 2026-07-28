@@ -5,7 +5,13 @@
 
 import type { EvaluatedScene, EvaluatedElement, Canvas, ElementProperties } from '../types/scene';
 import type { BoundingBox } from '../types/export';
-import { isLoadedVideo, type LoadedAsset, type MotionlySvgData } from '../assets/asset-loader';
+import {
+  isLoadedAudio,
+  isLoadedVideo,
+  type DrawableAsset,
+  type LoadedAsset,
+  type MotionlySvgData,
+} from '../assets/asset-loader';
 import { formatCountValue } from '../animation-library/count-up';
 
 /**
@@ -391,7 +397,8 @@ function drawAsset(
   if (!assetName) return;
 
   const asset = assets.get(assetName);
-  if (!asset) return;
+  // Audio clips ride the same clip pipeline as visual media but have nothing to draw.
+  if (!asset || isLoadedAudio(asset)) return;
   const drawable = isLoadedVideo(asset) ? asset.motionlyPreviewFrame : asset;
   if (!drawable?.width || !drawable.height) return;
 
@@ -413,7 +420,7 @@ function drawAsset(
   const progress = props['pathProgress'];
   const morphProgress = props['morphProgress'];
   const morphTarget = props['morphTo'] ? assets.get(String(props['morphTo'])) : undefined;
-  if (typeof morphProgress === 'number' && morphTarget) {
+  if (typeof morphProgress === 'number' && morphTarget && !isLoadedAudio(morphTarget)) {
     drawSvgMorph(ctx, asset, morphTarget, box, morphProgress, drawX, drawY, props);
   } else if (
     typeof progress === 'number' &&
@@ -449,8 +456,8 @@ function drawAsset(
 
 function drawSvgMorph(
   ctx: CanvasRenderingContext2D,
-  sourceAsset: LoadedAsset,
-  targetAsset: LoadedAsset,
+  sourceAsset: DrawableAsset,
+  targetAsset: DrawableAsset,
   box: BoundingBox,
   value: number,
   drawX: number,
@@ -566,7 +573,7 @@ export function interpolateCompatiblePathData(
 
 function drawSvgReveal(
   ctx: CanvasRenderingContext2D,
-  asset: LoadedAsset,
+  asset: DrawableAsset,
   box: BoundingBox,
   value: number,
   drawX: number,
@@ -994,7 +1001,7 @@ function drawImageOverlay(
   if (parentOpacity <= 0) return;
   const assetName = parent.assetName;
   const asset = assetName ? assets.get(assetName) : undefined;
-  if (!asset) return;
+  if (!asset || isLoadedAudio(asset)) return;
 
   const box = resolveBox(canvas, asset, parentProps);
   const referenceWidth = asset.width || box.width;
@@ -1574,7 +1581,7 @@ function hash(x: number, y: number, seed: number): number {
  */
 function resolveBox(
   canvas: Canvas,
-  asset: LoadedAsset,
+  asset: DrawableAsset,
   props: Record<string, unknown>
 ): BoundingBox {
   const assetWidth = asset.width;

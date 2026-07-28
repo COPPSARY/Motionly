@@ -18,8 +18,6 @@
   export let assetsReady: boolean;
   export let isDraggingUpload: boolean;
   export let assetError: string;
-  export let audioError: string;
-  export let audioName: string;
   export let sourceElements: Element[];
   export let selectedElementId: string;
   export let assistantAssets: Asset[];
@@ -29,14 +27,11 @@
   export let onAssetFileDragLeave: (event: DragEvent) => void;
   export let onAssetFileDrop: (event: DragEvent) => void | Promise<void>;
   export let onAudioFileDrop: (event: DragEvent) => void | Promise<void>;
-  export let onAudioDragStart: (event: DragEvent) => void;
-  export let onAudioDragEnd: () => void;
   export let onAssetDragStart: (event: DragEvent, asset: Asset) => void;
   export let onAssetDragEnd: () => void;
   export let onPreviewAsset: (asset: Asset) => void;
   export let onRemoveAssets: (assets: Asset[]) => void;
   export let onRequestPresetLoad: (path: string) => void;
-  export let onRequestRemoveAudio: () => void;
   export let onAddTextElement: () => void;
   export let onSelectElement: (id: string) => void;
   export let onRemoveElements: (ids: string[]) => void;
@@ -48,12 +43,13 @@
 
   let selectedAssetNames = new Set<string>();
   let assetView: 'grid' | 'list' = 'grid';
-  let audioSelected = false;
   let selectedTextIds = new Set<string>();
   let assetSelectionAnchor = '';
   let textSelectionAnchor = '';
   let selectionContext = '';
   $: selectedAssets = scene?.imports.filter((asset) => selectedAssetNames.has(asset.name)) ?? [];
+  $: audioAssets = scene?.imports.filter((asset) => asset.type === 'audio') ?? [];
+  $: selectedAudioAssets = audioAssets.filter((asset) => selectedAssetNames.has(asset.name));
   $: textElements = sourceElements.filter((element) => element.kind === 'text');
   $: selectedTextElements = textElements.filter((element) => selectedTextIds.has(element.id));
   $: {
@@ -67,14 +63,13 @@
     assetSelectionAnchor = '';
     selectedTextIds = new Set();
     textSelectionAnchor = '';
-    audioSelected = false;
   }
 
   function handleSelectionKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') clearSelections();
   }
 
-  function selectAsset(asset: Asset, event: MouseEvent) {
+  function selectAsset(asset: Asset, event: MouseEvent | KeyboardEvent) {
     if (event.shiftKey) {
       selectAssetRange(asset, event);
       return;
@@ -90,7 +85,7 @@
     onPreviewAsset(asset);
   }
 
-  function selectAssetRange(asset: Asset, event: MouseEvent) {
+  function selectAssetRange(asset: Asset, event: MouseEvent | KeyboardEvent) {
     if (!event.shiftKey) return;
     event.preventDefault();
     const imports = scene?.imports ?? [];
@@ -194,7 +189,7 @@
           </div>
           {#if mediaSubTab === 'assets'}
             <div class="me-panel-header-actions">
-              <input bind:this={assetInput} class="me-file-input" type="file" accept="image/*,video/*,.svg,.gif,.mp4,.webm,.mov,.m4v,.lottie" multiple on:change={onAssetUpload} />
+              <input bind:this={assetInput} class="me-file-input" type="file" accept="image/*,video/*,audio/*,.svg,.gif,.mp4,.webm,.mov,.m4v,.lottie,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" multiple on:change={onAssetUpload} />
               <button
                 type="button"
                 class="me-header-icon-btn"
@@ -233,7 +228,7 @@
                   <button type="button" class="me-import-media-button" on:click={() => assetInput.click()}>
                     Choose files
                   </button>
-                  <small>Images, video, SVG, GIF and Lottie</small>
+                  <small>Images, video, audio, SVG, GIF and Lottie</small>
                 </div>
               {/if}
             <!-- Visual Assets Section -->
@@ -275,7 +270,9 @@
                         on:dragend={onAssetDragEnd}
                       >
                         <div class="me-asset-thumbnail">
-                          {#if asset.type === 'video'}
+                          {#if asset.type === 'audio'}
+                            <Music2 size={24} />
+                          {:else if asset.type === 'video'}
                             <video src={assetPreviewSource(assets.get(asset.name), asset.path)} muted playsinline preload="metadata"></video>
                           {:else if asset.path}
                             <img src={assetPreviewSource(assets.get(asset.name), asset.path)} alt={asset.name} />
@@ -317,21 +314,21 @@
         <div class="me-panel-header">
           <h3 class="me-panel-heading-title">Audio</h3>
           <div class="me-panel-header-actions">
-            {#if audioSelected && audioName}
+            {#if selectedAudioAssets.length}
               <button
                 type="button"
                 class="me-folder-delete"
-                title="Delete selected audio"
-                aria-label="Delete selected audio"
+                title={`Delete selected audio${selectedAudioAssets.length === 1 ? '' : ' files'}`}
+                aria-label={`Delete selected audio${selectedAudioAssets.length === 1 ? '' : ' files'}`}
                 on:click={() => {
-                  onRequestRemoveAudio();
-                  audioSelected = false;
+                  onRemoveAssets(selectedAudioAssets);
+                  selectedAssetNames = new Set();
                 }}
               >
                 <Trash2 size={14} />
               </button>
             {/if}
-            <button type="button" class="me-header-icon-btn" on:click={() => audioInput.click()} title="Import audio">
+            <button type="button" class="me-header-icon-btn" on:click={() => audioInput.click()} title="Import audio" aria-label="Import audio">
               <Upload size={16} />
             </button>
           </div>
@@ -347,34 +344,39 @@
             on:dragleave={onAssetFileDragLeave}
             on:drop={onAudioFileDrop}
           >
-            {#if audioError}<p class="me-asset-error">{audioError}</p>{/if}
-            {#if audioName}
-              <div
-                class="me-audio-item me-audio-asset"
-                class:me-selected={audioSelected}
-                role="button"
-                tabindex="0"
-                draggable="true"
-                aria-label={`Select or drag ${audioName}`}
-                on:click={() => (audioSelected = true)}
-                on:keydown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') audioSelected = true;
-                }}
-                on:dragstart={onAudioDragStart}
-                on:dragend={onAudioDragEnd}
-              >
-                <Music2 size={18} />
-                <span>{audioName}</span>
-              </div>
+            {#if assetError}<p class="me-asset-error">{assetError}</p>{/if}
+            {#if audioAssets.length}
+              <!-- Audio behaves like any other asset: it lives in the library
+                   and is only on the timeline once you drag it there. -->
+              {#each audioAssets as asset}
+                <div
+                  class="me-audio-item me-audio-asset"
+                  class:me-selected={selectedAssetNames.has(asset.name)}
+                  role="button"
+                  tabindex="0"
+                  draggable={assets.has(asset.name)}
+                  aria-label={`Select or drag ${asset.name}`}
+                  on:click={(event) => selectAsset(asset, event)}
+                  on:contextmenu={(event) => selectAssetRange(asset, event)}
+                  on:keydown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') selectAsset(asset, event);
+                  }}
+                  on:dragstart={(event) => onAssetDragStart(event, asset)}
+                  on:dragend={onAssetDragEnd}
+                >
+                  <Music2 size={18} />
+                  <span>{asset.name}</span>
+                </div>
+              {/each}
             {:else}
               <div class="me-library-empty-state">
                 <span class="me-library-empty-icon"><Music2 size={18} /></span>
-                <strong>Add an audio track</strong>
-                <span>Drop audio here or choose a file from your device.</span>
+                <strong>Add audio</strong>
+                <span>Drop audio here or choose files from your device.</span>
                 <button type="button" class="me-import-media-button" on:click={() => audioInput.click()}>
                   Choose audio
                 </button>
-                <small>MP3, WAV, M4A, AAC, FLAC, OGG and Opus · 50 MB max</small>
+                <small>MP3, WAV, M4A, AAC, FLAC, OGG and Opus · 50 MB max · drag onto the timeline to use</small>
               </div>
             {/if}
           </div>

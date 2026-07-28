@@ -1,7 +1,7 @@
 <script lang="ts">
   import './properties-inspector.css';
-  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Diamond, FileImage, Sparkles, Square, Trash2, Type, Video, Wand2 } from 'lucide-svelte';
-  import type { LoadedAsset } from '../../../assets/asset-loader';
+  import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Diamond, FileImage, Music2, Sparkles, Square, Trash2, Type, Video, Volume2, VolumeX, Wand2 } from 'lucide-svelte';
+  import { assetPixelSize, type LoadedAsset } from '../../../assets/asset-loader';
   import type { AnimationNode } from '../../../types/parser';
   import type { Animation, Clip, Element, Scene } from '../../../types/scene';
   import type { Alignment } from '../../canvas-geometry';
@@ -10,6 +10,20 @@
   import RotationDial from '../RotationDial.svelte';
   import { ADJUSTMENT_CONTROLS, KEYFRAME_EASINGS } from './constants';
   import { assetPreviewSource, elementDetail, numericProperty, propertiesOf, stringProperty } from './helpers';
+  import { gainToDecibels, maximumFade } from '../../audio-clips';
+
+  const formatDecibels = (gain: number): string => {
+    const decibels = gainToDecibels(gain);
+    if (!Number.isFinite(decibels)) return '−∞ dB';
+    return `${decibels > 0 ? '+' : ''}${decibels.toFixed(1)} dB`;
+  };
+  const speedPresets = [
+    { value: 1, label: 'Normal', display: '1.0' },
+    { value: 1.25, display: '1.25' },
+    { value: 1.5, display: '1.5' },
+    { value: 2, display: '2.0' },
+    { value: 3, display: '3.0' },
+  ];
 
   export let selectedTransition: ClipTransitionBoundary | null;
   export let selectedElement: Element | null;
@@ -620,6 +634,163 @@
         </div>
           </div>
         </details>
+      {:else if selectedClip && selectedClip.asset?.type === 'audio'}
+        <div class="me-selection-summary">
+          <span class="me-layer-icon"><Music2 size={15} /></span>
+          <span><strong>{selectedClip.assetName}</strong><small>Audio clip</small></span>
+        </div>
+        <div class="me-primary-properties" aria-label="Audio properties">
+          <div class="me-property-group">
+            <div class="me-property-label-row">
+              <div class="me-property-label">Volume</div>
+              <span class="me-property-readout">{formatDecibels(selectedClip.mute ? 0 : (selectedClip.volume ?? 1))}</span>
+            </div>
+            <div class="me-slider-control">
+              <button
+                type="button"
+                class="me-icon-btn me-audio-mute-toggle"
+                class:me-active={selectedClip.mute}
+                title={selectedClip.mute ? 'Unmute clip' : 'Mute clip'}
+                aria-label={selectedClip.mute ? 'Unmute clip' : 'Mute clip'}
+                aria-pressed={Boolean(selectedClip.mute)}
+                on:click={() => onUpdateClip(selectedClip.id, { mute: !selectedClip.mute })}
+              >
+                {#if selectedClip.mute}<VolumeX size={14} />{:else}<Volume2 size={14} />{/if}
+              </button>
+              <input
+                class="me-custom-slider"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                aria-label="Clip volume"
+                value={selectedClip.volume ?? 1}
+                on:pointerdown={onGestureStart}
+                on:pointerup={onGestureEnd}
+                on:input={(event) => onUpdateClip(selectedClip.id, { volume: Number(event.currentTarget.value) })}
+              />
+              <input
+                class="me-slider-value-input"
+                type="number"
+                min="0"
+                max="1"
+                step="0.05"
+                aria-label="Clip volume value"
+                value={selectedClip.volume ?? 1}
+                on:input={(event) => onUpdateClip(selectedClip.id, { volume: Math.max(0, Math.min(1, Number(event.currentTarget.value))) })}
+              />
+            </div>
+          </div>
+          <div class="me-property-row me-timing-row">
+            <div class="me-property-group">
+              <div class="me-property-label">Fade in</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0" max={maximumFade(selectedClip, 'fadeIn')} step="0.05" value={selectedClip.fadeIn} on:change={(event) => onUpdateClip(selectedClip.id, { fadeIn: `${Math.max(0, Math.min(maximumFade(selectedClip, 'fadeIn'), Number(event.currentTarget.value)))}s` })} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+            <div class="me-property-group">
+              <div class="me-property-label">Fade out</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0" max={maximumFade(selectedClip, 'fadeOut')} step="0.05" value={selectedClip.fadeOut} on:change={(event) => onUpdateClip(selectedClip.id, { fadeOut: `${Math.max(0, Math.min(maximumFade(selectedClip, 'fadeOut'), Number(event.currentTarget.value)))}s` })} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+          </div>
+          <div class="me-property-row me-timing-row">
+            <div class="me-property-group">
+              <div class="me-property-label">Start Time</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0" step="0.01" value={selectedClip.start} on:change={(event) => onMoveSelectedClip(String(selectedClip.track), Number(event.currentTarget.value))} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+            <div class="me-property-group">
+              <div class="me-property-label">Duration</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0.05" step="0.05" value={selectedClip.duration} on:change={(event) => onResizeSelectedClip(Number(event.currentTarget.value))} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+          </div>
+          <div class="me-property-row me-timing-row">
+            <div class="me-property-group">
+              <div class="me-property-label">Trim In</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0" step="0.01" value={selectedClip.trimIn} on:change={(event) => onUpdateClip(selectedClip.id, { trimIn: `${Math.max(0, Number(event.currentTarget.value))}s` })} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+            <div class="me-property-group">
+              <div class="me-property-label">Trim Out</div>
+              <div class="me-number-input-wrapper">
+                <input class="me-number-input" type="number" min="0" step="0.01" value={selectedClip.trimOut} on:change={(event) => onUpdateClip(selectedClip.id, { trimOut: `${Math.max(0, Number(event.currentTarget.value))}s` })} />
+                <span class="me-input-suffix">s</span>
+              </div>
+            </div>
+          </div>
+          <div class="me-property-group me-speed-control">
+            <div class="me-property-label">Playback Speed</div>
+            <output class="me-speed-readout" aria-live="polite">{(selectedClip.speed || 1).toFixed(2)}×</output>
+            <div class="me-speed-slider-row">
+              <button
+                type="button"
+                class="me-speed-step"
+                aria-label="Decrease playback speed"
+                disabled={(selectedClip.speed || 1) <= 0.25}
+                on:click={() => onUpdateClip(selectedClip.id, { speed: Math.max(0.25, (selectedClip.speed || 1) - 0.05) })}
+              >−</button>
+              <input
+                class="me-custom-slider me-speed-slider"
+                type="range"
+                min="0.25"
+                max="4"
+                step="0.05"
+                aria-label="Playback speed"
+                value={selectedClip.speed || 1}
+                style={`--slider-progress: ${(((selectedClip.speed || 1) - 0.25) / 3.75) * 100}%`}
+                on:pointerdown={onGestureStart}
+                on:pointerup={onGestureEnd}
+                on:input={(event) => onUpdateClip(selectedClip.id, { speed: Number(event.currentTarget.value) })}
+              />
+              <button
+                type="button"
+                class="me-speed-step"
+                aria-label="Increase playback speed"
+                disabled={(selectedClip.speed || 1) >= 4}
+                on:click={() => onUpdateClip(selectedClip.id, { speed: Math.min(4, (selectedClip.speed || 1) + 0.05) })}
+              >+</button>
+            </div>
+            <div class="me-speed-presets" role="group" aria-label="Playback speed presets">
+              {#each speedPresets as preset}
+                <button
+                  type="button"
+                  class:me-active={Math.abs((selectedClip.speed || 1) - preset.value) < 0.001}
+                  aria-label={`Set playback speed to ${preset.value}×`}
+                  aria-pressed={Math.abs((selectedClip.speed || 1) - preset.value) < 0.001}
+                  on:click={() => onUpdateClip(selectedClip.id, { speed: preset.value })}
+                >
+                  <span>{preset.display}</span>
+                  {#if preset.label}<small>{preset.label}</small>{/if}
+                </button>
+              {/each}
+            </div>
+          </div>
+          <div class="me-property-group">
+            <div class="me-property-label">Track</div>
+            <select class="me-text-input" value={String(selectedClip.track)} on:change={(event) => onMoveSelectedClip(event.currentTarget.value, selectedClip.start)}>
+              {#each (scene?.tracks ?? []).filter((track) => track.role === 'audio') as track}
+                <option value={String(track.id)}>{track.label}</option>
+              {/each}
+            </select>
+          </div>
+          <button
+            type="button"
+            class="me-timeline-command"
+            on:click={onSplitSelectedClip}
+            disabled={currentTime <= selectedClip.start || currentTime >= selectedClip.start + selectedClip.duration}
+          >Split at playhead</button>
+        </div>
       {:else if selectedClip}
         <div class="me-selection-summary">
           <span class="me-layer-icon">
@@ -743,7 +914,7 @@
         <div class="me-property-group">
           <div class="me-property-label">Width</div>
           <div class="me-number-input-wrapper">
-            <input class="me-number-input" type="number" min="1" step="1" value={selectedClipElement ? estimateElementWidth(selectedClipElement) : (assets.get(selectedClip.assetName)?.width ?? 200)} on:input={(event) => onUpdateElementProperty('width', Number(event.currentTarget.value))} />
+            <input class="me-number-input" type="number" min="1" step="1" value={selectedClipElement ? estimateElementWidth(selectedClipElement) : (assetPixelSize(assets.get(selectedClip.assetName))?.width ?? 200)} on:input={(event) => onUpdateElementProperty('width', Number(event.currentTarget.value))} />
             <span class="me-input-suffix">px</span>
           </div>
         </div>

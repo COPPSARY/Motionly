@@ -4,7 +4,7 @@ import {
   MAX_WAVEFORM_BUCKETS,
   waveformBucketCount,
   waveformPath,
-} from '../../src/ui/audio-waveform';
+} from '../../src/assets/audio-waveform';
 
 describe('audio waveform', () => {
   it('extracts normalized peaks across audio channels', async () => {

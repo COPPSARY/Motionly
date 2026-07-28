@@ -17,7 +17,28 @@ import {
   synchronizeAnimatedAssets,
   type LoadedAsset,
 } from '../assets/asset-loader';
-import type { Scene, Animation, Element, Keyframe } from '../types/scene';
+import { audioClipsOf } from '../ui/audio-clips';
+import type { Scene, Animation, Clip, Element, Keyframe } from '../types/scene';
+
+export interface ExportAudioClip {
+  clip: Clip;
+  url: string;
+}
+
+/**
+ * Audio clips that can actually contribute sound: loaded, audible, and longer
+ * than nothing. Muted or zero-length clips are dropped so the mix only carries
+ * inputs that matter.
+ */
+function exportableAudioClips(scene: Scene, assets: Map<string, LoadedAsset>): ExportAudioClip[] {
+  return audioClipsOf(scene).flatMap((clip) => {
+    const url = assets.get(clip.assetName)?.motionlySource;
+    if (!url || clip.duration <= 0 || clip.mute) return [];
+    const track = scene.tracks.find((candidate) => candidate.id === String(clip.track));
+    if (track?.muted) return [];
+    return [{ clip, url }];
+  });
+}
 import type { EvaluatedScene } from '../types/scene';
 import type { ExportFormat, ExportSupport } from '../types/export';
 import { Mp4FrameSource } from '../assets/mp4-video';
@@ -46,19 +67,18 @@ export async function exportVideo(options: {
   format: ExportFormat;
   height: number;
   fps: number;
-  audioUrl?: string;
   onProgress?: (progress: number) => void;
 }): Promise<Blob> {
-  const { scene, assets, format, height, fps, audioUrl, onProgress } = options;
+  const { scene, assets, format, height, fps, onProgress } = options;
 
   if (format === 'gif') {
     return exportGif({ scene, assets, height, fps, onProgress });
   }
   if (format === 'mp4') {
-    return exportMp4Frames({ scene, assets, height, fps, audioUrl, onProgress });
+    return exportMp4Frames({ scene, assets, height, fps, onProgress });
   }
 
-  return exportWebmRealtime({ scene, assets, height, fps, audioUrl, onProgress });
+  return exportWebmRealtime({ scene, assets, height, fps, onProgress });
 }
 
 async function exportMp4Frames(options: {
@@ -66,10 +86,10 @@ async function exportMp4Frames(options: {
   assets: Map<string, LoadedAsset>;
   height: number;
   fps: number;
-  audioUrl?: string;
   onProgress?: (progress: number) => void;
 }): Promise<Blob> {
-  const { scene, assets, height, fps, audioUrl, onProgress } = options;
+  const { scene, assets, height, fps, onProgress } = options;
+  const audioClips = exportableAudioClips(scene, assets);
   const width = Math.round((height * scene.canvas.width) / scene.canvas.height);
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -87,8 +107,15 @@ async function exportMp4Frames(options: {
       fps,
       duration: scaledScene.canvas.duration,
       totalFrames,
-      hasAudio: Boolean(audioUrl),
-      audioStart: scaledScene.audioStart,
+      audioClips: audioClips.map(({ clip }) => ({
+        start: clip.start,
+        duration: clip.duration,
+        trimIn: clip.trimIn,
+        fadeIn: clip.fadeIn,
+        fadeOut: clip.fadeOut,
+        volume: clip.mute ? 0 : (clip.volume ?? 1),
+        speed: clip.speed,
+      })),
     }),
   });
   const decoded = await prepareDecodedVideoAssets(assets);
@@ -124,19 +151,21 @@ async function exportMp4Frames(options: {
     }
     await Promise.all(uploads);
 
-    if (audioUrl) {
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error(`Could not load audio (${audioResponse.status})`);
-      }
-      await request(`${EXPORT_API}/${job.id}/audio`, {
-        method: 'PUT',
-        headers: {
-          'content-type': audioResponse.headers.get('content-type') ?? 'application/octet-stream',
-        },
-        body: await audioResponse.blob(),
-      });
-    }
+    await Promise.all(
+      audioClips.map(async ({ url }, index) => {
+        const audioResponse = await fetch(url);
+        if (!audioResponse.ok) {
+          throw new Error(`Could not load audio (${audioResponse.status})`);
+        }
+        await request(`${EXPORT_API}/${job.id}/audio/${index}`, {
+          method: 'PUT',
+          headers: {
+            'content-type': audioResponse.headers.get('content-type') ?? 'application/octet-stream',
+          },
+          body: await audioResponse.blob(),
+        });
+      })
+    );
 
     onProgress?.(0.85);
     const response = await request(`${EXPORT_API}/${job.id}/finish`, { method: 'POST' });
@@ -156,10 +185,10 @@ async function exportWebmRealtime(options: {
   assets: Map<string, LoadedAsset>;
   height: number;
   fps: number;
-  audioUrl?: string;
   onProgress?: (progress: number) => void;
 }): Promise<Blob> {
-  const { scene, assets, height, fps, audioUrl, onProgress } = options;
+  const { scene, assets, height, fps, onProgress } = options;
+  const audioClips = exportableAudioClips(scene, assets);
   const captureFps = Math.min(fps, 30);
   const mimeType = selectWebmMimeType();
   if (!mimeType) throw new Error('WEBM export is not supported by this browser');
@@ -171,7 +200,7 @@ async function exportWebmRealtime(options: {
   const renderer = new CanvasRenderer(canvas);
   const scaledScene = scaleScene(scene, width, height);
   const stream = canvas.captureStream(captureFps);
-  const audio = audioUrl ? await attachAudio(stream, audioUrl, scaledScene.audioStart) : null;
+  const audio = audioClips.length ? await attachAudio(stream, audioClips) : null;
   const recorder = new MediaRecorder(stream, {
     mimeType,
     videoBitsPerSecond: bitrateFor(height, captureFps),
@@ -210,26 +239,60 @@ async function exportWebmRealtime(options: {
   }
 }
 
-async function attachAudio(stream: MediaStream, url: string, start: number) {
+/**
+ * Schedule every audio clip into one stream: each source is trimmed, retimed,
+ * levelled and faded on its own gain node, then started at its clip time.
+ */
+async function attachAudio(stream: MediaStream, clips: readonly ExportAudioClip[]) {
   const context = new AudioContext();
   try {
     await context.resume();
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Could not load audio (${response.status})`);
-    const source = context.createBufferSource();
-    source.buffer = await context.decodeAudioData(await response.arrayBuffer());
     const destination = context.createMediaStreamDestination();
-    source.connect(destination);
+    const buffers = await Promise.all(
+      clips.map(async ({ url }) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Could not load audio (${response.status})`);
+        return context.decodeAudioData(await response.arrayBuffer());
+      })
+    );
     const track = destination.stream.getAudioTracks()[0];
     if (!track) throw new Error('Could not prepare the audio track');
     stream.addTrack(track);
+
+    const sources: AudioBufferSourceNode[] = [];
     return {
-      start: () => source.start(context.currentTime + Math.max(0, start)),
+      start: () => {
+        const origin = context.currentTime;
+        clips.forEach(({ clip }, index) => {
+          const buffer = buffers[index];
+          if (!buffer) return;
+          const source = context.createBufferSource();
+          source.buffer = buffer;
+          source.playbackRate.value = clip.speed;
+          const gain = context.createGain();
+          const level = clip.mute ? 0 : Math.min(1, Math.max(0, clip.volume ?? 1));
+          const at = origin + Math.max(0, clip.start);
+          const end = at + clip.duration;
+          gain.gain.setValueAtTime(clip.fadeIn > 0 ? 0 : level, at);
+          if (clip.fadeIn > 0) gain.gain.linearRampToValueAtTime(level, at + clip.fadeIn);
+          if (clip.fadeOut > 0) {
+            gain.gain.setValueAtTime(level, Math.max(at, end - clip.fadeOut));
+            gain.gain.linearRampToValueAtTime(0, end);
+          }
+          source.connect(gain);
+          gain.connect(destination);
+          // Source seconds consumed differ from timeline seconds when retimed.
+          source.start(at, clip.trimIn, clip.duration * clip.speed);
+          sources.push(source);
+        });
+      },
       stop: () => {
-        try {
-          source.stop();
-        } catch {
-          // Already stopped.
+        for (const source of sources) {
+          try {
+            source.stop();
+          } catch {
+            // Already stopped.
+          }
         }
         void context.close();
       },

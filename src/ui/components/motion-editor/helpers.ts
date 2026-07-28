@@ -1,7 +1,32 @@
-import type { LoadedAsset } from '../../../assets/asset-loader';
+import { isLoadedAudio, type LoadedAsset } from '../../../assets/asset-loader';
+import { waveformPath } from '../../../assets/audio-waveform';
+import { normalizeSpeed } from '../../audio-clips';
 import type { AnimationNode, ProgramNode } from '../../../types/parser';
-import type { Asset, Element, EvaluatedElement } from '../../../types/scene';
+import type { Asset, Clip, Element, EvaluatedElement } from '../../../types/scene';
 import type { TimelineLane } from '../../timeline-lanes';
+
+/**
+ * Waveform for the portion of the source a clip actually plays, so trimming or
+ * retiming a clip re-draws the bar instead of showing the whole file.
+ *
+ * A retimed clip covers `duration * speed` seconds of source in the same bar
+ * width, so speeding a clip up squeezes more of the waveform into it.
+ */
+export function clipWaveform(
+  asset: LoadedAsset | undefined,
+  clip: Pick<Clip, 'trimIn' | 'duration' | 'speed'>
+): { path: string; width: number } | null {
+  if (!isLoadedAudio(asset)) return null;
+  const peaks = asset.motionlyPeaks;
+  const total = asset.motionlyDuration;
+  if (!peaks?.length || !(total > 0)) return null;
+  const at = (seconds: number) => Math.round((seconds / total) * peaks.length);
+  const played = clip.duration * normalizeSpeed(clip.speed);
+  const from = Math.max(0, Math.min(peaks.length - 1, at(clip.trimIn)));
+  const to = Math.max(from + 1, Math.min(peaks.length, at(clip.trimIn + played)));
+  const slice = peaks.slice(from, to);
+  return { path: waveformPath(slice), width: slice.length };
+}
 
 export function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);

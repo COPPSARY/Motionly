@@ -29,6 +29,8 @@ const TIME_PROPERTIES = new Set([
   'at',
   'enter',
   'exit',
+  'fadeIn',
+  'fadeOut',
 ]);
 const NUMBER_PROPERTIES = new Set([
   'x',
@@ -76,6 +78,8 @@ const NUMBER_PROPERTIES = new Set([
   'radiusX',
   'radiusY',
   'weight',
+  'speed',
+  'volume',
   'tracking',
   'strokeWidth',
   'x2',
