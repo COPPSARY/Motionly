@@ -75,6 +75,9 @@
 }
 
 .motion-editor-scope .me-dialog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 8px 16px;
   border: 1px solid #2a2d33;
   border-radius: 6px;
@@ -82,6 +85,22 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.motion-editor-scope .me-dialog-btn:disabled,
+.motion-editor-scope .me-dialog-close:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.motion-editor-scope .me-dialog-spinner {
+  animation: me-spin 0.8s linear infinite;
+}
+
+@keyframes me-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .motion-editor-scope .me-dialog-btn.me-secondary {

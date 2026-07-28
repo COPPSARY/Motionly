@@ -19,7 +19,8 @@
   import { decomposeSvg } from '../../assets/svg-decomposition';
   import type { AssetIdentity } from '../../assets/asset-resolution';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
-  import { canExport, exportVideo } from '../../export/exporter';
+  import { canExport, exportSupport, exportVideo } from '../../export/exporter';
+  import type { VideoExportSettings } from '../../types/export';
   import type { AnimationNode, CameraNode, ClipNode, ElementNode, ImportNode, ProgramNode, TrackNode } from '../../types/parser';
   import { serializeProgram } from '../../language/serializer';
   import type { Asset, Clip, Element, EvaluatedElement, EvaluatedScene, Scene, Track } from '../../types/scene';
@@ -164,7 +165,6 @@
   let audioEngine: AudioEngine | null = null;
   let timelineHeight = 230;
   let contentPanelWidth = 260;
-  let mp4Supported = false;
   let isExporting = false;
   let exportError = '';
   let assetError = '';
@@ -177,6 +177,8 @@
     | { kind: 'assets'; assets: Asset[]; usageCount: number }
     | { kind: 'text'; ids: string[] }
     | null = null;
+  let pendingFfmpegInstall: { resolve: (accepted: boolean) => void } | null = null;
+  let isInstallingFfmpeg = false;
   let previewAsset: AssetPreview | null = null;
   let videoRenderId = 0;
   let isDraggingUpload = false;
@@ -207,7 +209,6 @@
 
 
   onMount(() => {
-    mp4Supported = canExport('mp4');
     audioEngine = new AudioEngine({
       source: (assetName) => assets.get(assetName)?.motionlySource,
     });
@@ -301,6 +302,8 @@
       audioEngine = null;
       if (deleteToastTimer) clearTimeout(deleteToastTimer);
       if (keyframeNoticeTimer) clearTimeout(keyframeNoticeTimer);
+      pendingFfmpegInstall?.resolve(false);
+      pendingFfmpegInstall = null;
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
@@ -371,12 +374,23 @@
   }
 
   function cancelConfirmDialog() {
-    if (pendingDelete) pendingDelete = null;
+    if (isInstallingFfmpeg) return;
+    if (pendingFfmpegInstall) {
+      const { resolve } = pendingFfmpegInstall;
+      pendingFfmpegInstall = null;
+      resolve(false);
+    } else if (pendingDelete) pendingDelete = null;
     else cancelLoadPreset();
     showConfirmDialog = false;
   }
 
   function confirmDialog() {
+    if (pendingFfmpegInstall) {
+      const { resolve } = pendingFfmpegInstall;
+      isInstallingFfmpeg = true;
+      resolve(true);
+      return;
+    }
     if (!pendingDelete) return confirmLoadPreset();
     const deletion = pendingDelete;
     pendingDelete = null;
@@ -385,6 +399,22 @@
       for (const asset of deletion.assets) removeAssetNow(asset);
     } else {
       for (const id of deletion.ids) deleteElement(id);
+    }
+  }
+
+  function confirmFfmpegInstall(): Promise<boolean> {
+    showConfirmDialog = true;
+    return new Promise((resolve) => {
+      pendingFfmpegInstall = { resolve };
+    });
+  }
+
+  function handleFfmpegInstallChange(installing: boolean, installed = false) {
+    isInstallingFfmpeg = installing;
+    if (!installing) {
+      pendingFfmpegInstall = null;
+      showConfirmDialog = false;
+      if (installed) showKeyframeNotice('FFmpeg installed.', 1000);
     }
   }
 
@@ -888,41 +918,53 @@
   }
 
 
-  export async function exportMp4(
-    filename = 'motionly.mp4',
-    onProgress?: (progress: number) => void
-  ) {
-    if (!scene || isExporting) return;
-    if (!mp4Supported) {
-      exportError = 'MP4 export is not supported by this browser.';
-      return;
+  export function getExportInfo() {
+    return {
+      width: scene?.canvas.width ?? 1920,
+      height: scene?.canvas.height ?? 1080,
+      fps: scene?.canvas.fps ?? 60,
+      support: exportSupport(),
+    };
+  }
+
+  export async function exportProject(
+    settings: VideoExportSettings,
+    onProgress?: (progress: number) => void,
+    signal?: AbortSignal
+  ): Promise<Blob | null> {
+    if (!scene || isExporting) return null;
+    if (!canExport(settings.format)) {
+      exportError = `${settings.format.toUpperCase()} export is not supported by this browser.`;
+      return null;
     }
     if (!assetsReady) {
       exportError = 'Assets are still loading. Try export again in a moment.';
-      return;
+      return null;
     }
     pause();
     isExporting = true;
     exportError = '';
     try {
-      const blob = await exportVideo({
+      return await exportVideo({
         scene,
         assets,
-        format: 'mp4',
-        height: scene.canvas.height,
-        fps: scene.canvas.fps,
+        format: settings.format,
+        height: Math.max(144, Math.min(4320, Math.round(settings.height))),
+        fps: Math.max(1, Math.min(120, Math.round(settings.fps))),
+        quality: settings.quality,
+        bitrateMbps: Math.max(0.5, Math.min(200, settings.bitrateMbps)),
+        signal,
+        confirmFfmpegInstall,
+        onFfmpegInstallChange: handleFfmpegInstallChange,
         onProgress: (progress) => {
           onProgress?.(progress);
         },
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(url);
     } catch (error) {
-      exportError = error instanceof Error ? error.message : String(error);
+      if ((error as DOMException).name !== 'AbortError') {
+        exportError = error instanceof Error ? error.message : String(error);
+      }
+      return null;
     } finally {
       isExporting = false;
     }
@@ -2732,13 +2774,13 @@
     return false;
   }
 
-  function showKeyframeNotice(message: string) {
+  function showKeyframeNotice(message: string, duration = 1600) {
     if (keyframeNoticeTimer) clearTimeout(keyframeNoticeTimer);
     keyframeNotice = message;
     keyframeNoticeTimer = setTimeout(() => {
       keyframeNotice = '';
       keyframeNoticeTimer = null;
-    }, 1600);
+    }, duration);
   }
 
   function keyframeEasingAt(offset: number | null): string {
@@ -3291,19 +3333,28 @@
   {deleteToast}
   {keyframeNotice}
   {showConfirmDialog}
-  dialogTitle={pendingDelete?.kind === 'assets'
+  dialogTitle={pendingFfmpegInstall
+    ? 'Install FFmpeg?'
+    : pendingDelete?.kind === 'assets'
     ? 'Delete Asset'
     : pendingDelete?.kind === 'text'
       ? 'Delete Text'
       : 'Load Preset'}
-  dialogMessage={pendingDelete?.kind === 'assets'
+  dialogMessage={pendingFfmpegInstall
+    ? 'MP4 export requires FFmpeg, but it is not installed.'
+    : pendingDelete?.kind === 'assets'
     ? pendingDelete.assets.length === 1
       ? `${pendingDelete.assets[0].name} is used ${pendingDelete.usageCount} time${pendingDelete.usageCount === 1 ? '' : 's'}. Delete it and its timeline items?`
       : `Delete ${pendingDelete.assets.length} selected assets and their timeline items?`
     : pendingDelete?.kind === 'text'
       ? `Delete ${pendingDelete.ids.length === 1 ? pendingDelete.ids[0] : `${pendingDelete.ids.length} selected text layers`}?`
       : 'Loading this preset will replace your current project and assets. Continue?'}
-  dialogConfirmLabel={pendingDelete ? 'Delete' : 'Load Preset'}
+  dialogConfirmLabel={pendingFfmpegInstall
+    ? 'Install FFmpeg'
+    : pendingDelete
+        ? 'Delete'
+        : 'Load Preset'}
+  dialogBusy={isInstallingFfmpeg}
   onUndoDelete={undoDelete}
   onCancelDialog={cancelConfirmDialog}
   onConfirmDialog={confirmDialog}

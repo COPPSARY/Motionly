@@ -1,34 +1,34 @@
 ---
-title: Exporting .motion projects to MP4
-description: How Motionly exports .motion projects to MP4 using canvas rendering, FFmpeg, project audio, and animated asset syncing, plus roadmap and export rules.
+title: Exporting .motion projects
+description: How Motionly exports .motion projects to MP4, WebM, or GIF with adjustable output settings and cancellable progress.
 ---
 
 # Export
 
 ## Current Editor Support
 
-Motionly currently exposes MP4 export in the top toolbar.
+The top-toolbar Export button opens settings for:
 
-- Uses the project's canvas resolution and FPS
-- Shows export progress in the toolbar
-- Downloads a file named after the current `.motion` project
-- Reports local server, FFmpeg, browser decoder, or asset failures clearly
+- MP4, WebM, or GIF format
+- Resolution and frame rate
+- MP4 quality
+- MP4 or WebM bitrate
 
-The current path evaluates each project frame in the browser, synchronizes seekable animated assets, uploads JPEG frames to the local Motionly server, and uses FFmpeg for H.264/AAC output.
+Motionly then:
+
+- Shows export progress in a centered dialog with a Cancel Export button
+- Opens the browser's Save dialog with a timestamped default file name
+- Reports FFmpeg, browser codec, decoder, or asset failures clearly
+
+MP4 export evaluates each project frame in the browser, synchronizes seekable animated assets, uploads JPEG frames to the local Motionly server, and uses FFmpeg for H.264/AAC output. WebM uses the browser's MediaRecorder support. GIF exports without audio.
 
 Project audio defined with an `audio` block is mixed at its persisted timeline offset. Audio embedded in video clips remains muted; use the project audio track when sound must export.
 
 Video, Lottie, and supported GIF assets seek before each captured frame. Animated SVG and GIF fallback use real-time runtimes, so Motionly restarts them and captures in real time while displaying an explicit editor warning about seeking and CSS-animation limitations.
 
-WebM and GIF code exists internally but is not a supported editor workflow yet.
-
 ## Near-Term Work
 
-- Visual 24, 30, and 60 FPS choices
-- Resolution and aspect-ratio presets
-- 720p, 1080p, 1440p, and 4K output choices
-- Clear cancellation and failure handling
-- WebM, GIF, PNG stills, and image-sequence export
+- PNG still and image-sequence export
 
 ## Export Rules
 

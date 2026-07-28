@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mount, tick, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import MotionlyApp from '../../src/ui/MotionlyApp.svelte';
 import MotionEditor from '../../src/ui/components/MotionEditor.svelte';
 import EditorFeedback from '../../src/ui/components/motion-editor/EditorFeedback.svelte';
 import NavigationRail from '../../src/ui/components/motion-editor/NavigationRail.svelte';
@@ -145,6 +146,292 @@ describe('motion editor leaf components', () => {
 });
 
 describe('MotionEditor integration', () => {
+  it('configures and cancels an export before offering FFmpeg installation', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    const storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    const savePicker = vi.fn().mockResolvedValue({
+      name: 'chosen.mp4',
+      getFile: () => Promise.resolve(new File([], 'chosen.mp4')),
+      createWritable: () => Promise.resolve({ write: vi.fn(), close: vi.fn() }),
+    });
+    vi.stubGlobal('showSaveFilePicker', savePicker);
+    let finishInstall: ((response: Response) => void) | undefined;
+    const installation = new Promise<Response>((resolve) => {
+      finishInstall = resolve;
+    });
+    let ffmpegChecks = 0;
+    let firstExportSignal: AbortSignal | null = null;
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) !== '/api/exports/ffmpeg') return new Response('', { status: 404 });
+      if (init?.method === 'POST') return installation;
+      ffmpegChecks += 1;
+      if (ffmpegChecks === 1) {
+        firstExportSignal = init?.signal as AbortSignal;
+        return new Promise<Response>((_resolve, reject) => {
+          firstExportSignal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Export cancelled', 'AbortError')),
+            { once: true }
+          );
+        });
+      }
+      return new Response('', { status: 503 });
+    });
+    vi.stubGlobal('fetch', fetch);
+    localStorage.removeItem('motionly:auto-save');
+
+    const host = target();
+    const instance = mount(MotionlyApp, { target: host });
+    await tick();
+
+    click(host.querySelector('.export-action'));
+    await tick();
+    expect(host.querySelector('.export-settings-dialog')).not.toBeNull();
+    expect(
+      Array.from(host.querySelectorAll('#export-format option')).map((option) => option.textContent)
+    ).toEqual(['MP4', 'WebM', 'GIF']);
+    expect(host.querySelector<HTMLSelectElement>('#export-fps')?.value).toBe('60');
+    expect(host.querySelector<HTMLSelectElement>('#export-resolution')?.value).toBe('1080');
+    expect(host.querySelector<HTMLSelectElement>('#export-quality')?.value).toBe('high');
+    expect(host.querySelector<HTMLSelectElement>('#export-bitrate')?.value).toBe('10');
+    expect(
+      Array.from(host.querySelectorAll('#export-quality option')).map(
+        (option) => option.textContent
+      )
+    ).toEqual(['Low', 'Medium', 'High', 'Very High']);
+    expect(
+      Array.from(host.querySelectorAll('#export-fps option')).map((option) => option.textContent)
+    ).toEqual(['24 FPS', '25 FPS', '30 FPS', '50 FPS', '60 FPS']);
+    expect(
+      Array.from(host.querySelectorAll('#export-bitrate option')).map(
+        (option) => option.textContent
+      )
+    ).toEqual(['2 Mbps', '5 Mbps', '10 Mbps', '20 Mbps', '30 Mbps', '50 Mbps', '100 Mbps']);
+    expect(savePicker).not.toHaveBeenCalled();
+
+    const fps = host.querySelector<HTMLSelectElement>('#export-fps');
+    const resolution = host.querySelector<HTMLSelectElement>('#export-resolution');
+    const quality = host.querySelector<HTMLSelectElement>('#export-quality');
+    const bitrate = host.querySelector<HTMLSelectElement>('#export-bitrate');
+    if (!fps || !resolution || !quality || !bitrate) throw new Error('Export settings missing');
+    fps.value = '30';
+    fps.dispatchEvent(new Event('change', { bubbles: true }));
+    resolution.value = '720';
+    resolution.dispatchEvent(new Event('change', { bubbles: true }));
+    quality.value = 'medium';
+    quality.dispatchEvent(new Event('change', { bubbles: true }));
+    bitrate.value = '5';
+    bitrate.dispatchEvent(new Event('change', { bubbles: true }));
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Choose Save Location'
+      ) ?? null
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    const pickerOptions = savePicker.mock.calls[0]?.[0] as { suggestedName?: string };
+    expect(pickerOptions.suggestedName).toMatch(/^untitled_\d{4}-\d{2}-\d{2}_\d{4}\.mp4$/);
+    expect(host.querySelector('.export-spinner')).not.toBeNull();
+    expect(host.querySelector('.export-progress-card')?.textContent).toContain('Exporting MP4');
+    expect(host.querySelector('.export-progress-card')?.textContent).toContain('0% complete');
+    expect(host.querySelector('.export-progress-track')?.getAttribute('aria-valuenow')).toBe('0');
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Cancel Export'
+      ) ?? null
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    expect(firstExportSignal?.aborted).toBe(true);
+    expect(host.querySelector('.export-spinner')).toBeNull();
+    expect(host.querySelector('.export-progress-card')).toBeNull();
+
+    click(host.querySelector('.export-action'));
+    await tick();
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Choose Save Location'
+      ) ?? null
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    expect(host.querySelector('.me-dialog-header')?.textContent).toContain('Install FFmpeg?');
+    click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Install FFmpeg'
+      ) ?? null
+    );
+    await tick();
+    expect(host.querySelector('.me-dialog-spinner')).not.toBeNull();
+    expect(host.querySelector('.me-dialog-btn.me-danger')?.textContent).toContain('Installing…');
+    expect(host.querySelector<HTMLButtonElement>('.me-dialog-btn.me-secondary')?.disabled).toBe(
+      true
+    );
+
+    finishInstall?.(new Response(null, { status: 204 }));
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    expect(host.querySelector('.me-dialog')).toBeNull();
+    expect(host.querySelector('.export-spinner')).toBeNull();
+    expect(host.querySelector('.me-keyframe-toast')?.textContent).toBe('FFmpeg installed.');
+
+    await unmount(instance);
+    localStorage.removeItem('motionly:auto-save');
+  });
+
+  it('auto-saves a server-backed project before it is reopened', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    let project = `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text original { value "Original" center }`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) !== '/api/motion-project') return new Response('', { status: 404 });
+        if (init?.method === 'PUT') {
+          project = String(init.body);
+          return new Response(null, { status: 204 });
+        }
+        return new Response(project, {
+          headers: {
+            'content-type': 'text/plain;charset=utf-8',
+            'x-motionly-project-name': 'project.motion',
+          },
+        });
+      })
+    );
+
+    const saved = project.replace('original', 'restored').replace('Original', 'Restored');
+    let host = target();
+    let instance = mount(MotionlyApp, { target: host });
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const textarea = host.querySelector<HTMLTextAreaElement>('.me-code-textarea');
+    if (!textarea) throw new Error('Source editor missing');
+    textarea.value = saved;
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await unmount(instance);
+    host.remove();
+
+    host = target();
+    instance = mount(MotionlyApp, { target: host });
+    await new Promise((resolve) => setTimeout(resolve));
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    expect(host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value).toBe(saved);
+
+    await unmount(instance);
+  });
+
+  it('restores the auto-saved project after remounting', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })));
+    const storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    localStorage.removeItem('motionly:auto-save');
+
+    const saved = `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text restored { value "Still here" center }`;
+    let host = target();
+    let instance = mount(MotionlyApp, { target: host });
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const textarea = host.querySelector<HTMLTextAreaElement>('.me-code-textarea');
+    if (!textarea) throw new Error('Source editor missing');
+    textarea.value = saved;
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+    await unmount(instance);
+    host.remove();
+
+    host = target();
+    instance = mount(MotionlyApp, { target: host });
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    expect(host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value).toBe(saved);
+
+    await unmount(instance);
+    localStorage.removeItem('motionly:auto-save');
+  });
+
+  it('deletes selected timeline items with Delete or Backspace', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title { value "Title" center }
+text subtitle { value "Subtitle" center }`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    for (const [id, key] of [
+      ['title', 'Delete'],
+      ['subtitle', 'Backspace'],
+    ] as const) {
+      const item = host.querySelector<HTMLButtonElement>(`[aria-label="Select or move ${id}"]`);
+      if (!item) throw new Error(`Timeline item ${id} missing`);
+      click(item);
+      item.focus();
+      item.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await tick();
+      expect(host.querySelector(`[aria-label="Select or move ${id}"]`)).toBeNull();
+    }
+
+    await unmount(instance);
+  });
+
   it('deletes an imported asset from the asset sidebar', async () => {
     class ResizeObserverStub {
       observe(): void {}

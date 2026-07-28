@@ -104,7 +104,7 @@ export class Mp4FrameSource {
     const target = Math.max(0, time) * 1_000_000;
     if (this.lastTime < 0 || target < this.lastTime) this.restartAt(target);
     this.lastTime = target;
-    await this.decodeThrough(target + 250_000);
+    await this.decodeThrough(target, target + 250_000);
     this.frames.sort((left, right) => left.timestamp - right.timestamp);
     while (this.frames[0] && this.frames[0].timestamp <= target) {
       this.current?.close();
@@ -120,7 +120,7 @@ export class Mp4FrameSource {
   close(): void {
     this.current?.close();
     this.frames.splice(0).forEach((frame) => frame.close());
-    this.decoder.close();
+    if (this.decoder.state !== 'closed') this.decoder.close();
   }
 
   private restartAt(timestamp: number): void {
@@ -138,25 +138,40 @@ export class Mp4FrameSource {
     }
   }
 
-  private async decodeThrough(timestamp: number): Promise<void> {
-    let decoded = 0;
-    while (this.sampleIndex < this.samples.length) {
-      const sample = this.samples[this.sampleIndex]!;
-      const sampleTime = (sample.cts / sample.timescale) * 1_000_000;
-      if (decoded && sampleTime > timestamp) break;
-      if (!sample.data) throw new Error('MP4 sample data is unavailable');
-      this.decoder.decode(
-        new EncodedVideoChunk({
-          type: sample.is_sync ? 'key' : 'delta',
-          timestamp: sampleTime,
-          duration: (sample.duration / sample.timescale) * 1_000_000,
-          data: sample.data,
-        })
-      );
-      this.sampleIndex += 1;
-      decoded += 1;
+  private async decodeThrough(timestamp: number, preloadThrough: number): Promise<void> {
+    while (this.bufferedThrough() < timestamp) {
+      if (this.decoderError) break;
+      const queued = this.decoder.decodeQueueSize;
+      let decoded = 0;
+      while (this.sampleIndex < this.samples.length) {
+        const sample = this.samples[this.sampleIndex]!;
+        const sampleTime = (sample.cts / sample.timescale) * 1_000_000;
+        if (sampleTime > preloadThrough && (decoded || queued)) break;
+        if (!sample.data) throw new Error('MP4 sample data is unavailable');
+        this.decoder.decode(
+          new EncodedVideoChunk({
+            type: sample.is_sync ? 'key' : 'delta',
+            timestamp: sampleTime,
+            duration: (sample.duration / sample.timescale) * 1_000_000,
+            data: sample.data,
+          })
+        );
+        this.sampleIndex += 1;
+        decoded += 1;
+      }
+      if (this.bufferedThrough() >= timestamp) break;
+      if (this.sampleIndex === this.samples.length && this.decoder.decodeQueueSize === 0) {
+        await this.decoder.flush();
+        break;
+      }
+      // Let queued decoder work and output callbacks run without flush(), which
+      // would force the next sequential sample to be a key frame.
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    if (decoded) await this.decoder.flush();
     if (this.decoderError) throw this.decoderError;
+  }
+
+  private bufferedThrough(): number {
+    return Math.max(this.current?.timestamp ?? -1, this.frames.at(-1)?.timestamp ?? -1);
   }
 }
