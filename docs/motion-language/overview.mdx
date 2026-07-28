@@ -94,13 +94,30 @@ Use `easing`, not `ease`.
 
 ## Audio
 
+Audio is imported and placed exactly like visual media: an `import` for the file, and one `clip` per placement on an audio track. The same file can appear as many times as you like.
+
 ```motion
-audio "/assets/my-project/background.mp3" {
-  start 0s
-}
+import "/assets/my-project/background.mp3" as music
+import "/assets/my-project/whoosh.mp3" as whoosh
+
+track score { role audio content audio label "Music" }
+track sfx { role audio content audio label "Effects" }
+
+clip music { track score start 0s duration 12s volume 0.6 fadeIn 1s fadeOut 2s }
+clip whoosh { track sfx start 3.2s duration 0.8s }
+clip whoosh { track sfx start 7.5s duration 0.8s }
 ```
 
-Audio files persist in `.motion`, play during preview, remain on the bottom track, and export with MP4. Dragging audio horizontally updates `start`.
+Audio clips accept the ordinary clip timing properties — `start`, `duration`, `trimIn`, `trimOut` — plus:
+
+- `volume` — linear gain, `1` is source level. Values above `1` are clamped, so preview and export always agree.
+- `mute` — silence this clip without changing its volume.
+- `fadeIn` / `fadeOut` — ramp lengths at the head and tail. Together they never exceed the clip; overlapping fades multiply.
+- `speed` — playback rate, `1` is source speed. A clip at `speed 2` consumes twice as much source per timeline second.
+
+Muting a track silences every clip on it. Audio persists in `.motion`, plays during preview, and is mixed into MP4 and WebM export.
+
+The single `audio "..." { start }` node from earlier versions still loads. The editor converts it to an import plus a clip the first time the project is opened, so no manual migration is needed.
 
 ## Timeline Tracks and Clips
 
@@ -138,7 +155,7 @@ text title {
 }
 ```
 
-Track roles are `main`, `overlay`, and `audio`. Track content records legacy/purpose metadata (`primary`, `video`, `image`, `text`, `effect`, or `audio`). Visual roles and content do not restrict editing: every visual track behaves as a simple layer, accepts any visual content, and allows gaps or overlaps. `hidden` suppresses a visual track, `muted` disables track audio, and `order` persists layer stacking. Audio remains bottom-only.
+Track roles are `main`, `overlay`, and `audio`. Track content records legacy/purpose metadata (`primary`, `video`, `image`, `text`, `effect`, or `audio`). Visual roles and content do not restrict editing: every visual track behaves as a simple layer, accepts any visual content, and allows gaps or overlaps. `hidden` suppresses a visual track, `muted` disables track audio, and `order` persists layer stacking. Audio tracks sort below the visual ones, and a project may declare as many of them as it needs.
 
 Media clips use `start`, `duration`, `trimIn`, and `trimOut`. Regular text/image/overlay/effect elements use `start` and `duration` as a non-destructive visibility window, so trimming and splitting do not rewrite authored animations. Existing numeric clip tracks remain backward compatible.
 

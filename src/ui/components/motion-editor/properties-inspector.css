@@ -144,6 +144,45 @@
   margin-bottom: 0;
 }
 
+/* Derived value shown beside a label, e.g. the decibel equivalent of a gain. */
+.motion-editor-scope .me-property-readout {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #8e939b;
+}
+
+/* Sits where the keyframe diamond does, and borrows its resting/hover colors. */
+.motion-editor-scope .me-property-reset {
+  height: 24px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #555b64;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-property-reset:hover:not(:disabled) {
+  background: #202329;
+  color: #e8eaed;
+}
+
+.motion-editor-scope .me-property-reset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.motion-editor-scope .me-audio-mute-toggle {
+  flex: 0 0 auto;
+}
+
+.motion-editor-scope .me-audio-mute-toggle.me-active {
+  color: #e06c6c;
+}
+
 .motion-editor-scope .me-property-keyframe {
   width: 24px;
   height: 24px;
@@ -406,6 +445,125 @@
 .motion-editor-scope .me-slider-value-input:focus {
   border-color: #0a84ff;
   box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
+}
+
+.motion-editor-scope .me-speed-control {
+  padding-top: 4px;
+}
+
+.motion-editor-scope .me-speed-readout {
+  display: block;
+  margin: 10px 0 20px;
+  color: #f4f4f5;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.motion-editor-scope .me-speed-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.motion-editor-scope .me-speed-step {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #202226;
+  color: #f4f4f5;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-speed-step:hover:not(:disabled) {
+  background: #2b2e33;
+}
+
+.motion-editor-scope .me-speed-step:disabled {
+  color: #686b72;
+  cursor: default;
+}
+
+.motion-editor-scope .me-speed-slider::-webkit-slider-track {
+  background: linear-gradient(
+    to right,
+    #f4f4f5 0%,
+    #f4f4f5 var(--slider-progress),
+    #55585f var(--slider-progress),
+    #55585f 100%
+  );
+}
+
+.motion-editor-scope .me-speed-slider::-moz-range-track {
+  background: #55585f;
+}
+
+.motion-editor-scope .me-speed-slider::-moz-range-progress {
+  background: #f4f4f5;
+}
+
+.motion-editor-scope .me-speed-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: #f4f4f5;
+}
+
+.motion-editor-scope .me-speed-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: #f4f4f5;
+}
+
+.motion-editor-scope .me-speed-presets {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.motion-editor-scope .me-speed-presets button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d7d9de;
+  font: inherit;
+  cursor: pointer;
+}
+
+.motion-editor-scope .me-speed-presets button span {
+  display: grid;
+  width: 100%;
+  height: 32px;
+  place-items: center;
+  border-radius: 16px;
+  background: #202226;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.motion-editor-scope .me-speed-presets button:hover span,
+.motion-editor-scope .me-speed-presets button.me-active span {
+  background: #393b40;
+  color: #fff;
+}
+
+.motion-editor-scope .me-speed-presets small {
+  color: #8e939b;
+  font-size: 10px;
 }
 
 /* Text Input & Textarea */

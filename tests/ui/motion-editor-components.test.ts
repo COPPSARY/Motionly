@@ -266,6 +266,79 @@ text subtitle { value "Subtitle" center }`,
     await unmount(instance);
   });
 
+  it('places, selects, and edits reusable audio clips', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        // The same file twice, overlapping — the case the old single-audio
+        // model could not represent at all.
+        code: `canvas { size 320x180 fps 30 duration 12s background #000000 }
+track score { label "Audio" role audio content audio order 1 }
+import "./tone.wav" as tone
+clip tone { track score start 0s duration 6s volume 0.6 fadeIn 1s fadeOut 2s }
+clip tone { track score start 4s duration 5s }`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    expect(host.querySelectorAll('.me-clip.me-audio-clip')).toHaveLength(2);
+
+    click(host.querySelector('[aria-label="Select tone clip"]'));
+    await tick();
+
+    // The audio inspector, not the visual clip inspector.
+    const volume = host.querySelector<HTMLInputElement>('[aria-label="Clip volume"]');
+    expect(volume?.value).toBe('0.6');
+    expect(host.querySelector('[aria-label="Mute clip"]')).not.toBeNull();
+    expect(host.textContent).toContain('Fade in');
+    expect(host.textContent).toContain('-4.4 dB');
+
+    // An audio clip must be able to name a track to move to. Note this covers
+    // the inspector's filter against a declared track, not the track the drop
+    // handler creates — that path needs a loaded asset and stays manual.
+    const trackOptions = host.querySelectorAll('.me-properties-panel select option');
+    expect(trackOptions.length).toBeGreaterThan(0);
+    expect(Array.from(trackOptions).map((option) => option.textContent)).toContain('Audio');
+
+    volume.value = '0.25';
+    volume.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    const widthBefore = parseFloat(
+      host.querySelector<HTMLElement>('.me-clip.me-audio-clip')?.style.width ?? '0'
+    );
+    click(host.querySelector('[aria-label="Set playback speed to 2×"]'));
+    await tick();
+    expect(host.querySelector('.me-speed-readout')?.textContent).toBe('2.00×');
+    const widthAfter = parseFloat(
+      host.querySelector<HTMLElement>('.me-clip.me-audio-clip')?.style.width ?? '0'
+    );
+    expect(widthAfter).toBeLessThan(widthBefore);
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).toContain('volume 0.25');
+    expect(source).toContain('duration 3.000s');
+    expect(source).toContain('speed 2');
+    // The second placement is untouched, so one file really is reusable.
+    expect(source.match(/clip tone/g)).toHaveLength(2);
+
+    await unmount(instance);
+  });
+
   it('gives a new text layer the short static default instead of the whole project', async () => {
     class ResizeObserverStub {
       observe(): void {}

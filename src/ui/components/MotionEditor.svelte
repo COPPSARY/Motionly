@@ -2,9 +2,10 @@
   import { onMount } from 'svelte';
   import { Sparkles } from 'lucide-svelte';
   import { parseMotion } from '../../language/parser';
-  import { buildSceneGraph, hasIntrinsicDuration } from '../../scene/scene-graph';
+  import { buildSceneGraph, hasIntrinsicDuration, LEGACY_AUDIO_TRACK } from '../../scene/scene-graph';
   import { evaluateScene } from '../../animation/evaluator';
   import {
+    assetPixelSize,
     assetWarnings,
     dominantAssetColor,
     disposeAssets,
@@ -19,7 +20,7 @@
   import type { AssetIdentity } from '../../assets/asset-resolution';
   import { CanvasRenderer, hiddenMaskSourceIds } from '../../render/canvas-renderer';
   import { canExport, exportVideo } from '../../export/exporter';
-  import type { AnimationNode, AudioNode, CameraNode, ClipNode, ElementNode, ImportNode, ProgramNode, TrackNode } from '../../types/parser';
+  import type { AnimationNode, CameraNode, ClipNode, ElementNode, ImportNode, ProgramNode, TrackNode } from '../../types/parser';
   import { serializeProgram } from '../../language/serializer';
   import type { Asset, Clip, Element, EvaluatedElement, EvaluatedScene, Scene, Track } from '../../types/scene';
   import { combinePersistentTrackRows, packClipTrackLanes, packTimelineLanes } from '../timeline-lanes';
@@ -49,7 +50,9 @@
   import { editorShortcut, shortcutContext } from '../editor-shortcuts';
   import { cloneClipInProgram, cloneElementInProgram } from '../duplicate-cloning';
   import { copyMotion, pasteMotion, type MotionClipboard } from '../motion-copy';
-  import { extractAudioPeaks, waveformBucketCount, waveformPath } from '../audio-waveform';
+  import { audioCuesAt, isAudioClip, normalizeSpeed, retimedClipDuration, type AudioClipTiming } from '../audio-clips';
+  import { AudioEngine } from '../audio-engine';
+  import { migrateLegacyAudioNode } from '../legacy-audio';
   import { moveClipToTrack, removeClipFromTracks, trimClipOnTrack } from '../timeline-tracks';
   import { anchoredTimelineScroll, clampTimelineZoom, playbackTimeFromClock, quantizeTimelineTime as quantizeFrameTime } from '../timeline-viewport';
   import AiChatPanel from './AiChatPanel.svelte';
@@ -135,7 +138,7 @@
   let clipDrag:
     | {
         id: string;
-        kind: 'clip' | 'element' | 'audio';
+        kind: 'clip' | 'element';
         duration: number;
         grabOffset: number;
         originTrackId: string;
@@ -158,26 +161,13 @@
   let isFullscreen = false;
   let audioInput: HTMLInputElement;
   let assetInput: HTMLInputElement;
-  let audioElement: HTMLAudioElement;
-  let audioUrl = '';
-  let audioName = '';
-  let audioDuration = 0;
-  let audioPlayPromise: Promise<void> | null = null;
-  let audioLoadId = 0;
-  let loadedAudioPath = '';
-  let audioWaveformLoadId = 0;
-  let audioWaveformPath = '';
-  let audioWaveformPeakCount = 0;
-  let audioWaveformLoading = false;
-  let audioClipDuration = 0;
-  let visibleWaveformPeaks = 1;
+  let audioEngine: AudioEngine | null = null;
   let timelineHeight = 230;
   let contentPanelWidth = 260;
   let mp4Supported = false;
   let isExporting = false;
   let exportError = '';
   let assetError = '';
-  let audioError = '';
   let activeNavTab: EditorNavTab = 'media';
   let showAiChat = false;
   let mediaSubTab: 'assets' | 'presets' = 'assets';
@@ -185,7 +175,6 @@
   let pendingPresetPath = '';
   let pendingDelete:
     | { kind: 'assets'; assets: Asset[]; usageCount: number }
-    | { kind: 'audio' }
     | { kind: 'text'; ids: string[] }
     | null = null;
   let previewAsset: AssetPreview | null = null;
@@ -193,7 +182,6 @@
   let isDraggingUpload = false;
   let stageDropActive = false;
   let draggingAsset: Asset | null = null;
-  let draggingAudio = false;
   let draggingTransition: 'crossfade' | null = null;
   let selectedTransitionIds: { outgoingId: string; incomingId: string } | null = null;
   let dropTargetTime: number | null = null;
@@ -220,6 +208,9 @@
 
   onMount(() => {
     mp4Supported = canExport('mp4');
+    audioEngine = new AudioEngine({
+      source: (assetName) => assets.get(assetName)?.motionlySource,
+    });
     if (canvas) {
       renderer = new CanvasRenderer(canvas);
       parseAndRender();
@@ -306,9 +297,8 @@
       observer.disconnect();
       timelineObserver.disconnect();
       disposeAssets(assets);
-      audioLoadId += 1;
-      audioWaveformLoadId += 1;
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      audioEngine?.dispose();
+      audioEngine = null;
       if (deleteToastTimer) clearTimeout(deleteToastTimer);
       if (keyframeNoticeTimer) clearTimeout(keyframeNoticeTimer);
       window.removeEventListener('keydown', handleKeyDown);
@@ -393,8 +383,6 @@
     showConfirmDialog = false;
     if (deletion.kind === 'assets') {
       for (const asset of deletion.assets) removeAssetNow(asset);
-    } else if (deletion.kind === 'audio') {
-      removeAudio();
     } else {
       for (const id of deletion.ids) deleteElement(id);
     }
@@ -460,14 +448,18 @@
   $: timelineClipTracks = combinedTimelineRows.clipTracks;
   $: defaultMainTrack = scene?.tracks.find((track) => track.role === 'main')?.id ?? 'main';
   $: projectAudioTrack = scene?.tracks.find((track) => track.role === 'audio') ?? null;
-  $: audioClipDuration = Math.min(
-    audioDuration || totalDuration,
-    Math.max(0, totalDuration - (scene?.audioStart ?? 0))
+  // A muted or hidden track silences its clips without touching their own volume.
+  $: audioClipTimings = (scene?.clips ?? []).filter(isAudioClip).map(
+    (clip): AudioClipTiming => ({
+      ...clip,
+      mute: (clip.mute ?? false) || (scene?.tracks.find((track) => track.id === String(clip.track))?.muted ?? false),
+    })
   );
-  $: visibleWaveformPeaks =
-    audioDuration > 0
-      ? Math.max(1, (audioWaveformPeakCount * audioClipDuration) / audioDuration)
-      : Math.max(1, audioWaveformPeakCount);
+  // `assetKey` is in the dependency list on purpose: a clip dropped before its
+  // file finished decoding has no URL yet, and nothing else would re-run this.
+  $: if (audioEngine && assetKey !== undefined) {
+    audioEngine.sync(audioCuesAt(audioClipTimings, currentTime), isPlaying);
+  }
   $: transitionBoundaries = adjacentClipBoundaries(
     scene?.clips ?? [],
     1 / (scene?.canvas.fps ?? 60)
@@ -554,27 +546,17 @@
       parseError = null;
       ast = parseMotion(code);
       scene = buildSceneGraph(ast);
-      if (audioElement) {
-        audioElement.muted = scene.tracks.find((track) => track.role === 'audio')?.muted ?? false;
+      // Old projects store one `audio "..."` node. Convert it to an import +
+      // clip so every audio path in the editor deals with clips only.
+      if (migrateLegacyAudioNode(ast, { canvasDuration: scene.canvas.duration })) {
+        code = serializeProgram(ast);
+        return;
       }
       rememberEmbeddedAssets(scene.imports);
       totalDuration = scene.canvas.duration;
       currentTime = Math.min(currentTime, totalDuration);
       if (selectedElementId && !scene.elements.some((element) => element.id === selectedElementId) && !scene.clips.some((clip) => clip.id === selectedElementId)) selectedElementId = '';
-      
-      // Load audio if specified in scene
-      if (scene.audio) {
-        const currentAudioPath = scene.audio;
-        const needsLoad = !audioUrl || currentAudioPath !== loadedAudioPath;
-        
-        if (needsLoad) {
-          loadAudioFromPath(currentAudioPath);
-        }
-      } else if (!scene.audio && audioUrl) {
-        // Clear audio if not in scene
-        removeAudio();
-      }
-      
+
       const nextAssetKey = scene.imports.map((asset) => `${asset.name}:${asset.path}`).join('|');
       if (nextAssetKey !== assetKey) {
         assetKey = nextAssetKey;
@@ -703,7 +685,6 @@
     if (!scene || isPlaying) return;
     isPlaying = true;
     playbackTime = currentTime;
-    resumeAudioAtTime(currentTime);
 
     const fps = scene.canvas.fps;
     let clockTime = currentTime;
@@ -714,21 +695,12 @@
     async function animate(now: number) {
       if (!isPlaying) return;
 
-      const audioIsClock = Boolean(
-        audioUrl && audioElement && !audioElement.paused && !audioElement.ended
-      );
+      // The wall clock drives playback. Audio clips follow it, which keeps
+      // timing identical whether or not the project has any sound.
       const nextTime = quantizeTimelineTime(
-        audioIsClock
-          ? (scene?.audioStart ?? 0) + audioElement.currentTime
-          : playbackTimeFromClock(clockTime, clockStartedAt, now, totalDuration)
+        playbackTimeFromClock(clockTime, clockStartedAt, now, totalDuration)
       );
       playbackTime = nextTime;
-      if (audioIsClock) {
-        clockTime = nextTime;
-        clockStartedAt = now;
-      } else {
-        resumeAudioAtTime(nextTime);
-      }
 
       const frame = Math.round(nextTime * fps);
       if (frame !== previousFrame) {
@@ -758,7 +730,7 @@
     const wasPlaying = isPlaying;
     isPlaying = false;
     if (wasPlaying) currentTime = playbackTime;
-    audioElement?.pause();
+    audioEngine?.pauseAll();
     pauseAnimatedAssets(assets);
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
@@ -769,7 +741,6 @@
   function reset() {
     pause();
     currentTime = 0;
-    syncAudio();
     renderFrame(currentTime, true);
   }
 
@@ -781,14 +752,12 @@
   function seek(event: Event) {
     pause();
     currentTime = quantizeTimelineTime(Number((event.currentTarget as HTMLInputElement).value));
-    syncAudio();
     renderFrame(currentTime, true);
   }
 
   function setTime(time: number) {
     pause();
     currentTime = quantizeTimelineTime(time);
-    syncAudio();
     renderFrame(currentTime, true);
   }
 
@@ -908,138 +877,16 @@
       : 0;
 
   async function handleAudioSelected(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
-    await importAudioFile(input.files?.[0]);
-    input.value = '';
+    await importAssetFiles((event.currentTarget as HTMLInputElement).files);
+    audioInput.value = '';
   }
 
   async function handleAudioFileDrop(event: DragEvent) {
     event.preventDefault();
     isDraggingUpload = false;
-    await importAudioFile(event.dataTransfer?.files[0]);
+    await importAssetFiles(event.dataTransfer?.files);
   }
 
-  async function importAudioFile(file: File | undefined) {
-    if (!file || !ast) return;
-    audioError = '';
-    if (!file.type.startsWith('audio/') && !/\.(aac|flac|m4a|mp3|ogg|opus|wav)$/i.test(file.name)) {
-      audioError = `${file.name} is not a supported audio file.`;
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      audioError = 'Audio files must be 50 MB or smaller.';
-      return;
-    }
-    const loadId = ++audioLoadId;
-    const dataUrl = await readFileDataUrl(file);
-    if (loadId !== audioLoadId) return;
-    if (audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
-    audioUrl = dataUrl;
-    loadedAudioPath = dataUrl;
-    audioName = file.name;
-    audioDuration = 0;
-    audioElement.src = audioUrl;
-    audioElement.muted = projectAudioTrack?.muted ?? false;
-    audioElement.load();
-    void loadAudioWaveform(file);
-    ast.body = ast.body.filter((node) => node.type !== 'Audio');
-    const insertAt = ast.body.findIndex(
-      (node) => node.type === 'Import' || node.type === 'Track' || node.type === 'Element'
-    );
-    ast.body.splice(insertAt < 0 ? ast.body.length : insertAt, 0, {
-      type: 'Audio',
-      path: dataUrl,
-      properties: {},
-    });
-    code = serializeProgram(ast);
-  }
-
-  async function loadAudioFromPath(path: string) {
-    const loadId = ++audioLoadId;
-    try {
-      const response = await fetch(path);
-      if (!response.ok) throw new Error('Failed to load audio');
-      
-      const blob = await response.blob();
-      if (loadId !== audioLoadId) return;
-      if (audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
-      audioUrl = URL.createObjectURL(blob);
-      loadedAudioPath = path;
-      audioName = path.startsWith('data:audio/')
-        ? 'Embedded audio'
-        : path.substring(path.lastIndexOf('/') + 1);
-      audioDuration = 0;
-      
-      if (audioElement) {
-        audioElement.src = audioUrl;
-        audioElement.load();
-      }
-      void loadAudioWaveform(blob);
-    } catch (error) {
-      if (loadId === audioLoadId) console.error('Failed to load audio:', error);
-    }
-  }
-
-  async function loadAudioWaveform(blob: Blob) {
-    const loadId = ++audioWaveformLoadId;
-    audioWaveformPath = '';
-    audioWaveformPeakCount = 0;
-    audioWaveformLoading = true;
-    let context: AudioContext | null = null;
-    try {
-      const source = await blob.arrayBuffer();
-      if (loadId !== audioWaveformLoadId) return;
-      context = new AudioContext();
-      const buffer = await context.decodeAudioData(source);
-      if (loadId !== audioWaveformLoadId) return;
-      audioDuration = buffer.duration;
-      const channels = Array.from(
-        { length: buffer.numberOfChannels },
-        (_, channel) => buffer.getChannelData(channel)
-      );
-      const peaks = await extractAudioPeaks(
-        channels,
-        waveformBucketCount(buffer.duration),
-        () => loadId !== audioWaveformLoadId
-      );
-      if (loadId !== audioWaveformLoadId) return;
-      audioWaveformPath = waveformPath(peaks);
-      audioWaveformPeakCount = peaks.length;
-    } catch (error) {
-      if (loadId === audioWaveformLoadId) {
-        console.warn('Could not generate audio waveform:', error);
-      }
-    } finally {
-      if (context) await context.close().catch(() => undefined);
-      if (loadId === audioWaveformLoadId) audioWaveformLoading = false;
-    }
-  }
-
-  function clearAudioWaveform() {
-    audioWaveformLoadId += 1;
-    audioWaveformPath = '';
-    audioWaveformPeakCount = 0;
-    audioWaveformLoading = false;
-  }
-
-  function removeAudio() {
-    pause();
-    audioLoadId += 1;
-    clearAudioWaveform();
-    if (audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
-    audioUrl = '';
-    loadedAudioPath = '';
-    audioName = '';
-    audioDuration = 0;
-    audioPlayPromise = null;
-    if (audioElement) audioElement.removeAttribute('src');
-    
-    // Remove audio from AST
-    if (ast) {
-      ast.body = ast.body.filter(node => node.type !== 'Audio');
-      code = serializeProgram(ast);
-    }
-  }
 
   export async function exportMp4(
     filename = 'motionly.mp4',
@@ -1064,7 +911,6 @@
         format: 'mp4',
         height: scene.canvas.height,
         fps: scene.canvas.fps,
-        audioUrl: audioUrl || undefined,
         onProgress: (progress) => {
           onProgress?.(progress);
         },
@@ -1218,30 +1064,6 @@
     element.properties = elementWindowProperties(element.properties, start, end, minimum);
     extendProjectDuration(end);
     code = serializeProgram(ast);
-  }
-
-  function syncAudio(time = currentTime) {
-    if (!audioUrl || !audioElement) return;
-    audioElement.currentTime = Math.min(
-      Math.max(0, time - (scene?.audioStart ?? 0)),
-      audioDuration || time
-    );
-  }
-
-  function resumeAudioAtTime(time: number) {
-    if (!audioUrl || !audioElement || !scene) return;
-    const localTime = time - scene.audioStart;
-    if (localTime < 0 || localTime >= (audioDuration || Number.POSITIVE_INFINITY)) return;
-    syncAudio(time);
-    if (audioElement.paused && !audioPlayPromise) {
-      const operation = audioElement.play().catch((error) => {
-        console.warn('Audio playback failed (this is normal if no user interaction yet):', error.message);
-      });
-      audioPlayPromise = operation;
-      void operation.finally(() => {
-        if (audioPlayPromise === operation) audioPlayPromise = null;
-      });
-    }
   }
 
 
@@ -1598,10 +1420,11 @@
   function previewAssetOnly(asset: Asset) {
     const loaded = assets.get(asset.name);
     if (loaded) {
+      const size = assetPixelSize(loaded);
       previewAsset = {
         src: assetPreviewSource(loaded, asset.path),
-        width: loaded.width,
-        height: loaded.height,
+        width: size?.width ?? 0,
+        height: size?.height ?? 0,
         type: isLoadedVideo(loaded) ? 'video' : 'image',
       };
     }
@@ -1614,12 +1437,6 @@
       assets: selectedAssets,
       usageCount: selectedAssets.reduce((total, asset) => total + assetUsage(asset).usageCount, 0),
     };
-    showConfirmDialog = true;
-  }
-
-  function requestRemoveAudio() {
-    if (!audioName) return;
-    pendingDelete = { kind: 'audio' };
     showConfirmDialog = true;
   }
 
@@ -1696,20 +1513,6 @@
 
   function handleAssetDragEnd() {
     draggingAsset = null;
-    dropTargetTime = null;
-    dropTargetTrack = '';
-  }
-
-  function handleAudioDragStart(event: DragEvent) {
-    draggingAudio = true;
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', audioName);
-    }
-  }
-
-  function handleAudioDragEnd() {
-    draggingAudio = false;
     dropTargetTime = null;
     dropTargetTrack = '';
   }
@@ -1798,13 +1601,15 @@
       const isImage = file.type.startsWith('image/') || lowerName.endsWith('.svg');
       const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/.test(lowerName);
       const isLottie = file.type === 'application/zip+dotlottie' || lowerName.endsWith('.lottie');
-      if (!isImage && !isVideo && !isLottie) {
-        assetError = `${file.name} is not a supported image, SVG, GIF, video, or Lottie file.`;
+      const isAudio =
+        file.type.startsWith('audio/') || /\.(aac|flac|m4a|mp3|ogg|opus|wav)$/.test(lowerName);
+      if (!isImage && !isVideo && !isLottie && !isAudio) {
+        assetError = `${file.name} is not a supported image, SVG, GIF, video, audio, or Lottie file.`;
         continue;
       }
-      const maximumSize = isVideo ? 100_000_000 : isLottie ? 50_000_000 : 10_000_000;
-      if (file.size > maximumSize) {
-        assetError = `${file.name} is larger than ${isVideo ? '100' : isLottie ? '50' : '10'} MB.`;
+      const megabytes = isVideo ? 100 : isLottie || isAudio ? 50 : 10;
+      if (file.size > megabytes * 1_000_000) {
+        assetError = `${file.name} is larger than ${megabytes} MB.`;
         continue;
       }
       const matchingImports = program.body.filter(
@@ -1814,9 +1619,11 @@
         const existing = matchingImports
           .map((node) => assets.get(node.name))
           .find((asset): asset is LoadedAsset => !!asset);
+        const existingSize = assetPixelSize(existing);
         let replacement: AssetIdentity;
         try {
-          replacement = isLottie
+          // Audio and Lottie have no pixel dimensions to compare against.
+          replacement = isLottie || isAudio
             ? { width: 0, height: 0, size: file.size }
             : await readMediaIdentity(file, isVideo);
         } catch (cause) {
@@ -1824,9 +1631,9 @@
           continue;
         }
         if (
-          existing && replacement.width > 0 && replacement.height > 0 &&
+          existingSize && replacement.width > 0 && replacement.height > 0 &&
           significantlyDifferentAsset(
-            { width: existing.width, height: existing.height, size: existing.motionlySize },
+            { ...existingSize, size: existing?.motionlySize },
             replacement
           ) &&
           !window.confirm(
@@ -1892,38 +1699,37 @@
 
 
   function handleTimelineDragOver(event: DragEvent) {
-    if (!draggingAsset && !draggingAudio) return;
+    if (!draggingAsset) return;
     event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = draggingAudio ? 'move' : 'copy';
-    }
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
 
     const timeline = event.currentTarget as HTMLElement;
     const rect = timeline.querySelector<HTMLElement>('.me-ruler')?.getBoundingClientRect();
     if (!rect) return;
     dropTargetTime = timelineTimeAt(event.clientX, rect);
     const track = (event.target as HTMLElement).closest<HTMLElement>('[data-track]')?.dataset['track'];
-    if (draggingAudio) {
-      dropTargetTrack = projectAudioTrack?.id ?? 'legacy-audio';
-    } else {
-      dropTargetTrack = track && !Number.isNaN(Number(track)) ? Number(track) : (track || 1);
-    }
+    dropTargetTrack = audioDropTrack(draggingAsset, track);
+  }
+
+  /**
+   * Audio only makes sense on an audio track, so a sound dropped anywhere else
+   * lands on the project's audio track instead of silently joining a video row.
+   */
+  function audioDropTrack(asset: Asset, hoveredTrack: string | undefined): number | string {
+    const hovered = hoveredTrack && !Number.isNaN(Number(hoveredTrack))
+      ? Number(hoveredTrack)
+      : hoveredTrack || 1;
+    if (asset.type !== 'audio') return hovered;
+    const hoveredRole = scene?.tracks.find((track) => track.id === String(hovered))?.role;
+    if (hoveredRole === 'audio') return hovered;
+    return projectAudioTrack?.id ?? LEGACY_AUDIO_TRACK;
   }
 
   function handleTimelineDrop(event: DragEvent) {
     event.preventDefault();
     if (!ast || dropTargetTime === null) return;
-    if (draggingAudio) {
-      const node = ast.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
-      if (node) {
-        node.properties = { ...node.properties, start: `${dropTargetTime.toFixed(3)}s` };
-        code = serializeProgram(ast);
-      }
-      handleAudioDragEnd();
-      return;
-    }
     if (!draggingAsset) return;
-    
+
     const assetName = draggingAsset.name;
     const loadedForPlacement = assets.get(assetName);
     if (
@@ -1947,7 +1753,8 @@
       dropTargetTrack = '';
       return;
     }
-    ensureAssetElement(assetName);
+    // Audio has no visual element to configure; the clip is the whole story.
+    if (draggingAsset.type !== 'audio') ensureAssetElement(assetName);
     const frame = 1 / (scene?.canvas.fps ?? 60);
     const placement = placeMediaClip(
       dropTargetTime,
@@ -1967,7 +1774,7 @@
       }
     }
     const targetId = String(dropTargetTrack || defaultMainTrack);
-    const targetTrack = ensureLayerTrack(targetId);
+    const targetTrack = ensureLayerTrack(targetId, draggingAsset.type === 'audio' ? 'audio' : 'visual');
     const clipNode: ClipNode = {
       type: 'Clip',
       assetName,
@@ -1993,6 +1800,9 @@
         trimOut: 0,
         transitionInDuration: 0,
         transitionOutDuration: 0,
+        fadeIn: 0,
+        fadeOut: 0,
+        speed: 1,
         sourceOrder: scene.clips.length,
       };
       const next = moveClipToTrack(
@@ -2114,15 +1924,23 @@
     return node;
   }
 
-  function ensureLayerTrack(trackId: string): Track {
+  /**
+   * Declare a track so a clip can be written onto it. `audio` must be passed
+   * when placing sound: an audio clip on an overlay track still plays, but it
+   * sorts among the visual layers and the inspector's track picker (which only
+   * lists audio roles) would have nothing to offer.
+   */
+  function ensureLayerTrack(trackId: string, kind: 'visual' | 'audio' = 'visual'): Track {
     const existing = scene?.tracks.find((track) => track.id === trackId);
     if (existing?.declared) return existing;
     const elementRow = allTimelineRows.findIndex((row) => row.trackId === trackId);
+    const audio = kind === 'audio' || existing?.role === 'audio';
     const track: Track = {
       id: trackId,
-      label: existing?.label ?? `Layer ${trackId.replace(/^legacy-/, '')}`,
-      role: existing?.role ?? 'overlay',
-      content: existing?.content ?? 'mixed',
+      label: existing?.label ?? (audio ? 'Audio' : `Layer ${trackId.replace(/^legacy-/, '')}`),
+      role: audio ? 'audio' : (existing?.role ?? 'overlay'),
+      // The scene graph rejects an audio track whose content is anything else.
+      content: audio ? 'audio' : (existing?.content ?? 'mixed'),
       hidden: existing?.hidden ?? false,
       muted: existing?.muted ?? false,
       order: elementRow < 0
@@ -2152,16 +1970,24 @@
     const node = trackNodeFor(track);
     if (!node || !ast) return;
     node.properties = { ...node.properties, ...updates };
-    if (track.id === projectAudioTrack?.id && updates.muted !== undefined && audioElement) {
-      audioElement.muted = updates.muted;
-    }
     code = serializeProgram(ast);
   }
 
   function updateClip(clipId: string, updates: Record<string, string | number | boolean>) {
     if (!ast || !scene) return;
-    const node = clipNodeAt(scene.clips.findIndex((clip) => clip.id === clipId));
+    const clipIndex = scene.clips.findIndex((clip) => clip.id === clipId);
+    const clip = scene.clips[clipIndex];
+    const node = clipNodeAt(clipIndex);
     if (!node) return;
+    if (clip && isAudioClip(clip) && 'speed' in updates) {
+      const speed = normalizeSpeed(Number(updates['speed']));
+      const duration = Math.max(
+        1 / scene.canvas.fps,
+        retimedClipDuration(clip.duration, clip.speed, speed)
+      );
+      updates = { ...updates, speed, duration: `${duration.toFixed(3)}s` };
+      extendProjectDuration(clip.start + duration);
+    }
     if (['track', 'start', 'duration'].some((key) => key in updates)) {
       detachClipTransitions(clipId);
     }
@@ -2171,7 +1997,7 @@
 
   function moveSelectedClipFromInspector(trackId: string, requestedStart: number) {
     if (!scene || !selectedClip) return;
-    const targetTrack = ensureLayerTrack(trackId);
+    const targetTrack = ensureLayerTrack(trackId, isAudioClip(selectedClip) ? 'audio' : 'visual');
     const next = moveClipToTrack(
       scene.clips,
       selectedClip.id,
@@ -2307,9 +2133,8 @@
       Math.abs(pointer.clientX - clipDrag.startClientX) > 3 ||
       Math.abs(pointer.clientY - clipDrag.startClientY) > 3
     ) clipDrag.moved = true;
-    const targetTrackId = clipDrag.kind === 'audio'
-      ? clipDrag.originTrackId
-      : laneTrackAtPoint(pointer.clientX, pointer.clientY) ?? clipDrag.originTrackId;
+    const targetTrackId =
+      laneTrackAtPoint(pointer.clientX, pointer.clientY) ?? clipDrag.originTrackId;
     const rect = timelineLaneRect(targetTrackId);
     if (!rect) return;
     const pointerTime = ((pointer.clientX - rect.left) / rect.width) * timelineVisibleDuration;
@@ -2395,16 +2220,13 @@
     timelineSnapGuide = null;
     timelineDragReach = 0;
     if (!drag || !scene || !drag.moved || !drag.valid) return;
-    if (drag.kind === 'audio') {
-      const node = ast?.body.find((candidate): candidate is AudioNode => candidate.type === 'Audio');
-      if (!node || !ast) return;
-      node.properties = { ...node.properties, start: `${drag.ghostStart.toFixed(3)}s` };
-      code = serializeProgram(ast);
-      return;
-    }
     materializeTimelineLayers();
     if (drag.kind === 'clip') {
-      const targetTrack = ensureLayerTrack(drag.ghostTrackId);
+      const dragged = scene.clips.find((clip) => clip.id === drag.id);
+      const targetTrack = ensureLayerTrack(
+        drag.ghostTrackId,
+        dragged && isAudioClip(dragged) ? 'audio' : 'visual'
+      );
       beginHistoryGesture();
       detachClipTransitions(drag.id);
       const next = moveClipToTrack(
@@ -2492,40 +2314,6 @@
     } catch {
       /* pointer capture is best-effort */
     }
-    const move = (pointer: PointerEvent) => updateClipDrag(pointer);
-    const stop = (pointer: PointerEvent) => {
-      updateClipDrag(pointer);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', stop);
-      window.removeEventListener('pointercancel', stop);
-      commitClipDrag();
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
-  }
-
-  function moveTimelineAudio(event: PointerEvent) {
-    if (event.button !== 0 || !scene || !projectAudioTrack) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const lane = (event.currentTarget as HTMLElement).closest<HTMLElement>('.me-track-lane[data-track]');
-    const rect = lane?.getBoundingClientRect();
-    if (!rect) return;
-    const grabTime = ((event.clientX - rect.left) / rect.width) * timelineVisibleDuration;
-    clipDrag = {
-      id: '__audio__',
-      kind: 'audio',
-      duration: audioDuration || totalDuration,
-      grabOffset: grabTime - scene.audioStart,
-      originTrackId: projectAudioTrack.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      ghostStart: scene.audioStart,
-      ghostTrackId: projectAudioTrack.id,
-      valid: true,
-      moved: false,
-    };
     const move = (pointer: PointerEvent) => updateClipDrag(pointer);
     const stop = (pointer: PointerEvent) => {
       updateClipDrag(pointer);
@@ -2743,8 +2531,7 @@
     if (element.kind === 'text') {
       return Math.max(80, stringProperty(element, 'value', '').length * numericProperty(element, 'size', 64) * 0.52);
     }
-    const asset = element.assetName ? assets.get(element.assetName) : null;
-    return asset?.width ?? 200;
+    return assetPixelSize(element.assetName ? assets.get(element.assetName) : null)?.width ?? 200;
   }
 
   function estimateElementHeight(element: Element | EvaluatedElement): number {
@@ -2752,9 +2539,9 @@
     if (explicit > 0) return explicit;
     if (element.kind === 'text') return numericProperty(element, 'size', 64) * 1.2;
     const width = numericProperty(element, 'width', 0);
-    const asset = element.assetName ? assets.get(element.assetName) : null;
-    if (asset && width > 0) return asset.height * (width / asset.width);
-    return asset?.height ?? 120;
+    const size = assetPixelSize(element.assetName ? assets.get(element.assetName) : null);
+    if (size && width > 0) return size.height * (width / size.width);
+    return size?.height ?? 120;
   }
 
   function isCentered(element: Element | EvaluatedElement): boolean {
@@ -3318,8 +3105,6 @@
       {assetsReady}
       {isDraggingUpload}
       {assetError}
-      {audioError}
-      {audioName}
       {sourceElements}
       {selectedElementId}
       {assistantAssets}
@@ -3329,14 +3114,11 @@
       onAssetFileDragLeave={handleAssetFileDragLeave}
       onAssetFileDrop={handleAssetFileDrop}
       onAudioFileDrop={handleAudioFileDrop}
-      onAudioDragStart={handleAudioDragStart}
-      onAudioDragEnd={handleAudioDragEnd}
       onAssetDragStart={handleAssetDragStart}
       onAssetDragEnd={handleAssetDragEnd}
       onPreviewAsset={previewAssetOnly}
       onRemoveAssets={requestRemoveAssets}
       onRequestPresetLoad={requestPresetLoad}
-      onRequestRemoveAudio={requestRemoveAudio}
       onAddTextElement={addTextElement}
       onSelectElement={selectElement}
       onRemoveElements={requestRemoveElements}
@@ -3434,7 +3216,6 @@
   <TimelinePanel
     bind:timelineScroll
     bind:audioInput
-    bind:audioElement
     {isPlaying}
     {currentTime}
     {displayFrame}
@@ -3449,7 +3230,6 @@
     {timelineVisibleDuration}
     {scene}
     draggingAsset={draggingAsset !== null}
-    {draggingAudio}
     {draggingTransition}
     {dropTargetTime}
     {timelineTicks}
@@ -3461,12 +3241,6 @@
     {selectedKeyframeOffset}
     {transitionBoundaries}
     {selectedTransition}
-    {projectAudioTrack}
-    {audioName}
-    {audioClipDuration}
-    {audioWaveformLoading}
-    {audioWaveformPath}
-    {visibleWaveformPeaks}
     {assets}
     onResizeTimeline={resizeTimeline}
     onResizeTimelineKey={resizeTimelineWithKeyboard}
@@ -3474,7 +3248,6 @@
     onPlay={play}
     onPause={pause}
     onAudioSelected={handleAudioSelected}
-    onRemoveAudio={removeAudio}
     onDuplicateSelected={duplicateSelected}
     onDeleteSelected={deleteSelectedElement}
     onUndo={undoEditor}
@@ -3503,14 +3276,12 @@
     onSelectKeyframe={selectKeyframeMarker}
     onDeleteKeyframeAt={deleteKeyframeAt}
     onAddKeyframe={addKeyframeAtPlayhead}
-    onMoveTimelineAudio={moveTimelineAudio}
     onMoveTimelineClip={moveTimelineClip}
     onDuplicateClip={duplicateClip}
     onTrimTimelineClip={trimTimelineClip}
     onDeleteClip={deleteClip}
     onDropTransition={dropTransition}
     onSelectTransition={selectTransition}
-    onAudioMetadata={(duration) => (audioDuration = duration)}
   />
 
   <SourceEditor bind:code open={showCodeEditor} {parseError} onToggle={toggleCodeEditor} />
@@ -3522,20 +3293,16 @@
   {showConfirmDialog}
   dialogTitle={pendingDelete?.kind === 'assets'
     ? 'Delete Asset'
-    : pendingDelete?.kind === 'audio'
-      ? 'Delete Audio'
-      : pendingDelete?.kind === 'text'
-        ? 'Delete Text'
-        : 'Load Preset'}
+    : pendingDelete?.kind === 'text'
+      ? 'Delete Text'
+      : 'Load Preset'}
   dialogMessage={pendingDelete?.kind === 'assets'
     ? pendingDelete.assets.length === 1
       ? `${pendingDelete.assets[0].name} is used ${pendingDelete.usageCount} time${pendingDelete.usageCount === 1 ? '' : 's'}. Delete it and its timeline items?`
       : `Delete ${pendingDelete.assets.length} selected assets and their timeline items?`
-    : pendingDelete?.kind === 'audio'
-      ? `Delete ${audioName} and remove it from the timeline?`
-      : pendingDelete?.kind === 'text'
-        ? `Delete ${pendingDelete.ids.length === 1 ? pendingDelete.ids[0] : `${pendingDelete.ids.length} selected text layers`}?`
-        : 'Loading this preset will replace your current project and assets. Continue?'}
+    : pendingDelete?.kind === 'text'
+      ? `Delete ${pendingDelete.ids.length === 1 ? pendingDelete.ids[0] : `${pendingDelete.ids.length} selected text layers`}?`
+      : 'Loading this preset will replace your current project and assets. Continue?'}
   dialogConfirmLabel={pendingDelete ? 'Delete' : 'Load Preset'}
   onUndoDelete={undoDelete}
   onCancelDialog={cancelConfirmDialog}

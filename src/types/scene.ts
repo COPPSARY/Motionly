@@ -35,7 +35,7 @@ export type Layer =
 /**
  * Asset types that can be imported
  */
-export type AssetType = 'svg' | 'image' | 'video' | 'lottie';
+export type AssetType = 'svg' | 'image' | 'video' | 'lottie' | 'audio';
 
 /**
  * Element kinds that can be rendered
@@ -290,8 +290,15 @@ export interface Clip {
   transitionInDuration: number;
   transitionOut?: ClipTransitionType;
   transitionOutDuration: number;
+  /** Linear gain applied to the clip's own audio, 1 = source level. */
   volume?: number;
   mute?: boolean;
+  /** Seconds of ramp up from silence at the clip's head. */
+  fadeIn: number;
+  /** Seconds of ramp down to silence at the clip's tail. */
+  fadeOut: number;
+  /** Playback rate for timed sources, 1 = source speed. */
+  speed: number;
   sourceOrder: number;
 }
 

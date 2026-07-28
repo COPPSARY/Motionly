@@ -31,6 +31,11 @@ import type { ProgramNode, AnimationNode } from '../types/parser';
 import { assetFilename } from '../assets/asset-resolution';
 import { compileSemanticProgram } from '../semantic/compiler';
 
+/** Import name given to a legacy `audio "..."` node when it is read as a clip. */
+export const LEGACY_AUDIO_NAME = 'audio';
+/** Track a legacy audio node lands on when the project declares no audio track. */
+export const LEGACY_AUDIO_TRACK = 'legacy-audio';
+
 const LAYER_ORDER: Record<Layer, number> = {
   background: 0,
   hero: 10,
@@ -139,6 +144,9 @@ export function buildSceneGraph(sourceAst: ProgramNode): Scene {
         ) as number,
         volume: props['volume'] !== undefined ? Number(props['volume']) : 1.0,
         mute: Boolean(props['mute'] ?? false),
+        fadeIn: normalizeProperty('fadeIn', props['fadeIn'] ?? 0) as number,
+        fadeOut: normalizeProperty('fadeOut', props['fadeOut'] ?? 0) as number,
+        speed: props['speed'] !== undefined ? Number(props['speed']) : 1,
         sourceOrder: clips.length,
       });
     }
@@ -168,6 +176,34 @@ export function buildSceneGraph(sourceAst: ProgramNode): Scene {
   // Add camera animations from camera node
   if (cameraNode && 'properties' in cameraNode && cameraNode.properties['cameraAnimation']) {
     animations.push(...cameraPresetAnimations(cameraNode.properties['cameraAnimation'] as string));
+  }
+
+  // Projects written before audio clips carry a single `audio "..."` node.
+  // Present it as an ordinary audio asset + clip so playback, the timeline and
+  // export only ever deal with clips. The AST keeps the legacy node until the
+  // editor migrates it, so opening a project never rewrites it.
+  if (audioNode && 'path' in audioNode) {
+    const name = uniqueImportName(LEGACY_AUDIO_NAME, imports);
+    imports.set(name, { name, path: audioNode.path, type: 'audio' });
+    const start = normalizeProperty('start', audioNode.properties['start'] ?? 0) as number;
+    clips.push(
+      audioClip({
+        id: `clip_${name}_${clips.length}`,
+        assetName: name,
+        asset: imports.get(name) ?? null,
+        track: legacyAudioTrackId(ast),
+        start,
+        // The real source length is only known once the browser decodes the
+        // file; until then the clip runs to the end of the project.
+        duration:
+          audioNode.properties['duration'] !== undefined
+            ? (normalizeProperty('duration', audioNode.properties['duration']) as number)
+            : Math.max(0, canvas.duration - start),
+        volume:
+          audioNode.properties['volume'] !== undefined ? Number(audioNode.properties['volume']) : 1,
+        sourceOrder: clips.length,
+      })
+    );
   }
 
   const tracks = buildTracks(ast, clips, elements, Boolean(audioNode));
@@ -250,6 +286,42 @@ const TRACK_CONTENT = new Set<TrackContent>([
   'mixed',
 ]);
 
+/** Clip defaults, so synthesized clips stay in step with parsed ones. */
+function audioClip(
+  overrides: Pick<
+    import('../types/scene').Clip,
+    'id' | 'assetName' | 'asset' | 'track' | 'start' | 'duration' | 'sourceOrder'
+  > &
+    Partial<import('../types/scene').Clip>
+): import('../types/scene').Clip {
+  return {
+    trimIn: 0,
+    trimOut: 0,
+    transitionInDuration: 0,
+    transitionOutDuration: 0,
+    volume: 1,
+    mute: false,
+    fadeIn: 0,
+    fadeOut: 0,
+    speed: 1,
+    ...overrides,
+  };
+}
+
+function uniqueImportName(base: string, imports: Map<string, Asset>): string {
+  if (!imports.has(base)) return base;
+  let suffix = 2;
+  while (imports.has(`${base}_${suffix}`)) suffix += 1;
+  return `${base}_${suffix}`;
+}
+
+function legacyAudioTrackId(ast: ProgramNode): string {
+  const declared = ast.body.find(
+    (node) => node.type === 'Track' && String(node.properties['role'] ?? '') === 'audio'
+  );
+  return declared && 'name' in declared ? declared.name : LEGACY_AUDIO_TRACK;
+}
+
 function buildTracks(
   ast: ProgramNode,
   clips: import('../types/scene').Clip[],
@@ -313,6 +385,10 @@ function buildTracks(
 
   for (const clip of clips) {
     const id = String(clip.track);
+    if (clip.asset?.type === 'audio') {
+      ensureSynthetic(id, 'audio', 'audio', defaultTrackLabel('audio', tracks.length));
+      continue;
+    }
     const content: TrackContent = clip.asset?.type === 'video' ? 'video' : 'image';
     const hasMain = tracks.some((track) => track.role === 'main');
     const role: TrackRole = !hasMain && (id === '1' || id === 'main') ? 'main' : 'overlay';
@@ -471,6 +547,11 @@ export function assetType(path: string): AssetType {
     (filename || pathname).endsWith('.lottie')
   )
     return 'lottie';
+  if (
+    lower.startsWith('data:audio/') ||
+    /\.(aac|flac|m4a|mp3|ogg|opus|wav)$/.test(filename || pathname)
+  )
+    return 'audio';
   if (lower.startsWith('data:image/svg+xml') || (filename || pathname).endsWith('.svg'))
     return 'svg';
   return 'image';
@@ -484,7 +565,7 @@ export function assetType(path: string): AssetType {
  */
 export function hasIntrinsicDuration(path: string): boolean {
   const type = assetType(path);
-  if (type === 'video' || type === 'lottie') return true;
+  if (type === 'video' || type === 'lottie' || type === 'audio') return true;
   const lower = path.toLowerCase();
   const filename = assetFilename(path).toLowerCase();
   const pathname = lower.split(/[?#]/, 1)[0] ?? lower;

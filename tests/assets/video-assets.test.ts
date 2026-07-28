@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   gifFrameAtTime,
   isAnimatedSvgSource,
+  loadAsset,
   pauseAnimatedAssets,
   synchronizeVideoAssets,
   videoSourceTime,
@@ -11,6 +12,68 @@ import { assetType, hasIntrinsicDuration } from '../../src/scene/scene-graph';
 import type { EvaluatedScene } from '../../src/types/scene';
 
 describe('animated assets', () => {
+  it('finishes an audio waveform before exposing the asset for its first render', async () => {
+    const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+    const readyState = vi
+      .spyOn(HTMLMediaElement.prototype, 'readyState', 'get')
+      .mockReturnValue(HTMLMediaElement.HAVE_METADATA);
+    const duration = vi.spyOn(HTMLMediaElement.prototype, 'duration', 'get').mockReturnValue(1);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === 'HEAD'
+          ? new Response(null, { headers: { 'content-length': '4' } })
+          : new Response(new Uint8Array([0, 1, 2, 3]))
+      )
+    );
+
+    let finishDecode: (() => void) | undefined;
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        decodeAudioData(): Promise<{
+          duration: number;
+          numberOfChannels: number;
+          getChannelData: () => Float32Array;
+        }> {
+          return new Promise((resolve) => {
+            finishDecode = () =>
+              resolve({
+                duration: 1,
+                numberOfChannels: 1,
+                getChannelData: () => Float32Array.from([0, 0.5, -1, 0.25]),
+              });
+          });
+        }
+
+        close(): Promise<void> {
+          return Promise.resolve();
+        }
+      }
+    );
+
+    try {
+      let settled = false;
+      const loading = loadAsset('./tone.wav', 'http://localhost/', 'audio').then((asset) => {
+        settled = true;
+        return asset;
+      });
+      await vi.waitFor(() => expect(finishDecode).toBeTypeOf('function'));
+      expect(settled).toBe(false);
+      finishDecode?.();
+
+      const asset = await loading;
+      expect(asset.motionlyType).toBe('audio');
+      if (asset.motionlyType !== 'audio') throw new Error('Expected audio asset');
+      expect(asset.motionlyPeaks).toHaveLength(4);
+    } finally {
+      load.mockRestore();
+      readyState.mockRestore();
+      duration.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('classifies browser video, animated image/SVG, and Lottie paths', () => {
     expect(assetType('/media/intro.mp4')).toBe('video');
     expect(assetType('/media/intro.WEBM?version=2')).toBe('video');
@@ -30,6 +93,12 @@ describe('animated assets', () => {
     );
     expect(assetType('/media/loop.gif')).toBe('image');
     expect(assetType('/media/photo.png')).toBe('image');
+    expect(assetType('/media/score.mp3')).toBe('audio');
+    expect(assetType('/media/voice.WAV?v=2')).toBe('audio');
+    expect(assetType('data:audio/mpeg;base64,AAAA')).toBe('audio');
+    expect(
+      assetType('data:application/octet-stream;base64,AAAA#motionly-filename=score.flac')
+    ).toBe('audio');
   });
 
   it('separates sources that carry their own length from static artwork', () => {
@@ -41,6 +110,7 @@ describe('animated assets', () => {
     expect(
       hasIntrinsicDuration('data:application/octet-stream;base64,AAAA#motionly-filename=loop.gif')
     ).toBe(true);
+    expect(hasIntrinsicDuration('/media/score.mp3')).toBe(true);
     expect(hasIntrinsicDuration('/media/photo.png')).toBe(false);
     expect(hasIntrinsicDuration('/media/logo.svg')).toBe(false);
   });

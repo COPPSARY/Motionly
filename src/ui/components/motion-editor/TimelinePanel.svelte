@@ -5,12 +5,11 @@
   import type { Clip, Element, Scene, Track } from '../../../types/scene';
   import type { ClipTransitionBoundary } from '../../clip-transitions';
   import type { PackedClipTrack, TimelineLane } from '../../timeline-lanes';
-  import { assetPreviewSource, formatPreciseTime, formatTime, stringProperty, timelineLaneLabel } from './helpers';
+  import { assetPreviewSource, clipWaveform, formatPreciseTime, formatTime, stringProperty, timelineLaneLabel } from './helpers';
   import type { TimelineClipDrag } from './types';
 
   export let timelineScroll: HTMLDivElement;
   export let audioInput: HTMLInputElement;
-  export let audioElement: HTMLAudioElement;
   export let isPlaying: boolean;
   export let currentTime: number;
   export let displayFrame: number;
@@ -25,7 +24,6 @@
   export let timelineVisibleDuration: number;
   export let scene: Scene | null;
   export let draggingAsset: boolean;
-  export let draggingAudio: boolean;
   export let draggingTransition: 'crossfade' | null;
   export let dropTargetTime: number | null;
   export let timelineTicks: number[];
@@ -37,12 +35,6 @@
   export let selectedKeyframeOffset: number | null;
   export let transitionBoundaries: ClipTransitionBoundary[];
   export let selectedTransition: ClipTransitionBoundary | null;
-  export let projectAudioTrack: Track | null;
-  export let audioName: string;
-  export let audioClipDuration: number;
-  export let audioWaveformLoading: boolean;
-  export let audioWaveformPath: string;
-  export let visibleWaveformPeaks: number;
   export let assets: Map<string, LoadedAsset>;
   export let onResizeTimeline: (event: PointerEvent) => void;
   export let onResizeTimelineKey: (event: KeyboardEvent) => void;
@@ -50,7 +42,6 @@
   export let onPlay: () => void;
   export let onPause: () => void;
   export let onAudioSelected: (event: Event) => void | Promise<void>;
-  export let onRemoveAudio: () => void;
   export let onDuplicateSelected: () => void;
   export let onDeleteSelected: () => void;
   export let onUndo: () => void;
@@ -79,14 +70,12 @@
   export let onSelectKeyframe: (offset: number) => void;
   export let onDeleteKeyframeAt: (event: Event, offset: number) => void;
   export let onAddKeyframe: () => void;
-  export let onMoveTimelineAudio: (event: PointerEvent) => void;
   export let onMoveTimelineClip: (event: PointerEvent, clip: Clip) => void;
   export let onDuplicateClip: (id: string) => void;
   export let onTrimTimelineClip: (event: PointerEvent, clip: Clip, edge: 'start' | 'end') => void;
   export let onDeleteClip: (id: string) => void;
   export let onDropTransition: (event: DragEvent, boundary: ClipTransitionBoundary) => void;
   export let onSelectTransition: (boundary: ClipTransitionBoundary) => void;
-  export let onAudioMetadata: (duration: number) => void;
 
   let keyframeAtPlayhead = false;
   $: keyframeAtPlayhead = selectedKeyframeMarkers.some(
@@ -123,13 +112,8 @@
       </div>
 
       <div class="me-timeline-actions">
-        <input bind:this={audioInput} class="me-file-input" type="file" accept="audio/*" on:change={onAudioSelected} />
-        {#if audioName}
-          <span class="me-audio-chip"><Music2 size={13} /> {audioName}</span>
-          <button class="me-icon-btn" on:click={onRemoveAudio} title="Remove audio"><Trash2 size={14} /></button>
-        {:else}
-          <button class="me-timeline-command" on:click={() => audioInput.click()} title="Attach audio"><Upload size={14} /> Audio</button>
-        {/if}
+        <input bind:this={audioInput} class="me-file-input" type="file" accept="audio/*" multiple on:change={onAudioSelected} />
+        <button class="me-timeline-command" on:click={() => audioInput.click()} title="Import audio"><Upload size={14} /> Audio</button>
         {#if selectedElement || selectedClip}
           <button class="me-icon-btn" on:click={onDuplicateSelected} title="Duplicate selected layer (Ctrl/Cmd+D)" aria-label="Duplicate selected layer"><Copy size={14} /></button>
           <button class="me-icon-btn me-danger-btn" on:click={onDeleteSelected} title="Delete selected layer (Delete)"><Trash2 size={14} /></button>
@@ -148,7 +132,7 @@
       bind:this={timelineScroll}
       class="me-timeline-scroll" 
       style={`--timeline-content-width: ${timelineContentWidth}px; --playhead-position: ${timelinePercent(currentTime)}%`}
-      class:me-drop-target={draggingAsset !== null || draggingAudio}
+      class:me-drop-target={draggingAsset !== null}
       role="region"
       aria-label="Timeline tracks"
       on:dragover={onTimelineDragOver}
@@ -306,19 +290,6 @@
                   {/each}
                 {/if}
               {/if}
-              {#if clipTrack.metadata?.id === projectAudioTrack?.id && audioName}
-                <span class="me-clip me-audio-clip" class:me-muted={projectAudioTrack?.muted} style={`left: ${timelinePercent(scene?.audioStart ?? 0)}%; width: ${timelinePercent(audioClipDuration)}%; top: 6px`}>
-                  <span class="me-audio-waveform" class:me-loading={audioWaveformLoading} aria-hidden="true">
-                    {#if audioWaveformPath}
-                      <svg viewBox={`0 0 ${visibleWaveformPeaks} 24`} preserveAspectRatio="none">
-                        <path d={audioWaveformPath}></path>
-                      </svg>
-                    {/if}
-                  </span>
-                  <span class="me-clip-text me-audio-clip-label">{audioName}</span>
-                  <button type="button" class="me-clip-select" on:pointerdown={onMoveTimelineAudio} aria-label={`Move audio ${audioName}`}></button>
-                </span>
-              {/if}
               {#each clipTrack.elements as packedElement}
                 {@const item = packedElement.item}
                 <span class="me-clip me-element-clip" class:me-selected-clip={item.element.id === selectedElementId} style={`left: ${timelinePercent(item.range.start)}%; width: ${Math.max(0.8, timelinePercent(item.range.end - item.range.start))}%; top: ${6 + packedElement.lane * 34}px`}>
@@ -370,8 +341,18 @@
               {/if}
               {#each clipTrack.clips as packedClip}
                 {@const clip = packedClip.clip}
-                <span class="me-clip me-timeline-clip" class:me-selected-clip={clip.id === selectedElementId} style={`left: ${timelinePercent(clip.start)}%; width: ${Math.max(0.8, timelinePercent(clip.duration))}%; top: ${6 + packedClip.lane * 34}px`}>
-                  {#if clip.asset?.type === 'video'}
+                <span class="me-clip me-timeline-clip" class:me-audio-clip={clip.asset?.type === 'audio'} class:me-muted={clip.mute || clipTrack.metadata?.muted} class:me-selected-clip={clip.id === selectedElementId} style={`left: ${timelinePercent(clip.start)}%; width: ${Math.max(0.8, timelinePercent(clip.duration))}%; top: ${6 + packedClip.lane * 34}px`}>
+                  {#if clip.asset?.type === 'audio'}
+                    {@const waveform = clipWaveform(assets.get(clip.assetName), clip)}
+                    <span class="me-audio-waveform" class:me-loading={!waveform} aria-hidden="true">
+                      {#if waveform}
+                        <svg viewBox={`0 0 ${waveform.width} 24`} preserveAspectRatio="none">
+                          <path d={waveform.path}></path>
+                        </svg>
+                      {/if}
+                    </span>
+                    <span class="me-clip-text me-audio-clip-label">{clip.assetName}</span>
+                  {:else if clip.asset?.type === 'video'}
                     <span class="me-clip-media me-video-clip-media"><Video size={13} /></span>
                   {:else if clip.asset?.path}
                     <span
@@ -443,10 +424,9 @@
           </div>
       {/each}
 
-      {#if timelineRows.length === 0 && timelineClipTracks.every((track) => track.clips.length === 0 && track.elements.length === 0) && !audioName}
+      {#if timelineRows.length === 0 && timelineClipTracks.every((track) => track.clips.length === 0 && track.elements.length === 0)}
         <div class="me-timeline-empty"><Layers3 size={16} /><span>No timeline layers yet. Add text or drag media here to begin.</span></div>
       {/if}
     </div>
 
-    <audio bind:this={audioElement} on:loadedmetadata={() => onAudioMetadata(audioElement.duration)}></audio>
   </section>
