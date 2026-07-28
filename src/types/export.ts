@@ -10,6 +10,15 @@ import type { Scene, EvaluatedScene } from './scene';
  * Supported export formats
  */
 export type ExportFormat = 'mp4' | 'webm' | 'gif';
+export type ExportQuality = 'low' | 'medium' | 'high' | 'very-high';
+
+export interface VideoExportSettings {
+  format: ExportFormat;
+  height: number;
+  fps: number;
+  quality: ExportQuality;
+  bitrateMbps: number;
+}
 
 /**
  * Export format support information

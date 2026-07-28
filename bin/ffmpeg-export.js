@@ -41,6 +41,34 @@ export function createFfmpegExportMiddleware() {
 }
 
 async function handleExportRequest(request, response, url) {
+  if (url.pathname === '/api/exports/ffmpeg') {
+    if (request.method === 'GET') {
+      respond(response, (await ffmpegAvailable()) ? 204 : 503, '');
+      return;
+    }
+    if (request.method === 'POST') {
+      if (
+        request.headers['x-motionly-action'] !== 'install-ffmpeg' ||
+        !sameOrigin(request)
+      ) {
+        respond(response, 403, 'FFmpeg installation was not authorized');
+        return;
+      }
+      await installFfmpeg();
+      if (await ffmpegAvailable()) {
+        respond(response, 204, '');
+      } else {
+        respond(
+          response,
+          202,
+          'FFmpeg was installed, but Motionly must be restarted so the updated PATH is available.'
+        );
+      }
+      return;
+    }
+    respond(response, 405, 'Method not allowed');
+    return;
+  }
   if (request.method === 'POST' && url.pathname === '/api/exports') {
     await createJob(request, response);
     return;
@@ -56,8 +84,12 @@ async function handleExportRequest(request, response, url) {
   if (!job) return respond(response, 404, 'Export job not found');
 
   if (request.method === 'DELETE' && !action) {
-    jobs.delete(id);
-    await rm(job.directory, { recursive: true, force: true });
+    if (job.ffmpeg) {
+      job.ffmpeg.kill();
+    } else {
+      jobs.delete(id);
+      await rm(job.directory, { recursive: true, force: true });
+    }
     respond(response, 204);
     return;
   }
@@ -122,6 +154,11 @@ async function createJob(request, response) {
   const fps = positiveNumber(input.fps, 'fps', 240);
   const duration = positiveNumber(input.duration, 'duration', 24 * 60 * 60);
   const totalFrames = positiveInteger(input.totalFrames, 'totalFrames', 24 * 60 * 60 * 240);
+  const quality = input.quality ?? 'high';
+  if (!['low', 'medium', 'high', 'very-high'].includes(quality)) {
+    throw new Error('Invalid export quality');
+  }
+  const bitrateMbps = positiveNumber(input.bitrateMbps ?? 10, 'bitrate', 200);
   const audioClips = normalizeAudioClips(input, duration);
   const expectedFrames = Math.max(1, Math.ceil(duration * fps));
   if (totalFrames !== expectedFrames) throw new Error(`Expected ${expectedFrames} frames`);
@@ -132,6 +169,8 @@ async function createJob(request, response) {
     fps,
     duration,
     totalFrames,
+    quality,
+    bitrateMbps,
     receivedFrames: new Set(),
     audioClips,
     receivedAudio: new Set(),
@@ -170,7 +209,11 @@ async function finishJob(id, job, response) {
     '-preset',
     'medium',
     '-crf',
-    '18',
+    String(job.quality === 'low' ? 28 : job.quality === 'medium' ? 23 : job.quality === 'high' ? 18 : 15),
+    '-maxrate',
+    `${job.bitrateMbps}M`,
+    '-bufsize',
+    `${job.bitrateMbps * 2}M`,
     '-vf',
     'pad=ceil(iw/2)*2:ceil(ih/2)*2:color=black,format=yuv420p',
     '-frames:v',
@@ -182,22 +225,23 @@ async function finishJob(id, job, response) {
     outputPath
   );
 
-  jobs.delete(id);
   try {
-    await runFfmpeg(args);
+    await runFfmpeg(args, job);
     const output = await stat(outputPath);
     response.statusCode = 200;
     response.setHeader('content-type', 'video/mp4');
     response.setHeader('content-length', String(output.size));
     await pipeline(createReadStream(outputPath), response);
   } finally {
+    jobs.delete(id);
     await rm(job.directory, { recursive: true, force: true });
   }
 }
 
-function runFfmpeg(args) {
+function runFfmpeg(args, job) {
   return new Promise((resolve, reject) => {
     const child = spawn('ffmpeg', args, { windowsHide: true });
+    if (job) job.ffmpeg = child;
     let errorOutput = '';
     child.stderr.setEncoding('utf8');
     child.stderr.on('data', (chunk) => {
@@ -211,10 +255,120 @@ function runFfmpeg(args) {
       );
     });
     child.once('close', (code) => {
+      if (job) job.ffmpeg = null;
       if (code === 0) resolve();
       else reject(new Error(errorOutput.trim() || `ffmpeg exited with code ${String(code)}`));
     });
   });
+}
+
+async function ffmpegAvailable() {
+  try {
+    await runFfmpeg(['-version']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installFfmpeg() {
+  let command;
+  let args;
+  let interactive = false;
+  if (process.platform === 'win32') {
+    command = 'winget';
+    args = [
+      'install',
+      '--id',
+      'Gyan.FFmpeg',
+      '--exact',
+      '--silent',
+      '--accept-package-agreements',
+      '--accept-source-agreements',
+    ];
+  } else if (process.platform === 'darwin') {
+    command = 'brew';
+    args = ['install', 'ffmpeg'];
+  } else if (process.platform === 'linux') {
+    const managers = [
+      ['apt-get', ['install', '-y', 'ffmpeg']],
+      ['dnf', ['install', '-y', 'ffmpeg']],
+      ['yum', ['install', '-y', 'ffmpeg']],
+      ['pacman', ['-S', '--noconfirm', 'ffmpeg']],
+      ['zypper', ['--non-interactive', 'install', 'ffmpeg']],
+      ['apk', ['add', 'ffmpeg']],
+    ];
+    const selected = await firstAvailable(managers);
+    if (!selected) throw new Error('No supported Linux package manager was found');
+    [command, args] = selected;
+    if (typeof process.getuid === 'function' && process.getuid() !== 0) {
+      if (await commandAvailable('pkexec')) {
+        args = [command, ...args];
+        command = 'pkexec';
+      } else {
+        args = [command, ...args];
+        command = 'sudo';
+        interactive = true;
+      }
+    }
+  } else {
+    throw new Error(`Automatic FFmpeg installation is not supported on ${process.platform}`);
+  }
+  try {
+    await runCommand(command, args, interactive);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Automatic FFmpeg installation failed: ${detail}. Install FFmpeg manually, add ffmpeg to PATH, then restart Motionly.`
+    );
+  }
+}
+
+async function firstAvailable(options) {
+  for (const [command, args] of options) {
+    if (await commandAvailable(command)) return [command, args];
+  }
+  return null;
+}
+
+async function commandAvailable(command) {
+  try {
+    await runCommand(command, ['--version']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function runCommand(command, args, interactive = false) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      windowsHide: true,
+      stdio: interactive ? 'inherit' : 'pipe',
+    });
+    let output = '';
+    for (const stream of [child.stdout, child.stderr]) {
+      stream?.setEncoding('utf8');
+      stream?.on('data', (chunk) => {
+        output = `${output}${chunk}`.slice(-16_384);
+      });
+    }
+    child.once('error', reject);
+    child.once('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(output.trim() || `${command} exited with code ${String(code)}`));
+    });
+  });
+}
+
+function sameOrigin(request) {
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === request.headers.host;
+  } catch {
+    return false;
+  }
 }
 
 async function writeRequest(request, path, maxBytes) {

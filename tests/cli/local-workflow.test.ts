@@ -92,7 +92,7 @@ describe('local CLI workflow', () => {
     const child = spawn(
       process.execPath,
       [cli, 'dev', 'demo', '--port', String(port), '--no-open'],
-      { cwd: workspace, stdio: 'ignore' }
+      { cwd: workspace, stdio: 'ignore', env: { ...process.env, PATH: '' } }
     );
 
     try {
@@ -115,6 +115,13 @@ describe('local CLI workflow', () => {
       const bundle = await fetch(`http://127.0.0.1:${port}${script}`);
       expect(bundle.headers.get('content-type')).toContain('text/javascript');
 
+      const ffmpeg = await fetch(`http://127.0.0.1:${port}/api/exports/ffmpeg`);
+      expect(ffmpeg.status).toBe(503);
+      const unauthorizedInstall = await fetch(`http://127.0.0.1:${port}/api/exports/ffmpeg`, {
+        method: 'POST',
+      });
+      expect(unauthorizedInstall.status).toBe(403);
+
       const exportResponse = await fetch(`http://127.0.0.1:${port}/api/exports`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -124,6 +131,8 @@ describe('local CLI workflow', () => {
           fps: 1,
           duration: 1,
           totalFrames: 1,
+          quality: 'medium',
+          bitrateMbps: 5,
           hasAudio: false,
           audioStart: 0,
         }),

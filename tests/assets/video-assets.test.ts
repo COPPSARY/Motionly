@@ -8,6 +8,7 @@ import {
   videoSourceTime,
   type LoadedAsset,
 } from '../../src/assets/asset-loader';
+import { Mp4FrameSource, type DemuxedMp4Video } from '../../src/assets/mp4-video';
 import { assetType, hasIntrinsicDuration } from '../../src/scene/scene-graph';
 import type { EvaluatedScene } from '../../src/types/scene';
 
@@ -215,5 +216,94 @@ describe('animated assets', () => {
     await synchronizeVideoAssets(frame, assets, { playing: false, exact: true });
     await synchronizeVideoAssets(frame, assets, { playing: true });
     expect(restart).toHaveBeenCalledTimes(2);
+  });
+
+  it('streams MP4 decoding without midstream flush and closes safely twice', async () => {
+    let needsKeyFrame = true;
+    let flushes = 0;
+    vi.stubGlobal(
+      'EncodedVideoChunk',
+      class {
+        constructor(init: EncodedVideoChunkInit) {
+          Object.assign(this, init);
+        }
+      }
+    );
+    vi.stubGlobal(
+      'VideoDecoder',
+      class {
+        state: CodecState = 'configured';
+        decodeQueueSize = 0;
+        static isConfigSupported(config: VideoDecoderConfig) {
+          return Promise.resolve({ supported: true, config });
+        }
+
+        constructor(private init: VideoDecoderInit) {}
+        configure() {
+          needsKeyFrame = true;
+        }
+        decode(chunk: EncodedVideoChunk) {
+          if (needsKeyFrame && chunk.type !== 'key') {
+            throw new DOMException(
+              'A key frame is required after configure() or flush()',
+              'DataError'
+            );
+          }
+          needsKeyFrame = false;
+          this.decodeQueueSize += 1;
+          queueMicrotask(() => {
+            this.init.output({ timestamp: chunk.timestamp, close() {} } as VideoFrame);
+            this.decodeQueueSize -= 1;
+          });
+        }
+        flush() {
+          flushes += 1;
+          needsKeyFrame = true;
+          return Promise.resolve();
+        }
+        reset() {
+          needsKeyFrame = true;
+        }
+        close() {
+          if (this.state === 'closed') throw new DOMException('Codec already closed');
+          this.state = 'closed';
+        }
+      }
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage() {},
+    } as unknown as CanvasRenderingContext2D);
+
+    const samples = [
+      { cts: 0, is_sync: true },
+      { cts: 10, is_sync: false },
+      { cts: 20, is_sync: false },
+      { cts: 30, is_sync: false },
+      { cts: 100, is_sync: true },
+    ].map((sample) => ({
+      ...sample,
+      timescale: 100,
+      duration: 10,
+      data: new Uint8Array([sample.cts]),
+    })) as DemuxedMp4Video['samples'];
+    const source = await Mp4FrameSource.create({
+      codec: 'avc1.64001f',
+      width: 16,
+      height: 9,
+      duration: 1,
+      samples,
+    });
+
+    try {
+      await source.renderAt(0);
+      await expect(source.renderAt(0.25)).resolves.toBeUndefined();
+      expect(flushes).toBe(0);
+      source.close();
+      expect(() => source.close()).not.toThrow();
+    } finally {
+      source.close();
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    }
   });
 });
