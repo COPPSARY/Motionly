@@ -7,6 +7,7 @@ import {
   type StructureContext,
 } from './component-structures';
 import {
+  REACTBITS_COMPONENT_ALIASES,
   isSemanticComponentType,
   svgDataUri,
   vectorDefinition,
@@ -114,7 +115,9 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
 
     const type = componentType(node);
     const definition = vectorDefinition(type);
-    const catalogEntry = componentRegistry().find((entry) => entry.name === type)!;
+    const canonicalType =
+      REACTBITS_COMPONENT_ALIASES[type as keyof typeof REACTBITS_COMPONENT_ALIASES] ?? type;
+    const catalogEntry = componentRegistry().find((entry) => entry.name === canonicalType)!;
     validateCatalogProperties(catalogEntry, node.properties, [
       'type',
       'provider',
