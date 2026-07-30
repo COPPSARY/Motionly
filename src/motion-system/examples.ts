@@ -13,11 +13,12 @@
 
 import { layoutDefinition, layoutDefinitions, type LayoutType } from './layout';
 import { showcaseDefinition, showcaseDefinitions, type ShowcaseType } from './showcase';
+import type { SemanticComponentType } from '../semantic/vector-registry';
 
 export interface RegistryExample {
   /** Block the example demonstrates. */
   name: string;
-  kind: 'layout' | 'showcase';
+  kind: 'layout' | 'showcase' | 'component';
   /** File stem, kebab-cased for the registry folder. */
   slug: string;
   /** Complete, valid `.motion` source. */
@@ -200,10 +201,82 @@ text hint {
   };
 }
 
+const COMPONENT_EXAMPLES = [
+  'tilted-card',
+  'magic-bento',
+  'spotlight-card',
+  'fluid-glass',
+  'form',
+  'button',
+  'loader',
+] as const satisfies readonly SemanticComponentType[];
+
+/** Installable component recipes: replace the content slots, not the choreography. */
+function componentExample(type: (typeof COMPONENT_EXAMPLES)[number]): RegistryExample {
+  const duration = 4.8;
+  const content =
+    type === 'form'
+      ? `  label "Welcome back"
+  detail "Replace these content slots."
+  labels "Email  Password"
+  values "you@example.com  ••••••••"
+  cta "Continue"`
+      : type === 'button'
+        ? `  label "Replace this action"`
+        : type === 'loader'
+          ? `  label "Rendering 82%"
+  countTo 82`
+          : `  label "FEATURE"
+  headline "Replace this headline"
+  detail "Keep the component, motion, and layout. Change only the content."
+  cta "Explore →"`;
+
+  return {
+    name: type,
+    kind: 'component',
+    slug: slugify(type),
+    duration,
+    source: `${header(duration, `${type} — editable registry component recipe`)}
+
+beat reveal {
+  duration 1.6s
+  focus subject
+  route uiLife
+  label "Reveal component"
+}
+
+beat inspect {
+  duration 1.6s
+  focus subject
+  zoom 1.12
+  route cameraIntent
+  label "Inspect motion"
+}
+
+beat settle {
+  duration 1.6s
+  focus subject
+  zoom 1
+  route cameraIntent
+  label "Settle"
+}
+
+component subject {
+  type ${type}
+  beat reveal
+  role main
+  motionPreset premium
+${content}
+}
+`,
+  };
+}
+
 /** Every generated registry example, in a stable order. */
 export function registryExamples(): readonly RegistryExample[] {
   return [
     ...showcaseDefinitions().map((definition) => showcaseExample(definition.type)),
     ...layoutDefinitions().map((definition) => layoutExample(definition.type)),
+    ...COMPONENT_EXAMPLES.map(componentExample),
   ];
 }

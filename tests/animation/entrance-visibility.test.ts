@@ -83,6 +83,29 @@ describe('pre-entrance visibility', () => {
     expect(opacityAt(source, 'title', 5)).toBe(0);
   });
 
+  it('lets the latest timeline action win regardless of source order', () => {
+    const source = `
+      canvas { duration 6s }
+      text title { value "Ordered by time" opacity 1 }
+      animate title {
+        from { opacity 1 }
+        to { opacity 0 }
+        duration .5s
+        delay 3s
+        easing linear
+      }
+      animate title {
+        from { opacity 0 }
+        to { opacity 1 }
+        duration .5s
+        delay 1s
+        easing linear
+      }
+    `;
+    expect(opacityAt(source, 'title', 2)).toBe(1);
+    expect(opacityAt(source, 'title', 4)).toBe(0);
+  });
+
   it('keeps later idle loops from leaking their start values before the entrance', () => {
     const source = `
       canvas { duration 8s }
@@ -114,6 +137,26 @@ describe('pre-entrance visibility', () => {
       (element) => element.id === 'title'
     )!;
     expect(betweenAnimations.render.opacity).toBe(1);
+  });
+
+  it('does not treat a delayed repeating loop as an entrance', () => {
+    const source = `
+      canvas { duration 8s }
+      overlay dot { shape circle opacity 0 }
+      animate dot {
+        keyframes {
+          0% { opacity .35 }
+          50% { opacity 1 }
+          100% { opacity .35 }
+        }
+        duration 1s
+        delay 4s
+        easing sine.inOut
+        repeat infinite
+      }
+    `;
+    expect(opacityAt(source, 'dot', 1)).toBe(0);
+    expect(opacityAt(source, 'dot', 4.5)).toBe(1);
   });
 });
 

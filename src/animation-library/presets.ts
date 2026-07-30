@@ -7,7 +7,12 @@ import { parsePresetCall } from './preset-parser';
 import { ARRIVAL } from '../motion-system/layout';
 import { countDecimalPlaces, resolveCountSeparator } from './count-up';
 import { elementSequenceOffset } from '../core/stagger';
-import { effectRegistry, moveRegistry, validateCatalogProperties } from '../semantic/catalog';
+import {
+  canonicalMoveName,
+  effectRegistry,
+  moveRegistry,
+  validateCatalogProperties,
+} from '../semantic/catalog';
 import type {
   Scene,
   Element,
@@ -60,12 +65,12 @@ export function applyAnimationPresets(scene: Scene): Scene {
       }
     }
     const textPreset =
-      parsePresetCall(animationPreset).name === 'countUp'
+      canonicalMoveName(parsePresetCall(animationPreset).name) === 'countUp'
         ? animationPreset
         : (textAnimationPreset ?? animationPreset);
 
     if (element.kind === 'text' && textPreset && isTextPreset(textPreset as string)) {
-      if (parsePresetCall(textPreset).name === 'countUp') {
+      if (canonicalMoveName(parsePresetCall(textPreset).name) === 'countUp') {
         const generated = expandCountUpPreset(element, textPreset as string);
         const seqOffset = elementSequenceOffset(scene.sequences, props['sequence'], element.id);
         sourceElements.push(generated.element);
@@ -93,7 +98,7 @@ export function applyAnimationPresets(scene: Scene): Scene {
     const animation = props['animation'];
     if (animation && isObjectPreset(animation as string)) {
       const parsedPreset = parsePresetCall(animation);
-      const preset = parsedPreset.name;
+      const preset = canonicalMoveName(parsedPreset.name);
       const presetAnimations = objectPresetAnimations(element);
       if (presetAnimations[0]) {
         presetAnimations[0] = applyEntranceQuality(presetAnimations[0], parsedPreset.options);
@@ -472,7 +477,10 @@ function expandTextPreset(
   element: Element,
   value: string
 ): { elements: Element[]; animations: Animation[] } {
-  const { name, options } = parsePresetCall(value);
+  const parsed = parsePresetCall(value);
+  const requestedName = parsed.name;
+  const name = canonicalMoveName(parsed.name);
+  const { options } = parsed;
   const split = (options['split'] as string) ?? defaultSplitFor(name);
   const props = element.properties as unknown as Record<string, unknown>;
   const parts = splitText(String(props['value'] ?? ''), split);
@@ -535,12 +543,13 @@ function expandTextPreset(
     const rank = staggerRank.get(index);
     if (rank === undefined) return [];
     const partProps = part.properties as unknown as Record<string, unknown>;
+    const reactBitsFrames = reactBitsTextKeyframes(requestedName, partProps, index);
     return [
       {
         target: part.id,
-        from: textPresetFrom(name, partProps),
-        to: textPresetTo(name, partProps),
-        keyframes: [],
+        from: reactBitsFrames ? {} : textPresetFrom(name, partProps),
+        to: reactBitsFrames ? {} : textPresetTo(name, partProps),
+        keyframes: reactBitsFrames ?? [],
         delay: delay + (cascade[rank] ?? 0),
         duration,
         easing,
@@ -572,13 +581,88 @@ function expandTextPreset(
   return { elements, animations };
 }
 
+function reactBitsTextKeyframes(
+  name: string,
+  props: Record<string, unknown>,
+  index: number
+): Keyframe[] | null {
+  const x = Number(props['x'] ?? 0);
+  const y = Number(props['y'] ?? 0);
+  const scale = Number(props['scale'] ?? 1);
+  const rotation = Number(props['rotation'] ?? 0);
+  const opacity = Number(props['opacity'] || 1);
+  const side = index % 2 === 0 ? -1 : 1;
+  const rest = { opacity, x, y, scale, rotation, blur: 0 };
+
+  if (name === 'split-text')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, y: y + side * 42, rotation: side * 4 } },
+      { offset: 0.78, properties: { ...rest, y: y - side * 3, rotation: -side * 0.6 } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'decrypted-text')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, blur: 14, scale: scale * 1.16 } },
+      { offset: 0.72, properties: { ...rest, blur: 1, scale: scale * 0.99 } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'scrambled-text' || name === 'glitch-text')
+    return [
+      {
+        offset: 0,
+        properties: { ...rest, opacity: 1, x: x + side * 18, y: y - side * 5, blur: 5 },
+      },
+      {
+        offset: 0.38,
+        properties: { ...rest, x: x - side * 11, y: y + side * 3, rotation: side * 3 },
+      },
+      { offset: 0.72, properties: { ...rest, x: x + side * 4, rotation: -side } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'rotating-text')
+    return [
+      {
+        offset: 0,
+        properties: { ...rest, opacity: 1, y: y + 36, scale: scale * 0.82, rotation: side * 14 },
+      },
+      { offset: 0.82, properties: { ...rest, y: y - 3, scale: scale * 1.02, rotation: -side } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'falling-text')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, y: y - 86, rotation: side * 9 } },
+      { offset: 0.76, properties: { ...rest, y: y + 5, rotation: -side * 1.5 } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'scroll-float')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, y: y + 58, scale: scale * 0.95 } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'text-trail')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, x: x - 52, blur: 10 } },
+      { offset: 0.68, properties: { ...rest, x: x + 4, blur: 1 } },
+      { offset: 1, properties: rest },
+    ];
+  if (name === 'text-pressure' || name === 'variable-proximity')
+    return [
+      { offset: 0, properties: { ...rest, opacity: 1, scale: scale * 0.72, y: y + 10 } },
+      { offset: 0.8, properties: { ...rest, scale: scale * 1.03, y: y - 2 } },
+      { offset: 1, properties: rest },
+    ];
+  return null;
+}
+
 /**
  * Generate object preset animations
  */
 function objectPresetAnimations(element: Element): Animation[] {
   const target = element.id;
   const props = element.properties as unknown as Record<string, unknown>;
-  const { name, options } = parsePresetCall(props['animation'] as string);
+  const parsed = parsePresetCall(props['animation'] as string);
+  const name = canonicalMoveName(parsed.name);
+  const { options } = parsed;
   const defaults = moveRegistry().find((entry) => entry.name === name)?.defaults ?? {};
   const delay = (options['delay'] as number) ?? 0;
   const duration = (options['duration'] as number) ?? Number(defaults['duration'] ?? 1.2);

@@ -45,6 +45,21 @@ describe('structured semantic components', () => {
     expect(card2Entrance.delay).toBeGreaterThan(frameEntrance.delay);
   });
 
+  it('gives component roots their real bounds for selection and transitions', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 4s }
+        component login {
+          type form
+          width 460
+        }
+      `)
+    );
+    const root = scene.elements.find((element) => element.id === 'login')!;
+    expect(root.properties.width).toBe(460);
+    expect(root.properties.height).toBe(520);
+  });
+
   it('gives buttons a surface, a label, and a click compression', () => {
     const source = `
       canvas { duration 6s }
@@ -97,6 +112,14 @@ describe('structured semantic components', () => {
       (animation) => animation.target === 'cta' && animation.keyframes.length > 0
     )!;
     expect(compression.delay).toBeCloseTo(3);
+    expect(
+      evaluateScene(scene, 1).elements.find((element) => element.id === 'pointer__ripple')!.render
+        .opacity
+    ).toBe(0);
+    expect(
+      evaluateScene(scene, 1).elements.find((element) => element.id === 'cta__ripple')!.render
+        .opacity
+    ).toBe(0);
     // The notification enters as a consequence of the click.
     const toastEntrance = scene.animations.find((animation) => animation.target === 'toast')!;
     expect(toastEntrance.delay).toBeGreaterThan(3);
@@ -123,6 +146,31 @@ describe('structured semantic components', () => {
       (element) => element.id.startsWith('metrics__') && Number(element.render.opacity ?? 0) > 0.5
     );
     expect(visible.length).toBeGreaterThan(5);
+  });
+
+  it('snaps component opacity on the first frame instead of fading arrivals', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 6s fps 60 }
+        component login {
+          type form
+          delay 1s
+        }
+      `)
+    );
+    const entrance = scene.animations.find(
+      (animation) => animation.target === 'login__panel' && animation.from['y'] !== undefined
+    )!;
+    expect(
+      evaluateScene(scene, entrance.delay).elements.find(
+        (element) => element.id === 'login__panel'
+      )!.render.opacity
+    ).toBe(0);
+    expect(
+      evaluateScene(scene, entrance.delay + 1 / 60).elements.find(
+        (element) => element.id === 'login__panel'
+      )!.render.opacity
+    ).toBe(1);
   });
 
   it('hides connectors while their endpoints are outside scene windows', () => {
@@ -274,6 +322,131 @@ describe('structured semantic components', () => {
     // Every frame evaluates without throwing across the timeline.
     for (let time = 0; time <= 8; time += 0.5) {
       expect(() => evaluateScene(scene, time)).not.toThrow();
+    }
+  });
+
+  it('builds common UI patterns from reusable structured components', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 8s }
+        component feature {
+          type card
+          headline "Focus mode"
+          detail "One clear task at a time."
+          motionPreset spring
+        }
+        component login {
+          type form
+          variant login
+          labels "Email  Password"
+          values "you@example.com  ••••••••"
+        }
+        component conversation {
+          type chat
+          values "Ready to ship?  Yes — checks are green.  Launch it."
+        }
+        component confirm {
+          type modal
+          label "Publish project?"
+          cta "Publish"
+        }
+        component mobileNav {
+          type navigation
+          variant mobile
+          labels "Home  Search  Inbox  Profile"
+        }
+      `)
+    );
+
+    expect(scene.components.map((component) => component.type)).toEqual([
+      'card',
+      'form',
+      'chat',
+      'modal',
+      'navigation',
+    ]);
+    for (const id of [
+      'feature__spotlight',
+      'login__field1',
+      'conversation__typing',
+      'confirm__backdrop',
+      'mobileNav__active',
+    ]) {
+      expect(
+        scene.elements.some((element) => element.id === id),
+        id
+      ).toBe(true);
+    }
+    expect(
+      scene.animations.find((animation) => animation.target === 'feature__surface')!.easing
+    ).toBe('back.out(1.6)');
+    for (let time = 0; time <= 8; time += 0.5) {
+      expect(() => evaluateScene(scene, time)).not.toThrow();
+    }
+  });
+
+  it('builds featured registry cards as distinct structures', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 4s }
+        theme {
+          surface #FFFFFF
+          text #171717
+        }
+        component tilted { type tilted-card cta "CARD 07" }
+        component bento { type magic-bento countTo 64 }
+        component glass { type fluid-glass }
+        component focus { type spotlight-card }
+        component metric {
+          type metric-card
+          label "Conversion"
+          detail "vs last week"
+          countTo 42800
+          cta "+12%"
+        }
+        component media {
+          type media-card
+          label "Case study"
+          headline "Real product"
+          detail "Replace every field"
+        }
+      `)
+    );
+    for (const id of [
+      'tilted__poster',
+      'tilted__stripe',
+      'bento__mainTile',
+      'bento__topTile',
+      'glass__backplate',
+      'glass__chip2',
+      'focus__sun',
+      'focus__footer',
+      'metric__value',
+      'metric__sparkline',
+      'media__media',
+      'media__headline',
+    ]) {
+      expect(
+        scene.elements.some((element) => element.id === id),
+        id
+      ).toBe(true);
+    }
+    expect(
+      scene.elements.find((element) => element.id === 'tilted__poster')!.properties['fill']
+    ).toBe('#FFFFFF');
+    expect(
+      scene.elements.find((element) => element.id === 'focus__headline')!.properties['color']
+    ).toBe('#FAF8F2');
+    for (const [id, value] of [
+      ['tilted__index', 'CARD 07'],
+      ['bento__stat', 64],
+      ['metric__eyebrow', 'Conversion'],
+      ['metric__detail', 'vs last week'],
+      ['metric__delta', '+12%'],
+      ['media__headline', 'Real product'],
+      ['media__detail', 'Replace every field'],
+    ] as const) {
+      expect(scene.elements.find((element) => element.id === id)!.properties['value']).toBe(value);
     }
   });
 });

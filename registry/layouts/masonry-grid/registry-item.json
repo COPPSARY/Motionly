@@ -2,7 +2,7 @@
   "name": "masonryGrid",
   "type": "motionly:layout",
   "title": "Masonry Grid",
-  "description": "Column-packed grid for many screenshots of differing height. Use for: screenshot gallery, portfolio, press collage. Items 3-12.",
+  "description": "Column-packed grid for many screenshots of differing height. Use for: screenshot gallery, portfolio, press collage, pinterest masonry. Items 3-12.",
   "tags": [
     "layout"
   ],

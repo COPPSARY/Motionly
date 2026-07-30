@@ -1,0 +1,144 @@
+{
+  "name": "chat",
+  "type": "motionly:component",
+  "title": "Chat",
+  "description": "Complete chat conversation. Use for chat, discord chat, conversation, assistant response, ai chat. Interaction: Messages cascade, typing dots pulse, and content scrolls. Parts: frame, header, avatar, bubble0, bubble1, bubble2, typing.",
+  "tags": [
+    "component",
+    "communication"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "chat",
+    "source": "src/semantic/component-structures.ts"
+  },
+  "schema": {
+    "label": {
+      "type": "string",
+      "docs": "Primary label slot."
+    },
+    "detail": {
+      "type": "string",
+      "docs": "Supporting detail slot."
+    },
+    "headline": {
+      "type": "string",
+      "docs": "Headline slot."
+    },
+    "cta": {
+      "type": "string",
+      "docs": "Action slot."
+    },
+    "source": {
+      "type": "asset",
+      "docs": "Optional real asset alias."
+    },
+    "width": {
+      "type": "number",
+      "docs": "Component width."
+    },
+    "x": {
+      "type": "number",
+      "docs": "Legacy component X position."
+    },
+    "y": {
+      "type": "number",
+      "docs": "Legacy component Y position."
+    },
+    "role": {
+      "type": "string",
+      "docs": "Semantic role."
+    },
+    "intent": {
+      "type": "string",
+      "docs": "Story intent."
+    },
+    "behavior": {
+      "type": "list",
+      "docs": "Built-in behaviors."
+    },
+    "variant": {
+      "type": "string",
+      "docs": "Visual variant: direct, group, assistant."
+    },
+    "motionPreset": {
+      "type": "string",
+      "docs": "Motion recipe: minimal, smooth, spring, premium."
+    },
+    "parent": {
+      "type": "string",
+      "docs": "Parent scene or group."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Primary themed color override."
+    },
+    "accent": {
+      "type": "string",
+      "docs": "Accent override."
+    },
+    "surface": {
+      "type": "string",
+      "docs": "Surface override."
+    },
+    "delay": {
+      "type": "time",
+      "docs": "Entrance delay."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Entrance duration."
+    },
+    "values": {
+      "type": "list",
+      "docs": "Value slots."
+    },
+    "labels": {
+      "type": "list",
+      "docs": "Label slots."
+    },
+    "countTo": {
+      "type": "number",
+      "docs": "Animated statistic target."
+    }
+  },
+  "defaults": {
+    "width": 620,
+    "behavior": "messageCascade",
+    "variant": "direct",
+    "motionPreset": "premium"
+  },
+  "metadata": {
+    "category": "communication",
+    "purpose": "Complete chat conversation.",
+    "useCases": [
+      "chat",
+      "discord chat",
+      "conversation",
+      "assistant response",
+      "ai chat"
+    ],
+    "inputs": [
+      "label",
+      "values",
+      "labels"
+    ],
+    "interaction": "Messages cascade, typing dots pulse, and content scrolls.",
+    "recommendedSpacing": 24,
+    "variants": [
+      "direct",
+      "group",
+      "assistant"
+    ],
+    "motionPresets": [
+      "minimal",
+      "smooth",
+      "spring",
+      "premium"
+    ],
+    "accessibility": "Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.",
+    "responsive": "Scales from its authored width and preserves touch-sized interactive targets."
+  },
+  "manifest": "components/chat/registry-item.json"
+}

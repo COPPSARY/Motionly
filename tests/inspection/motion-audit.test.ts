@@ -207,6 +207,40 @@ animate drifting {
     expect(dead.detail).toContain('reads as waiting');
   });
 
+  it('places child animation coverage inside its parent scene window', () => {
+    const found = kinds(
+      `text early {
+  value "First"
+}
+
+animate early {
+  from { x -100 }
+  to { x 100 }
+  duration 3s
+  easing power3.out
+}
+
+scene later {
+  start 3s
+  duration 3s
+}
+
+text late {
+  parent later
+  value "Second"
+}
+
+animate late {
+  from { x -100 }
+  to { x 100 }
+  duration 3s
+  easing power3.out
+}`,
+      6
+    );
+    expect(found).not.toContain('dead-zone');
+  });
+
   it('treats containment as composition, not collision', () => {
     const found = kinds(`group stage {
   center
@@ -277,6 +311,111 @@ animate exiting {
   easing power2.in
 }`);
     expect(found).not.toContain('offscreen');
+  });
+
+  it('does not report binary opacity steps as imperceptibly fast motion', () => {
+    const found = kinds(`text title {
+  value "Snap"
+  opacity 0
+}
+
+animate title {
+  from {
+    opacity 0
+  }
+  to {
+    opacity 1
+  }
+  duration 1ms
+  easing linear
+}`);
+    expect(found).not.toContain('paced-fast');
+  });
+
+  it('does not report shared-transition descendants as accidental collisions', () => {
+    const found = kinds(`canvas { duration 3s }
+group outgoing {
+  width 500
+  height 300
+}
+overlay outgoing__panel {
+  parent outgoing
+  width 500
+  height 300
+}
+group incoming {
+  width 500
+  height 300
+}
+overlay incoming__panel {
+  parent incoming
+  width 500
+  height 300
+}
+transition swap {
+  from outgoing
+  to incoming
+  at 1s
+  duration 1s
+}`);
+    expect(found).not.toContain('collision');
+  });
+
+  it('does not report paired scene-transition descendants as accidental collisions', () => {
+    const found = kinds(
+      `scene outgoing {
+  start 0s
+  duration 1.8s
+  transitionOut "sceneSlide(direction right duration .6s)"
+}
+
+overlay outgoingPanel {
+  parent outgoing
+  width 700
+  height 420
+  opacity 1
+}
+
+scene incoming {
+  start 1.2s
+  duration 1.8s
+  transitionIn "sceneSlide(direction right duration .6s)"
+}
+
+overlay incomingPanel {
+  parent incoming
+  width 700
+  height 420
+  opacity 1
+}`,
+      3
+    );
+    expect(found).not.toContain('collision');
+  });
+
+  it('ignores structural group bounds when checking visible collisions', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 3s }
+        group first { center width 600 height 400 x 0 y 0 }
+        group second { center width 600 height 400 x 0 y 0 }
+        overlay dot {
+          parent first
+          shape circle
+          radius 24
+          x -200
+          opacity 1
+        }
+        overlay other {
+          parent second
+          shape circle
+          radius 24
+          x 200
+          opacity 1
+        }
+      `)
+    );
+    expect(auditScene(scene).findings.map((finding) => finding.kind)).not.toContain('collision');
   });
 
   it('exposes the audit through the project inspector', () => {

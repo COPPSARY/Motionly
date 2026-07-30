@@ -105,6 +105,15 @@ function isEntrance(animation: Animation): boolean {
   return start['opacity'] !== undefined && Number(start['opacity']) < 1;
 }
 
+function isVisibilityStep(animation: Animation): boolean {
+  const keys = new Set([
+    ...Object.keys(animation.from),
+    ...Object.keys(animation.to),
+    ...animation.keyframes.flatMap((frame) => Object.keys(frame.properties)),
+  ]);
+  return keys.size === 1 && keys.has('opacity');
+}
+
 function auditPacing(animations: readonly Animation[]): MotionFinding[] {
   const findings: MotionFinding[] = [];
   for (const animation of animations) {
@@ -125,7 +134,11 @@ function auditPacing(animations: readonly Animation[]): MotionFinding[] {
         detail: `Move runs ${animation.duration.toFixed(2)}s, which reads as drift rather than intent.`,
       });
     }
-    if (animation.duration > 0 && animation.duration < MOTION_BUDGET.minMove) {
+    if (
+      animation.duration > 0 &&
+      animation.duration < MOTION_BUDGET.minMove &&
+      !isVisibilityStep(animation)
+    ) {
       findings.push({
         kind: 'paced-fast',
         severity: 'warn',
@@ -234,9 +247,13 @@ function cascadeGroup(target: string): string {
 }
 
 function auditCoverage(scene: Scene): MotionFinding[] {
+  const timelineOffsets = animationTimelineOffsets(scene);
   const intervals = scene.animations
     .filter((animation) => animation.repeat !== 'infinite' && animation.duration > 0)
-    .map((animation) => [animation.delay, animation.delay + animation.duration] as const)
+    .map((animation) => {
+      const start = animation.delay + (timelineOffsets.get(animation.target) ?? 0);
+      return [start, start + animation.duration] as const;
+    })
     .sort((left, right) => left[0] - right[0]);
 
   const findings: MotionFinding[] = [];
@@ -262,11 +279,40 @@ function auditCoverage(scene: Scene): MotionFinding[] {
   return findings;
 }
 
+/** Child animation delays are local to their parent scene/group window. */
+function animationTimelineOffsets(scene: Scene): Map<string, number> {
+  const byId = new Map(scene.elements.map((element) => [element.id, element]));
+  const offsets = new Map<string, number>();
+  const resolving = new Set<string>();
+  const resolve = (id: string): number => {
+    const cached = offsets.get(id);
+    if (cached !== undefined) return cached;
+    if (resolving.has(id)) return 0;
+    resolving.add(id);
+    const element = byId.get(id);
+    const parent = byId.get(String(element?.properties.parent ?? ''));
+    const offset = parent ? resolve(parent.id) + finiteNumber(parent.properties.start, 0) : 0;
+    offsets.set(id, offset);
+    resolving.delete(id);
+    return offset;
+  };
+  for (const element of scene.elements) resolve(element.id);
+  return offsets;
+}
+
 /** Geometry checks sampled across the timeline. */
 function auditGeometry(scene: Scene): MotionFinding[] {
   const findings: MotionFinding[] = [];
   const seen = new Set<string>();
   const ancestors = ancestorMap(scene);
+  const transitionPairs = new Set(
+    scene.transitions.flatMap((transition) => [
+      `${transition.from}:${transition.to}`,
+      `${transition.to}:${transition.from}`,
+    ])
+  );
+  const scenePairs = pairedSceneTransitions(scene);
+  const sceneByElement = sceneAncestorMap(scene, ancestors);
   const samples = Math.max(2, MOTION_BUDGET.samples);
   // An element that travels off frame is exiting, which is legitimate. Only an
   // element that is never on screen while visible is a real problem, so track
@@ -279,6 +325,7 @@ function auditGeometry(scene: Scene): MotionFinding[] {
     const boxes: Box[] = [];
 
     for (const element of evaluated.elements) {
+      if (element.kind === 'group' || element.kind === 'scene') continue;
       const render = element.render as unknown as Record<string, unknown>;
       if (Number(render['opacity'] ?? 1) <= 0.02) continue;
       const layer = String(render['layer'] ?? 'content');
@@ -322,7 +369,8 @@ function auditGeometry(scene: Scene): MotionFinding[] {
 
     for (const [position, box] of boxes.entries()) {
       for (const other of boxes.slice(position + 1)) {
-        if (related(ancestors, box.id, other.id)) continue;
+        if (related(ancestors, box.id, other.id, transitionPairs, sceneByElement, scenePairs))
+          continue;
         if (!comparable(box, other)) continue;
         const ratio = overlapRatio(box, other);
         if (ratio < MOTION_BUDGET.collisionRatio) continue;
@@ -388,12 +436,65 @@ function ancestorMap(scene: Scene): Map<string, Set<string>> {
   return map;
 }
 
-/** Parent/child and sibling-of-the-same-generated-component pairs may overlap. */
-function related(ancestors: Map<string, Set<string>>, left: string, right: string): boolean {
+/** Parent/child, component siblings, and shared-transition counterparts may overlap. */
+function related(
+  ancestors: Map<string, Set<string>>,
+  left: string,
+  right: string,
+  transitionPairs: Set<string>,
+  sceneByElement: Map<string, string>,
+  scenePairs: Set<string>
+): boolean {
   if (ancestors.get(left)?.has(right) || ancestors.get(right)?.has(left)) return true;
-  const leftRoot = left.split('__')[0];
-  const rightRoot = right.split('__')[0];
-  return Boolean(leftRoot && leftRoot === rightRoot);
+  const leftRoot = rootOf(left);
+  const rightRoot = rootOf(right);
+  const leftScene = sceneByElement.get(left);
+  const rightScene = sceneByElement.get(right);
+  return Boolean(
+    (leftRoot && (leftRoot === rightRoot || transitionPairs.has(`${leftRoot}:${rightRoot}`))) ||
+    (leftScene && rightScene && scenePairs.has(`${leftScene}:${rightScene}`))
+  );
+}
+
+function sceneAncestorMap(scene: Scene, ancestors: Map<string, Set<string>>): Map<string, string> {
+  const sceneIds = new Set(
+    scene.elements.filter((element) => element.kind === 'scene').map((element) => element.id)
+  );
+  return new Map(
+    scene.elements.map((element) => [
+      element.id,
+      [...(ancestors.get(element.id) ?? [])].find((ancestor) => sceneIds.has(ancestor)) ?? '',
+    ])
+  );
+}
+
+function pairedSceneTransitions(scene: Scene): Set<string> {
+  const scenes = scene.elements.filter((element) => element.kind === 'scene');
+  const pairs = new Set<string>();
+  for (const outgoing of scenes) {
+    const outgoingProps = outgoing.properties as unknown as Record<string, unknown>;
+    if (!outgoingProps['transitionOut']) continue;
+    const outgoingEnd =
+      finiteNumber(outgoing.properties.start, 0) + finiteNumber(outgoing.properties.duration, 0);
+    for (const incoming of scenes) {
+      const incomingProps = incoming.properties as unknown as Record<string, unknown>;
+      if (incoming === outgoing || !incomingProps['transitionIn']) continue;
+      const incomingStart = finiteNumber(incoming.properties.start, 0);
+      if (
+        incomingStart >= outgoingEnd ||
+        incomingStart < finiteNumber(outgoing.properties.start, 0)
+      )
+        continue;
+      pairs.add(`${outgoing.id}:${incoming.id}`);
+      pairs.add(`${incoming.id}:${outgoing.id}`);
+    }
+  }
+  return pairs;
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function isOffscreen(box: Box, scene: Scene): boolean {

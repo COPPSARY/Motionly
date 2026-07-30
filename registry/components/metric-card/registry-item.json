@@ -1,0 +1,143 @@
+{
+  "name": "metric-card",
+  "type": "motionly:component",
+  "title": "Metric Card",
+  "description": "Single-stat card with count-up value and a drawn trend line. Use for metric card, KPI, dashboard statistic. Interaction: The value counts up while its trend draws across the baseline. Parts: surface, eyebrow, value, delta, detail, sparkline, baseline.",
+  "tags": [
+    "component",
+    "layout"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "metric-card",
+    "source": "src/semantic/component-structures.ts"
+  },
+  "schema": {
+    "label": {
+      "type": "string",
+      "docs": "Primary label slot."
+    },
+    "detail": {
+      "type": "string",
+      "docs": "Supporting detail slot."
+    },
+    "headline": {
+      "type": "string",
+      "docs": "Headline slot."
+    },
+    "cta": {
+      "type": "string",
+      "docs": "Action slot."
+    },
+    "source": {
+      "type": "asset",
+      "docs": "Optional real asset alias."
+    },
+    "width": {
+      "type": "number",
+      "docs": "Component width."
+    },
+    "x": {
+      "type": "number",
+      "docs": "Legacy component X position."
+    },
+    "y": {
+      "type": "number",
+      "docs": "Legacy component Y position."
+    },
+    "role": {
+      "type": "string",
+      "docs": "Semantic role."
+    },
+    "intent": {
+      "type": "string",
+      "docs": "Story intent."
+    },
+    "behavior": {
+      "type": "list",
+      "docs": "Built-in behaviors."
+    },
+    "variant": {
+      "type": "string",
+      "docs": "Visual variant: default, outlined, featured."
+    },
+    "motionPreset": {
+      "type": "string",
+      "docs": "Motion recipe: minimal, smooth, spring, premium."
+    },
+    "parent": {
+      "type": "string",
+      "docs": "Parent scene or group."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Primary themed color override."
+    },
+    "accent": {
+      "type": "string",
+      "docs": "Accent override."
+    },
+    "surface": {
+      "type": "string",
+      "docs": "Surface override."
+    },
+    "delay": {
+      "type": "time",
+      "docs": "Entrance delay."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Entrance duration."
+    },
+    "values": {
+      "type": "list",
+      "docs": "Value slots."
+    },
+    "labels": {
+      "type": "list",
+      "docs": "Label slots."
+    },
+    "countTo": {
+      "type": "number",
+      "docs": "Animated statistic target."
+    }
+  },
+  "defaults": {
+    "width": 420,
+    "behavior": "count",
+    "variant": "default",
+    "motionPreset": "premium"
+  },
+  "metadata": {
+    "category": "layout",
+    "purpose": "Single-stat card with count-up value and a drawn trend line.",
+    "useCases": [
+      "metric card",
+      "KPI",
+      "dashboard statistic"
+    ],
+    "inputs": [
+      "label",
+      "detail",
+      "countTo",
+      "cta"
+    ],
+    "interaction": "The value counts up while its trend draws across the baseline.",
+    "recommendedSpacing": 24,
+    "variants": [
+      "default",
+      "outlined",
+      "featured"
+    ],
+    "motionPresets": [
+      "minimal",
+      "smooth",
+      "spring",
+      "premium"
+    ],
+    "accessibility": "Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.",
+    "responsive": "Scales from its authored width and preserves touch-sized interactive targets."
+  },
+  "manifest": "components/metric-card/registry-item.json"
+}

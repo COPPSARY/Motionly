@@ -1,5 +1,9 @@
 import type { AnimationNode, ElementNode, KeyframeNode } from '../types/parser';
-import type { SemanticComponentType } from './vector-registry';
+import {
+  REACTBITS_COMPONENT_ALIASES,
+  type BaseSemanticComponentType,
+  type SemanticComponentType,
+} from './vector-registry';
 import { DEFAULT_THEME, type MotionTheme } from './catalog';
 import { MOTION_BUDGET } from '../motion-system/budget';
 import { ARRIVAL } from '../motion-system/layout';
@@ -42,6 +46,8 @@ export interface StructureContext {
   values?: string[];
   labels?: string[];
   countTo?: number;
+  variant?: string;
+  motionPreset?: string;
   clickAt?: number;
   exitAt?: number;
   exitDuration: number;
@@ -226,12 +232,22 @@ export function buildComponentStructure(ctx: StructureContext): ComponentStructu
 function applyThemeMotion(animations: AnimationNode[], ctx: StructureContext): void {
   const durationScale = ctx.theme.duration / DEFAULT_THEME.duration;
   const staggerScale = ctx.theme.stagger / DEFAULT_THEME.stagger;
+  const preset = {
+    minimal: { easing: 'power3.out', duration: 0.82 },
+    smooth: { easing: 'power4.out', duration: 1 },
+    spring: { easing: 'back.out(1.6)', duration: 1 },
+    premium: { easing: 'power4.out', duration: 0.92 },
+  }[ctx.motionPreset ?? ''];
   for (const animation of animations) {
     animation.duration = timeNumber(animation.duration) * durationScale;
     // Doctrine: one entrance is at most MOTION_BUDGET.maxEntry. Clamping here
     // covers every builder at once — a longer buildup is a staggered group, not
     // a single slow part.
     if (animation.repeat === undefined && isEntranceAnimation(animation)) {
+      if (preset) {
+        animation.easing = preset.easing;
+        animation.duration *= preset.duration;
+      }
       animation.duration = Math.min(animation.duration, MOTION_BUDGET.maxEntry);
     }
     const delay = timeNumber(animation.delay);
@@ -241,6 +257,47 @@ function applyThemeMotion(animations: AnimationNode[], ctx: StructureContext): v
     if (animation.easing === DEFAULT_THEME.easing) animation.easing = ctx.theme.easing;
   }
   retimeInternalCascade(animations, ctx);
+  snapArrivalOpacity(animations);
+}
+
+/**
+ * Keep arrivals hidden until their cue, then reveal them on the next sampled
+ * frame while movement carries the entrance.
+ */
+function snapArrivalOpacity(animations: AnimationNode[]): void {
+  const rewritten: AnimationNode[] = [];
+  for (const animation of animations) {
+    const opacityFrames = (animation.keyframes ?? [])
+      .filter((keyframe) => keyframe.properties['opacity'] !== undefined)
+      .map((keyframe) => Number(keyframe.properties['opacity']));
+    const fromOpacity = opacityFrames[0] ?? Number(animation.from?.['opacity']);
+    const toOpacity = opacityFrames.at(-1) ?? Number(animation.to?.['opacity']);
+
+    if (
+      animation.repeat === undefined &&
+      Number.isFinite(fromOpacity) &&
+      fromOpacity < 1 &&
+      Number.isFinite(toOpacity) &&
+      toOpacity >= 1
+    ) {
+      delete animation.from?.['opacity'];
+      delete animation.to?.['opacity'];
+      for (const keyframe of animation.keyframes ?? []) delete keyframe.properties['opacity'];
+      rewritten.push(animation, {
+        type: 'Animation',
+        target: animation.target,
+        from: { opacity: fromOpacity },
+        to: { opacity: toOpacity },
+        keyframes: [],
+        delay: animation.delay,
+        duration: 0.001,
+        easing: 'linear',
+      });
+      continue;
+    }
+    rewritten.push(animation);
+  }
+  animations.splice(0, animations.length, ...rewritten);
 }
 
 /**
@@ -297,6 +354,22 @@ function timeNumber(value: string | number | undefined): number {
 
 /** Map the old component palette onto the active theme without changing legacy source files. */
 function applyThemePalette(children: ElementNode[], theme: MotionTheme): void {
+  const activeThemeColors = new Set(
+    [
+      theme.background,
+      theme.surface,
+      theme.raised,
+      theme.text,
+      theme.muted,
+      theme.accent,
+      theme.secondary,
+      theme.positive,
+      theme.warning,
+      theme.negative,
+      theme.ink,
+      theme.edge,
+    ].map((color) => color.toUpperCase())
+  );
   const colors: Record<string, string> = {
     '#12161D': theme.surface,
     '#1A2029': theme.raised,
@@ -345,7 +418,8 @@ function applyThemePalette(children: ElementNode[], theme: MotionTheme): void {
         child.properties[key] = value >= 650 ? theme.weightBold : theme.weightRegular;
       }
       if (typeof value !== 'string') continue;
-      const themed = colors[value.toUpperCase()];
+      const normalized = value.toUpperCase();
+      const themed = activeThemeColors.has(normalized) ? undefined : colors[normalized];
       if (themed) child.properties[key] = themed;
       if (key === 'font' && value.includes('Space Grotesk'))
         child.properties[key] = theme.displayFont;
@@ -364,7 +438,7 @@ function glyphStructure(ctx: StructureContext, b: Builder): string {
       shape: 'circle',
       radius: W * 0.62,
       fill: '#151A22',
-      glow: 34,
+      glow: 0,
       glowColor: ctx.accent,
       opacity: 0,
     });
@@ -377,7 +451,7 @@ function glyphStructure(ctx: StructureContext, b: Builder): string {
     fill: ctx.style === 'filled' ? ctx.color : 'none',
     stroke: ctx.style === 'outline' ? ctx.color : 'none',
     strokeWidth: ctx.strokeWidth,
-    glow: ctx.behaviors.includes('glow') ? 20 : 10,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
     ...(ctx.behaviors.includes('draw') || ctx.type === 'arrow' || ctx.type === 'logo'
@@ -402,7 +476,7 @@ function glyphStructure(ctx: StructureContext, b: Builder): string {
       y: W * 0.4,
       radius: Math.max(4, W * 0.03),
       fill: '#57D98B',
-      glow: 12,
+      glow: 0,
       glowColor: '#57D98B',
       opacity: 0,
     });
@@ -412,7 +486,7 @@ function glyphStructure(ctx: StructureContext, b: Builder): string {
       y: W * 0.4,
       radius: Math.max(4, W * 0.03),
       fill: ctx.accent,
-      glow: 12,
+      glow: 0,
       glowColor: ctx.accent,
       opacity: 0,
     });
@@ -499,7 +573,7 @@ function dashboardStructure(ctx: StructureContext, b: Builder): string {
     y: -H / 2 + H * 0.11,
     radius: Math.max(4, W * 0.011),
     fill: ctx.accent,
-    glow: 12,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
   });
@@ -607,7 +681,7 @@ function dashboardStructure(ctx: StructureContext, b: Builder): string {
     strokeWidth: Math.max(3, W * 0.008),
     pathProgress: 0,
     opacity: 0,
-    glow: 10,
+    glow: 0,
     glowColor: ctx.accent,
   });
   b.enter(
@@ -624,7 +698,7 @@ function dashboardStructure(ctx: StructureContext, b: Builder): string {
     y: baselineY - (chartBottom - chartTop) * 0.98 * 0.86,
     radius: Math.max(4, W * 0.012),
     fill: ctx.accent,
-    glow: 16,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
   });
@@ -760,7 +834,7 @@ function browserStructure(ctx: StructureContext, b: Builder): string {
     height: ctaH,
     radius: ctaH / 2,
     fill: ctx.accent,
-    glow: 14,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
   });
@@ -795,8 +869,7 @@ function buttonStructure(ctx: StructureContext, b: Builder): string {
     gradientFrom: ctx.color,
     gradientTo: ctx.accent,
     gradientAngle: 24,
-    glow: 16,
-    glowColor: ctx.accent,
+    glow: 0,
     shadow: 18,
     opacity: 0,
   });
@@ -830,13 +903,6 @@ function buttonStructure(ctx: StructureContext, b: Builder): string {
       ],
       'power2.inOut'
     );
-    b.key(
-      surface,
-      at,
-      0.5,
-      [frame(0, { glow: 16 }), frame(0.4, { glow: 40 }), frame(1, { glow: 16 })],
-      'power2.out'
-    );
     const ripple = b.add('overlay', 'ripple', {
       shape: 'circle',
       radius: H * 0.7,
@@ -844,14 +910,17 @@ function buttonStructure(ctx: StructureContext, b: Builder): string {
       stroke: ctx.accent,
       strokeWidth: 3,
       opacity: 0,
-      glow: 12,
-      glowColor: ctx.accent,
+      glow: 0,
     });
     b.key(
       ripple,
       at + 0.08,
       0.55,
-      [frame(0, { opacity: 0.85, scale: 0.5 }), frame(1, { opacity: 0, scale: 1.9 })],
+      [
+        frame(0, { opacity: 0, scale: 0.5 }),
+        frame(0.01, { opacity: 0.85, scale: 0.5 }),
+        frame(1, { opacity: 0, scale: 1.9 }),
+      ],
       'power2.out'
     );
   }
@@ -1060,7 +1129,7 @@ function chartStructure(ctx: StructureContext, b: Builder): string {
       height: 2,
       radius: Math.min(6, barW * 0.3),
       fill: index === bars.length - 1 ? ctx.accent : '#39424E',
-      ...(index === bars.length - 1 ? { glow: 14, glowColor: ctx.accent } : {}),
+      ...(index === bars.length - 1 ? { glow: 0, glowColor: ctx.accent } : {}),
       opacity: 0,
     });
     growBar(b, bar, 0.4 + index * 0.09, 0.7, baseline, barH);
@@ -1100,7 +1169,7 @@ function notificationStructure(ctx: StructureContext, b: Builder): string {
     height: H * 0.62,
     radius: W * 0.007,
     fill: ctx.accent,
-    glow: 10,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
   });
@@ -1178,7 +1247,7 @@ function cursorStructure(ctx: StructureContext, b: Builder): string {
     fill: 'none',
     stroke: ctx.accent,
     strokeWidth: 3,
-    glow: 12,
+    glow: 0,
     glowColor: ctx.accent,
     opacity: 0,
   });
@@ -1187,7 +1256,11 @@ function cursorStructure(ctx: StructureContext, b: Builder): string {
       ripple,
       ctx.clickAt - ctx.delay,
       0.55,
-      [frame(0, { opacity: 0.9, scale: 0.4 }), frame(1, { opacity: 0, scale: 2 })],
+      [
+        frame(0, { opacity: 0, scale: 0.4 }),
+        frame(0.01, { opacity: 0.9, scale: 0.4 }),
+        frame(1, { opacity: 0, scale: 2 }),
+      ],
       'power2.out'
     );
     b.key(
@@ -1298,7 +1371,7 @@ function codeEditorStructure(ctx: StructureContext, b: Builder): string {
     );
   });
   const status = b.add('text', 'status', {
-    value: '✓ build passing',
+    value: ctx.cta ?? '✓ build passing',
     center: true,
     x: -W / 2 + W * 0.08 + W * 0.12,
     y: H / 2 - H * 0.1,
@@ -1430,7 +1503,7 @@ function websiteStructure(ctx: StructureContext, b: Builder): string {
     verticalAlign: 'middle',
     size: Math.max(12, W * 0.021),
     weight: 640,
-    color: '#FFFFFF',
+    color: '#FAF8F2',
     opacity: 0,
     layer: 'text',
   });
@@ -1922,6 +1995,7 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
   const barH = H * 0.075;
   const barY = -H / 2 + barH / 2;
   const layers = ctx.labels ?? ['headline', 'banner', 'chart'];
+  const chrome = ctx.values ?? ['LAYERS', 'Export', 'PROPERTIES', 'x  96', 'y  -38'];
   const S = 1.35; // generation starts after the shell settles
 
   const shell = b.add('overlay', 'frame', {
@@ -1962,7 +2036,7 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
     'back.out(1.6)'
   );
   const railTitle = b.add('text', 'railTitle', {
-    value: 'LAYERS',
+    value: chrome[0] ?? '',
     center: true,
     x: -W / 2 + railW / 2,
     y: barY + barH * 1.4,
@@ -2035,7 +2109,7 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
   });
   pop(b, exportChip, 0.62, 0.24, 0.8);
   const exportLabel = b.add('text', 'exportLabel', {
-    value: 'Export',
+    value: chrome[1] ?? '',
     center: true,
     x: W / 2 - W * 0.06,
     y: barY,
@@ -2149,7 +2223,7 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
     'back.out(1.6)'
   );
   const panelTitle = b.add('text', 'panelTitle', {
-    value: 'PROPERTIES',
+    value: chrome[2] ?? '',
     center: true,
     x: W / 2 - panelW / 2,
     y: barY + barH * 1.4,
@@ -2196,7 +2270,7 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
     layer: 'text',
   });
   b.enter(sizeValue, 0.9, 0.2, { opacity: 0 }, { opacity: 1 });
-  ['x  96', 'y  -38'].forEach((coordinate, index) => {
+  chrome.slice(3, 5).forEach((coordinate, index) => {
     const chipX = W / 2 - panelW / 2 + (index === 0 ? -panelW * 0.2 : panelW * 0.2);
     const coordChip = b.add('overlay', `posChip${index}`, {
       shape: 'rect',
@@ -2460,7 +2534,1408 @@ function editorStructure(ctx: StructureContext, b: Builder): string {
   return shell;
 }
 
-const BUILDERS: Record<SemanticComponentType, StructureBuilder> = {
+function cardStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.66;
+  const treatment = ctx.variant ?? ctx.type;
+  const featured = [
+    'featured',
+    'chroma-grid',
+    'magic-bento',
+    'pixel-card',
+    'spotlight-card',
+  ].includes(treatment);
+  const glass = ['fluid-glass', 'glass-surface'].includes(treatment);
+  const tilted = treatment === 'tilted-card' || treatment === 'decay-card';
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: treatment === 'pixel-card' ? W * 0.015 : W * 0.05,
+    fill: glass ? 'rgba(255,255,255,.1)' : ctx.surface,
+    stroke: featured ? ctx.accent : EDGE,
+    strokeWidth: featured ? 2.5 : 1.5,
+    shadow: featured ? 34 : 22,
+    rotation: tilted ? -3 : 0,
+    opacity: 0,
+  });
+  b.enter(
+    surface,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 40, scale: 0.94, rotation: tilted ? -8 : 0 },
+    { opacity: 1, y: 0, scale: 1, rotation: tilted ? -3 : 0 }
+  );
+
+  const spotlight = b.add('overlay', 'spotlight', {
+    shape: 'circle',
+    x: -W * 0.34,
+    y: -H * 0.34,
+    radius: W * 0.22,
+    fill: ctx.accent,
+    opacity: 0,
+    blur: W * 0.08,
+    glow: 0,
+    glowColor: ctx.accent,
+  });
+  b.key(
+    spotlight,
+    0.18,
+    1.2,
+    [
+      frame(0, { opacity: 0, x: -W * 0.34 }),
+      frame(0.2, { opacity: 0.2 }),
+      frame(0.75, { opacity: 0.1, x: W * 0.28 }),
+      frame(1, { opacity: 0, x: W * 0.34 }),
+    ],
+    'power2.inOut'
+  );
+
+  const eyebrow = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'FEATURE',
+    center: true,
+    x: -W * 0.35,
+    y: -H * 0.28,
+    width: W * 0.22,
+    height: H * 0.12,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(11, W * 0.03),
+    weight: 680,
+    tracking: 1.6,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Everything in one place',
+    center: true,
+    x: -W * 0.04,
+    y: -H * 0.06,
+    width: W * 0.78,
+    height: H * 0.24,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    wrap: 'word',
+    size: Math.max(22, W * 0.065),
+    weight: 710,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'A focused interface block with premium motion built in.',
+    center: true,
+    x: -W * 0.04,
+    y: H * 0.19,
+    width: W * 0.78,
+    height: H * 0.22,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.35,
+    size: Math.max(14, W * 0.038),
+    weight: 500,
+    color: MUTED_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, eyebrow, 0.12, 0.42, 12, -H * 0.28);
+  fadeUp(b, headline, 0.22, 0.58, 22, -H * 0.06);
+  fadeUp(b, detail, 0.34, 0.52, 18, H * 0.19);
+
+  const cta = b.add('text', 'cta', {
+    value: ctx.cta ?? 'Explore →',
+    center: true,
+    x: W * 0.29,
+    y: H * 0.37,
+    width: W * 0.28,
+    height: H * 0.11,
+    textAlign: 'right',
+    verticalAlign: 'middle',
+    size: Math.max(13, W * 0.035),
+    weight: 650,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, cta, 0.44, 0.44, 10, H * 0.37);
+  return surface;
+}
+
+function tiltedCardStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.68;
+  b.key(
+    ctx.name,
+    0,
+    ctx.duration,
+    [frame(0, { rotation: -9, y: 42, scale: 0.94 }), frame(1, { rotation: -4, y: 0, scale: 1 })],
+    'power4.out'
+  );
+  const poster = b.add('overlay', 'poster', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.025,
+    fill: ctx.surface,
+    stroke: '#171717',
+    strokeWidth: 2,
+    shadow: 20,
+    opacity: 0,
+  });
+  b.enter(poster, 0, ctx.duration, { opacity: 0 }, { opacity: 1 });
+  const stripe = b.add('overlay', 'stripe', {
+    shape: 'rect',
+    x: -W * 0.43,
+    width: W * 0.08,
+    height: H,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  b.enter(stripe, 0.08, 0.48, { opacity: 0, height: 0 }, { opacity: 1, height: H });
+  const index = b.add('text', 'index', {
+    value: ctx.cta ?? '01',
+    center: true,
+    x: W * 0.33,
+    y: -H * 0.28,
+    width: W * 0.18,
+    height: H * 0.2,
+    textAlign: 'right',
+    verticalAlign: 'middle',
+    size: Math.max(34, W * 0.11),
+    weight: 760,
+    color: '#171717',
+    opacity: 0,
+    layer: 'text',
+  });
+  const label = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'FEATURE',
+    center: true,
+    x: -W * 0.08,
+    y: -H * 0.3,
+    width: W * 0.5,
+    height: H * 0.1,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(11, W * 0.028),
+    weight: 720,
+    tracking: 1.8,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Build the story once',
+    center: true,
+    x: -W * 0.08,
+    y: -H * 0.02,
+    width: W * 0.66,
+    height: H * 0.22,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    wrap: 'word',
+    size: Math.max(24, W * 0.066),
+    weight: 740,
+    color: '#171717',
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'Replace the content while the component keeps its structure.',
+    center: true,
+    x: -W * 0.08,
+    y: H * 0.22,
+    width: W * 0.66,
+    height: H * 0.2,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.3,
+    size: Math.max(14, W * 0.034),
+    weight: 500,
+    color: '#5B5B5B',
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(index, 0.1, 0.46, { opacity: 0, x: W * 0.38 }, { opacity: 1, x: W * 0.33 });
+  b.enter(label, 0.14, 0.42, { opacity: 0, x: -W * 0.18 }, { opacity: 1, x: -W * 0.12 });
+  b.enter(headline, 0.22, 0.54, { opacity: 0, y: H * 0.06 }, { opacity: 1, y: -H * 0.02 });
+  b.enter(detail, 0.3, 0.48, { opacity: 0, y: H * 0.28 }, { opacity: 1, y: H * 0.22 });
+  b.key(
+    index,
+    1.05,
+    0.6,
+    [
+      frame(0, { scale: 1, x: W * 0.33 }),
+      frame(0.5, { scale: 1.1, x: W * 0.3 }),
+      frame(1, { scale: 1, x: W * 0.33 }),
+    ],
+    'power3.out'
+  );
+  b.key(
+    stripe,
+    1.72,
+    0.58,
+    [
+      frame(0, { width: W * 0.08 }),
+      frame(0.45, { width: W * 0.13 }),
+      frame(1, { width: W * 0.08 }),
+    ],
+    'power3.out'
+  );
+  return poster;
+}
+
+function magicBentoStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.68;
+  const shell = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.045,
+    fill: ctx.surface,
+    stroke: '#171717',
+    strokeWidth: 1.5,
+    shadow: 16,
+    opacity: 0,
+  });
+  b.enter(
+    shell,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 38, scale: 0.96 },
+    { opacity: 1, y: 0, scale: 1 }
+  );
+
+  const mainTile = b.add('overlay', 'mainTile', {
+    shape: 'rect',
+    x: -W * 0.17,
+    width: W * 0.58,
+    height: H * 0.72,
+    radius: W * 0.03,
+    fill: ctx.theme.raised,
+    opacity: 0,
+  });
+  const topTile = b.add('overlay', 'topTile', {
+    shape: 'rect',
+    x: W * 0.3,
+    y: -H * 0.19,
+    width: W * 0.25,
+    height: H * 0.32,
+    radius: W * 0.025,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  const bottomTile = b.add('overlay', 'bottomTile', {
+    shape: 'rect',
+    x: W * 0.3,
+    y: H * 0.2,
+    width: W * 0.25,
+    height: H * 0.34,
+    radius: W * 0.025,
+    fill: '#171717',
+    opacity: 0,
+  });
+  b.enter(mainTile, 0.1, 0.5, { opacity: 0, x: -W * 0.23 }, { opacity: 1, x: -W * 0.17 });
+  b.enter(topTile, 0.18, 0.42, { opacity: 0, y: -H * 0.1 }, { opacity: 1, y: -H * 0.19 });
+  b.enter(bottomTile, 0.24, 0.42, { opacity: 0, y: H * 0.29 }, { opacity: 1, y: H * 0.2 });
+
+  const label = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'COMPOSITION',
+    center: true,
+    x: -W * 0.2,
+    y: -H * 0.23,
+    width: W * 0.42,
+    height: H * 0.08,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(10, W * 0.024),
+    weight: 720,
+    tracking: 1.5,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Magic Bento',
+    center: true,
+    x: -W * 0.2,
+    y: -H * 0.02,
+    width: W * 0.42,
+    height: H * 0.2,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    wrap: 'word',
+    size: Math.max(20, W * 0.052),
+    weight: 730,
+    color: ctx.theme.text,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'One focal tile supported by smaller live modules.',
+    center: true,
+    x: -W * 0.2,
+    y: H * 0.19,
+    width: W * 0.42,
+    height: H * 0.18,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.25,
+    size: Math.max(12, W * 0.027),
+    weight: 500,
+    color: ctx.theme.muted,
+    opacity: 0,
+    layer: 'text',
+  });
+  const stat = b.add('text', 'stat', {
+    value: ctx.countTo ?? 24,
+    center: true,
+    x: W * 0.3,
+    y: -H * 0.2,
+    width: W * 0.2,
+    height: H * 0.2,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(28, W * 0.072),
+    weight: 780,
+    color: '#171717',
+    opacity: 0,
+    layer: 'text',
+  });
+  const status = b.add('text', 'status', {
+    value: ctx.cta ?? 'LIVE',
+    center: true,
+    x: W * 0.3,
+    y: H * 0.2,
+    width: W * 0.2,
+    height: H * 0.12,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(12, W * 0.03),
+    weight: 720,
+    tracking: 1.5,
+    color: '#FFFFFF',
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(label, 0.18, 0.38, { opacity: 0 }, { opacity: 1 });
+  b.enter(headline, 0.24, 0.48, { opacity: 0, y: H * 0.04 }, { opacity: 1, y: -H * 0.02 });
+  b.enter(detail, 0.3, 0.44, { opacity: 0 }, { opacity: 1 });
+  b.enter(stat, 0.3, 0.4, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1 });
+  b.enter(status, 0.36, 0.36, { opacity: 0 }, { opacity: 1 });
+  return shell;
+}
+
+function fluidGlassStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.68;
+  const backplate = b.add('overlay', 'backplate', {
+    shape: 'rect',
+    x: -W * 0.035,
+    y: H * 0.035,
+    width: W * 0.94,
+    height: H * 0.9,
+    radius: W * 0.055,
+    fill: ctx.accent,
+    opacity: 0,
+    rotation: -4,
+  });
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.055,
+    fill: 'rgba(255,255,255,.82)',
+    stroke: 'rgba(23,23,23,.18)',
+    strokeWidth: 1.5,
+    shadow: 14,
+    opacity: 0,
+  });
+  b.enter(backplate, 0, 0.54, { opacity: 0, rotation: -9 }, { opacity: 0.22, rotation: -4 });
+  b.enter(
+    surface,
+    0.08,
+    ctx.duration,
+    { opacity: 0, x: W * 0.1, skewX: -5 },
+    { opacity: 1, x: 0, skewX: 0 }
+  );
+  const rule = b.add('overlay', 'rule', {
+    shape: 'rect',
+    x: -W * 0.4,
+    width: W * 0.018,
+    height: H * 0.68,
+    radius: W * 0.009,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  b.enter(rule, 0.16, 0.46, { opacity: 0, height: 0 }, { opacity: 1, height: H * 0.68 });
+  const label = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'MATERIAL',
+    center: true,
+    x: -W * 0.08,
+    y: -H * 0.27,
+    width: W * 0.5,
+    height: H * 0.09,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(10, W * 0.024),
+    weight: 720,
+    tracking: 1.5,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Fluid Glass',
+    center: true,
+    x: -W * 0.12,
+    y: -H * 0.03,
+    width: W * 0.58,
+    height: H * 0.2,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(22, W * 0.056),
+    weight: 730,
+    color: '#171717',
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'Layered material with a refracted edge and clear hierarchy.',
+    center: true,
+    x: -W * 0.08,
+    y: H * 0.18,
+    width: W * 0.5,
+    height: H * 0.18,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.25,
+    size: Math.max(12, W * 0.027),
+    weight: 500,
+    color: '#5B5B5B',
+    opacity: 0,
+    layer: 'text',
+  });
+  for (const [index, y] of [-H * 0.18, H * 0.02, H * 0.22].entries()) {
+    const chip = b.add('overlay', `chip${index}`, {
+      shape: 'rect',
+      x: W * 0.31,
+      y,
+      width: W * (0.18 - index * 0.025),
+      height: H * 0.1,
+      radius: H * 0.05,
+      fill: index === 0 ? ctx.accent : '#171717',
+      opacity: 0,
+    });
+    b.enter(
+      chip,
+      0.22 + index * 0.07,
+      0.4,
+      { opacity: 0, x: W * 0.4 },
+      { opacity: 1, x: W * 0.31 }
+    );
+  }
+  b.enter(label, 0.18, 0.38, { opacity: 0 }, { opacity: 1 });
+  b.enter(headline, 0.24, 0.48, { opacity: 0, y: H * 0.03 }, { opacity: 1, y: -H * 0.03 });
+  b.enter(detail, 0.32, 0.44, { opacity: 0 }, { opacity: 1 });
+  return surface;
+}
+
+function spotlightCardStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.68;
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.035,
+    fill: '#171717',
+    shadow: 16,
+    opacity: 0,
+  });
+  b.enter(surface, 0, ctx.duration, { opacity: 0, y: 38 }, { opacity: 1, y: 0 });
+  const sun = b.add('overlay', 'sun', {
+    shape: 'circle',
+    x: W * 0.31,
+    y: -H * 0.25,
+    radius: W * 0.12,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  b.key(
+    sun,
+    0.12,
+    0.72,
+    [
+      frame(0, { opacity: 0, x: -W * 0.35, scale: 0.7 }),
+      frame(0.08, { opacity: 1 }),
+      frame(1, { opacity: 1, x: W * 0.31, scale: 1 }),
+    ],
+    'power4.out'
+  );
+  const label = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'FOCUS',
+    center: true,
+    x: -W * 0.28,
+    y: -H * 0.27,
+    width: W * 0.3,
+    height: H * 0.09,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(10, W * 0.024),
+    weight: 720,
+    tracking: 1.6,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Spotlight Card',
+    center: true,
+    x: -W * 0.08,
+    y: -H * 0.01,
+    width: W * 0.7,
+    height: H * 0.22,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(22, W * 0.056),
+    weight: 730,
+    color: '#FAF8F2',
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'A moving hard light establishes the focal point.',
+    center: true,
+    x: -W * 0.08,
+    y: H * 0.2,
+    width: W * 0.7,
+    height: H * 0.18,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.25,
+    size: Math.max(12, W * 0.027),
+    weight: 500,
+    color: '#B8B8B8',
+    opacity: 0,
+    layer: 'text',
+  });
+  const footer = b.add('overlay', 'footer', {
+    shape: 'rect',
+    x: -W * 0.2,
+    y: H * 0.38,
+    width: W * 0.58,
+    height: 4,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  b.enter(label, 0.2, 0.36, { opacity: 0 }, { opacity: 1 });
+  b.enter(headline, 0.28, 0.48, { opacity: 0, x: -W * 0.14 }, { opacity: 1, x: -W * 0.08 });
+  b.enter(detail, 0.34, 0.44, { opacity: 0 }, { opacity: 1 });
+  b.enter(footer, 0.4, 0.44, { opacity: 0, width: 0 }, { opacity: 1, width: W * 0.58 });
+  return surface;
+}
+
+function metricCardStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.62;
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.04,
+    fill: ctx.surface,
+    stroke: ctx.theme.edge,
+    strokeWidth: 1.5,
+    shadow: 16,
+    opacity: 0,
+  });
+  b.enter(
+    surface,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 30, scale: 0.96 },
+    { opacity: 1, y: 0, scale: 1 }
+  );
+  const eyebrow = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'ACTIVE USERS',
+    center: true,
+    x: -W * 0.32,
+    y: -H * 0.3,
+    width: W * 0.28,
+    height: H * 0.1,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(11, W * 0.027),
+    weight: 700,
+    tracking: 1.4,
+    color: ctx.theme.muted,
+    opacity: 0,
+    layer: 'text',
+  });
+  const value = b.add('text', 'value', {
+    value: ctx.countTo ?? 42800,
+    countDecimals: 0,
+    countSeparator: ',',
+    center: true,
+    x: -W * 0.2,
+    y: -H * 0.05,
+    width: W * 0.52,
+    height: H * 0.25,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(36, W * 0.12),
+    weight: 760,
+    color: ctx.theme.text,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.animations.push({
+    type: 'Animation',
+    target: value,
+    from: { opacity: 0, value: 0 },
+    to: { opacity: 1, value: ctx.countTo ?? 42800 },
+    keyframes: [],
+    delay: ctx.delay + 0.16,
+    duration: 0.72,
+    easing: 'power3.out',
+  });
+  const delta = b.add('text', 'delta', {
+    value: ctx.cta ?? '+18.4%',
+    center: true,
+    x: W * 0.3,
+    y: -H * 0.03,
+    width: W * 0.2,
+    height: H * 0.13,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(13, W * 0.032),
+    weight: 700,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'vs previous period',
+    center: true,
+    x: W * 0.3,
+    y: H * 0.11,
+    width: W * 0.25,
+    height: H * 0.1,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(10, W * 0.024),
+    weight: 520,
+    color: ctx.theme.muted,
+    opacity: 0,
+    layer: 'text',
+  });
+  const baseline = b.add('overlay', 'baseline', {
+    shape: 'rect',
+    y: H * 0.3,
+    width: W * 0.8,
+    height: 2,
+    fill: ctx.theme.edge,
+    opacity: 0,
+  });
+  const sparkline = b.add('path', 'sparkline', {
+    d: `M${round(-W * 0.4)} ${round(H * 0.26)} C${round(-W * 0.22)} ${round(H * 0.18)} ${round(-W * 0.12)} ${round(H * 0.3)} 0 ${round(H * 0.14)} C${round(W * 0.14)} ${round(-H * 0.02)} ${round(W * 0.25)} ${round(H * 0.12)} ${round(W * 0.4)} ${round(-H * 0.12)}`,
+    fill: 'none',
+    stroke: ctx.accent,
+    strokeWidth: Math.max(3, W * 0.008),
+    pathProgress: 0,
+    opacity: 0,
+  });
+  b.enter(eyebrow, 0.08, 0.34, { opacity: 0, x: -W * 0.38 }, { opacity: 1, x: -W * 0.32 });
+  pop(b, delta, 0.22, 0.34);
+  b.enter(detail, 0.24, 0.3, { opacity: 0 }, { opacity: 1 });
+  b.enter(baseline, 0.24, 0.36, { opacity: 0, width: 0 }, { opacity: 1, width: W * 0.8 });
+  b.enter(
+    sparkline,
+    0.3,
+    0.62,
+    { opacity: 0, pathProgress: 0 },
+    { opacity: 1, pathProgress: 1 },
+    'power2.inOut'
+  );
+  return surface;
+}
+
+function mediaCardStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.72;
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.035,
+    fill: ctx.surface,
+    stroke: ctx.theme.edge,
+    strokeWidth: 1.5,
+    shadow: 18,
+    opacity: 0,
+  });
+  b.enter(
+    surface,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 34, scale: 0.95 },
+    { opacity: 1, y: 0, scale: 1 }
+  );
+  const media = b.add('image', 'media', {
+    source: ctx.iconAlias,
+    center: true,
+    y: -H * 0.15,
+    width: W * 0.9,
+    height: H * 0.52,
+    radius: W * 0.025,
+    fit: 'cover',
+    opacity: 0,
+  });
+  const eyebrow = b.add('text', 'eyebrow', {
+    value: ctx.label ?? 'CASE STUDY',
+    center: true,
+    x: -W * 0.3,
+    y: H * 0.2,
+    width: W * 0.3,
+    height: H * 0.08,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(10, W * 0.024),
+    weight: 700,
+    tracking: 1.5,
+    color: ctx.accent,
+    opacity: 0,
+    layer: 'text',
+  });
+  const headline = b.add('text', 'headline', {
+    value: ctx.headline ?? 'Show the real product',
+    center: true,
+    x: -W * 0.02,
+    y: H * 0.28,
+    width: W * 0.86,
+    height: H * 0.13,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(20, W * 0.05),
+    weight: 730,
+    color: ctx.theme.text,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'Replace the media and copy without rebuilding the motion.',
+    center: true,
+    x: -W * 0.02,
+    y: H * 0.39,
+    width: W * 0.86,
+    height: H * 0.09,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(11, W * 0.026),
+    weight: 500,
+    color: ctx.theme.muted,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(
+    media,
+    0.06,
+    0.56,
+    { opacity: 0, y: -H * 0.08, scale: 1.06 },
+    { opacity: 1, y: -H * 0.15, scale: 1 }
+  );
+  b.enter(eyebrow, 0.18, 0.36, { opacity: 0 }, { opacity: 1 });
+  fadeUp(b, headline, 0.24, 0.44, 16, H * 0.28);
+  b.enter(detail, 0.3, 0.38, { opacity: 0 }, { opacity: 1 });
+  return surface;
+}
+
+function formStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 1.12;
+  const pad = W * 0.09;
+  const fieldLabels = ctx.labels ?? ['Email', 'Password'];
+  const values = ctx.values ?? ['you@example.com', '••••••••'];
+  const titleText =
+    ctx.label ??
+    (ctx.variant === 'signup'
+      ? 'Create account'
+      : ctx.variant === 'search'
+        ? 'Search'
+        : 'Welcome back');
+  const panel = b.add('overlay', 'panel', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.055,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 30,
+    opacity: 0,
+  });
+  b.enter(
+    panel,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 48, scale: 0.95 },
+    { opacity: 1, y: 0, scale: 1 }
+  );
+  const title = b.add('text', 'title', {
+    value: titleText,
+    center: true,
+    x: -W * 0.04,
+    y: -H * 0.34,
+    width: W - pad * 2,
+    height: H * 0.12,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(24, W * 0.07),
+    weight: 720,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'Continue to your workspace',
+    center: true,
+    x: -W * 0.04,
+    y: -H * 0.23,
+    width: W - pad * 2,
+    height: H * 0.08,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(13, W * 0.036),
+    weight: 500,
+    color: MUTED_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, title, 0.12, 0.52, 18, -H * 0.34);
+  fadeUp(b, detail, 0.2, 0.46, 12, -H * 0.23);
+
+  fieldLabels.slice(0, 2).forEach((fieldLabel, index) => {
+    const y = -H * 0.05 + index * H * 0.22;
+    const field = b.add('overlay', `field${index}`, {
+      shape: 'rect',
+      y,
+      width: W - pad * 2,
+      height: H * 0.15,
+      radius: W * 0.025,
+      fill: RAISED,
+      stroke: index === 0 ? ctx.accent : EDGE,
+      strokeWidth: index === 0 ? 2 : 1.5,
+      glow: 0,
+      glowColor: ctx.accent,
+      opacity: 0,
+    });
+    const label = b.add('text', `fieldLabel${index}`, {
+      value: fieldLabel,
+      center: true,
+      x: -W * 0.04,
+      y: y - H * 0.035,
+      width: W - pad * 2.5,
+      height: H * 0.05,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: Math.max(11, W * 0.03),
+      weight: 620,
+      color: index === 0 ? ctx.accent : MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    const value = b.add('text', `fieldValue${index}`, {
+      value: values[index] ?? '',
+      center: true,
+      x: -W * 0.04,
+      y: y + H * 0.025,
+      width: W - pad * 2.5,
+      height: H * 0.065,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: Math.max(13, W * 0.036),
+      weight: 520,
+      color: BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(
+      field,
+      0.3 + index * 0.12,
+      0.52,
+      { opacity: 0, y: y + 22, scale: 0.97 },
+      { opacity: 1, y, scale: 1 }
+    );
+    b.enter(label, 0.38 + index * 0.12, 0.38, { opacity: 0 }, { opacity: 1 });
+    b.enter(value, 0.44 + index * 0.12, 0.38, { opacity: 0 }, { opacity: 1 });
+  });
+
+  const submitY = H * 0.36;
+  const submit = b.add('overlay', 'submit', {
+    shape: 'rect',
+    y: submitY,
+    width: W - pad * 2,
+    height: H * 0.14,
+    radius: H * 0.07,
+    fill: ctx.accent,
+    glow: 0,
+    glowColor: ctx.accent,
+    opacity: 0,
+  });
+  const submitLabel = b.add('text', 'submitLabel', {
+    value: ctx.cta ?? (ctx.variant === 'signup' ? 'Create account' : 'Continue'),
+    center: true,
+    y: submitY,
+    width: W - pad * 2,
+    height: H * 0.12,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(14, W * 0.04),
+    weight: 680,
+    color: ctx.theme.ink,
+    opacity: 0,
+    layer: 'text',
+  });
+  pop(b, submit, 0.64, 0.5, 0.9);
+  b.enter(submitLabel, 0.72, 0.34, { opacity: 0 }, { opacity: 1 });
+  return panel;
+}
+
+function chatStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.9;
+  const messages = ctx.values ?? [
+    'Can you summarize the launch?',
+    'Absolutely — here are the key moments.',
+    'Perfect, ship it.',
+  ];
+  const senders = ctx.labels ?? ['You', 'Assistant', 'You'];
+  const shell = b.add('overlay', 'frame', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.04,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 30,
+    opacity: 0,
+  });
+  b.enter(
+    shell,
+    0,
+    ctx.duration,
+    { opacity: 0, y: 38, scale: 0.95 },
+    { opacity: 1, y: 0, scale: 1 }
+  );
+  const headerY = -H * 0.42;
+  const header = b.add('overlay', 'header', {
+    shape: 'rect',
+    y: headerY,
+    width: W,
+    height: H * 0.16,
+    radius: W * 0.04,
+    fill: RAISED,
+    opacity: 0,
+  });
+  const avatar = b.add('overlay', 'avatar', {
+    shape: 'circle',
+    x: -W * 0.39,
+    y: headerY,
+    radius: W * 0.035,
+    fill: ctx.accent,
+    glow: 0,
+    glowColor: ctx.accent,
+    opacity: 0,
+  });
+  const title = b.add('text', 'title', {
+    value: ctx.label ?? 'Product team',
+    center: true,
+    x: -W * 0.12,
+    y: headerY,
+    width: W * 0.46,
+    height: H * 0.09,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(16, W * 0.038),
+    weight: 680,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(header, 0.1, 0.46, { opacity: 0, y: headerY - 14 }, { opacity: 1, y: headerY });
+  pop(b, avatar, 0.18, 0.4);
+  b.enter(title, 0.24, 0.4, { opacity: 0, x: -W * 0.15 }, { opacity: 1, x: -W * 0.12 });
+
+  messages.slice(0, 3).forEach((message, index) => {
+    const mine = index % 2 === 0;
+    const y = -H * 0.2 + index * H * 0.21;
+    const bubbleW = W * (index === 1 ? 0.68 : 0.56);
+    const x = mine ? W * 0.16 : -W * 0.12;
+    const bubble = b.add('overlay', `bubble${index}`, {
+      shape: 'rect',
+      x,
+      y,
+      width: bubbleW,
+      height: H * 0.15,
+      radius: H * 0.06,
+      fill: mine ? ctx.accent : RAISED,
+      stroke: mine ? 'none' : EDGE,
+      strokeWidth: 1.5,
+      opacity: 0,
+    });
+    const sender = b.add('text', `sender${index}`, {
+      value: senders[index] ?? '',
+      center: true,
+      x: x - bubbleW * 0.39,
+      y: y - H * 0.04,
+      width: bubbleW * 0.16,
+      height: H * 0.04,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: Math.max(9, W * 0.018),
+      weight: 700,
+      color: mine ? ctx.theme.ink : ctx.accent,
+      opacity: 0,
+      layer: 'text',
+    });
+    const copy = b.add('text', `message${index}`, {
+      value: message,
+      center: true,
+      x,
+      y: y + H * 0.02,
+      width: bubbleW * 0.84,
+      height: H * 0.09,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      wrap: 'word',
+      size: Math.max(12, W * 0.027),
+      weight: 520,
+      color: mine ? ctx.theme.ink : BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(
+      bubble,
+      0.34 + index * 0.14,
+      0.5,
+      { opacity: 0, y: y + 24, scale: 0.92 },
+      { opacity: 1, y, scale: 1 },
+      'back.out(1.35)'
+    );
+    b.enter(sender, 0.42 + index * 0.14, 0.34, { opacity: 0 }, { opacity: 1 });
+    b.enter(copy, 0.46 + index * 0.14, 0.38, { opacity: 0 }, { opacity: 1 });
+  });
+
+  const typingY = H * 0.39;
+  const typing = b.add('overlay', 'typing', {
+    shape: 'rect',
+    x: -W * 0.34,
+    y: typingY,
+    width: W * 0.19,
+    height: H * 0.1,
+    radius: H * 0.05,
+    fill: RAISED,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    opacity: 0,
+  });
+  b.enter(typing, 0.82, 0.42, { opacity: 0, y: typingY + 14 }, { opacity: 1, y: typingY });
+  [0, 1, 2].forEach((index) => {
+    const dot = b.add('overlay', `typingDot${index}`, {
+      shape: 'circle',
+      x: -W * 0.39 + index * W * 0.05,
+      y: typingY,
+      radius: W * 0.009,
+      fill: MUTED_TEXT,
+      opacity: 0,
+    });
+    b.key(
+      dot,
+      1 + index * 0.12,
+      0.8,
+      [
+        frame(0, { opacity: 0.35, y: typingY }),
+        frame(0.5, { opacity: 1, y: typingY - 5 }),
+        frame(1, { opacity: 0.35, y: typingY }),
+      ],
+      'sine.inOut',
+      'infinite',
+      'loop'
+    );
+  });
+  return shell;
+}
+
+function modalStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.62;
+  const backdrop = b.add('overlay', 'backdrop', {
+    shape: 'rect',
+    width: W * 2.35,
+    height: H * 2.5,
+    radius: W * 0.05,
+    fill: ctx.theme.background,
+    opacity: 0,
+    blur: 3,
+  });
+  b.enter(backdrop, 0, 0.12, { opacity: 0 }, { opacity: 0.72 });
+  const panel = b.add('overlay', 'panel', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.045,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 34,
+    opacity: 0,
+  });
+  b.enter(
+    panel,
+    0.08,
+    Math.min(ctx.duration, 0.62),
+    { opacity: 0, y: 34, scale: 0.9 },
+    { opacity: 1, y: 0, scale: 1 },
+    'back.out(1.5)'
+  );
+  const title = b.add('text', 'title', {
+    value: ctx.label ?? 'Confirm action',
+    center: true,
+    x: -W * 0.04,
+    y: -H * 0.25,
+    width: W * 0.78,
+    height: H * 0.14,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(22, W * 0.058),
+    weight: 710,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  const detail = b.add('text', 'detail', {
+    value: ctx.detail ?? 'This change will be applied immediately.',
+    center: true,
+    x: -W * 0.04,
+    y: -H * 0.02,
+    width: W * 0.78,
+    height: H * 0.26,
+    textAlign: 'left',
+    verticalAlign: 'top',
+    wrap: 'word',
+    lineHeight: 1.35,
+    size: Math.max(14, W * 0.036),
+    weight: 500,
+    color: MUTED_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, title, 0.2, 0.46, 16, -H * 0.25);
+  fadeUp(b, detail, 0.28, 0.44, 12, -H * 0.02);
+
+  const buttonY = H * 0.3;
+  const actions = ctx.values ?? ['Cancel', 'Confirm'];
+  const cancel = b.add('overlay', 'cancel', {
+    shape: 'rect',
+    x: W * 0.15,
+    y: buttonY,
+    width: W * 0.23,
+    height: H * 0.16,
+    radius: H * 0.08,
+    fill: RAISED,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    opacity: 0,
+  });
+  const confirm = b.add('overlay', 'confirm', {
+    shape: 'rect',
+    x: W * 0.37,
+    y: buttonY,
+    width: W * 0.18,
+    height: H * 0.16,
+    radius: H * 0.08,
+    fill: ctx.accent,
+    glow: 0,
+    glowColor: ctx.accent,
+    opacity: 0,
+  });
+  const cancelLabel = b.add('text', 'cancelLabel', {
+    value: actions[0] ?? '',
+    center: true,
+    x: W * 0.15,
+    y: buttonY,
+    width: W * 0.23,
+    height: H * 0.14,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(12, W * 0.032),
+    weight: 640,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  const confirmLabel = b.add('text', 'confirmLabel', {
+    value: ctx.cta ?? actions[1] ?? '',
+    center: true,
+    x: W * 0.37,
+    y: buttonY,
+    width: W * 0.18,
+    height: H * 0.14,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(12, W * 0.032),
+    weight: 680,
+    color: ctx.theme.ink,
+    opacity: 0,
+    layer: 'text',
+  });
+  pop(b, cancel, 0.42, 0.4, 0.9);
+  pop(b, confirm, 0.48, 0.42, 0.86);
+  b.enter(cancelLabel, 0.5, 0.3, { opacity: 0 }, { opacity: 1 });
+  b.enter(confirmLabel, 0.56, 0.3, { opacity: 0 }, { opacity: 1 });
+  return panel;
+}
+
+function navigationStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const mobile = ['mobile', 'bottom', 'dock'].includes(ctx.variant ?? '');
+  const H = W * (mobile ? 0.16 : 0.115);
+  const labels = (ctx.labels ?? ['Home', 'Explore', 'Inbox', 'Profile']).slice(0, 4);
+  const bar = b.add('overlay', 'bar', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: H / 2,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 24,
+    opacity: 0,
+  });
+  b.enter(bar, 0, ctx.duration, { opacity: 0, y: 34, scale: 0.94 }, { opacity: 1, y: 0, scale: 1 });
+
+  const brand = b.add('text', 'brand', {
+    value: ctx.label ?? 'Motionly',
+    center: true,
+    x: -W * 0.36,
+    width: W * 0.2,
+    height: H * 0.7,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(14, W * 0.028),
+    weight: 720,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(brand, 0.12, 0.4, { opacity: 0, x: -W * 0.4 }, { opacity: 1, x: -W * 0.36 });
+
+  const itemStart = mobile ? -W * 0.2 : -W * 0.05;
+  const step = mobile ? W * 0.14 : W * 0.13;
+  const active = b.add('overlay', 'active', {
+    shape: 'rect',
+    x: itemStart,
+    width: mobile ? W * 0.12 : W * 0.11,
+    height: H * 0.62,
+    radius: H * 0.31,
+    fill: ctx.accent,
+    glow: 0,
+    glowColor: ctx.accent,
+    opacity: 0,
+  });
+  pop(b, active, 0.2, 0.42, 0.76);
+  labels.forEach((label, index) => {
+    const x = itemStart + index * step;
+    const item = b.add('text', `item${index}`, {
+      value: label,
+      center: true,
+      x,
+      y: index === 0 ? -H * 0.03 : 0,
+      width: mobile ? W * 0.12 : W * 0.11,
+      height: H * 0.62,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: Math.max(11, W * 0.02),
+      weight: index === 0 ? 700 : 560,
+      color: index === 0 ? ctx.theme.ink : MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(
+      item,
+      0.24 + index * 0.08,
+      0.42,
+      { opacity: 0, y: H * 0.24, scale: 0.88 },
+      { opacity: 1, y: index === 0 ? -H * 0.03 : 0, scale: 1 },
+      index === 0 ? 'back.out(1.5)' : 'power4.out'
+    );
+  });
+  return bar;
+}
+
+function loaderStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const progress = Math.max(0, Math.min(1, (ctx.countTo ?? 72) / 100));
+  const track = b.add('overlay', 'track', {
+    shape: 'rect',
+    width: W,
+    height: W * 0.11,
+    radius: W * 0.055,
+    fill: RAISED,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    opacity: 0,
+  });
+  b.enter(track, 0, 0.42, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1 });
+
+  const fillWidth = Math.max(W * 0.1, W * progress);
+  const progressId = b.add('overlay', 'progress', {
+    shape: 'rect',
+    x: -(W - fillWidth) / 2,
+    width: fillWidth,
+    height: W * 0.11,
+    radius: W * 0.055,
+    fill: ctx.accent,
+    glow: 0,
+    glowColor: ctx.accent,
+    opacity: 0,
+  });
+  b.enter(
+    progressId,
+    0.12,
+    0.68,
+    { opacity: 1, scale: 0.08, x: -W * 0.46 },
+    { opacity: 1, scale: 1, x: -(W - fillWidth) / 2 },
+    'power3.out'
+  );
+
+  const label = b.add('text', 'label', {
+    value: ctx.label ?? 'Loading…',
+    center: true,
+    y: W * 0.18,
+    width: W,
+    height: W * 0.16,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: Math.max(14, W * 0.1),
+    weight: 620,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, label, 0.22, 0.42, 10, W * 0.18);
+  return progressId;
+}
+
+const BASE_BUILDERS: Record<BaseSemanticComponentType, StructureBuilder> = {
   cloud: glyphStructure,
   database: glyphStructure,
   server: glyphStructure,
@@ -2479,7 +3954,29 @@ const BUILDERS: Record<SemanticComponentType, StructureBuilder> = {
   pricingcard: pricingCardStructure,
   laptop: laptopStructure,
   editor: editorStructure,
+  card: cardStructure,
+  form: formStructure,
+  chat: chatStructure,
+  modal: modalStructure,
+  navigation: navigationStructure,
+  loader: loaderStructure,
 };
+
+const BUILDERS = {
+  ...BASE_BUILDERS,
+  ...Object.fromEntries(
+    Object.entries(REACTBITS_COMPONENT_ALIASES).map(([alias, target]) => [
+      alias,
+      BASE_BUILDERS[target],
+    ])
+  ),
+  'tilted-card': tiltedCardStructure,
+  'magic-bento': magicBentoStructure,
+  'fluid-glass': fluidGlassStructure,
+  'spotlight-card': spotlightCardStructure,
+  'metric-card': metricCardStructure,
+  'media-card': mediaCardStructure,
+} as Record<SemanticComponentType, StructureBuilder>;
 
 function seconds(value: number): string {
   return `${Number(value.toFixed(3))}s`;

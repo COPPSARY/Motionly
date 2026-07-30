@@ -7,6 +7,7 @@ import {
   type StructureContext,
 } from './component-structures';
 import {
+  REACTBITS_COMPONENT_ALIASES,
   isSemanticComponentType,
   svgDataUri,
   vectorDefinition,
@@ -14,9 +15,9 @@ import {
 } from './vector-registry';
 import {
   archetypeRegistry,
-  componentRegistry,
   effectRegistry,
   resolveTheme,
+  componentRegistry,
   validateCatalogProperties,
   type MotionTheme,
 } from './catalog';
@@ -114,7 +115,9 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
 
     const type = componentType(node);
     const definition = vectorDefinition(type);
-    const catalogEntry = componentRegistry().find((entry) => entry.name === type)!;
+    const canonicalType =
+      REACTBITS_COMPONENT_ALIASES[type as keyof typeof REACTBITS_COMPONENT_ALIASES] ?? type;
+    const catalogEntry = componentRegistry().find((entry) => entry.name === canonicalType)!;
     validateCatalogProperties(catalogEntry, node.properties, [
       'type',
       'provider',
@@ -138,6 +141,9 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
       'cta',
       'opacity',
       'scale',
+      'rotation',
+      'skewX',
+      'skewY',
       'center',
       'track',
       'start',
@@ -213,6 +219,8 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
         node.properties['countTo'] !== undefined
           ? numberValue(node.properties['countTo'], 0)
           : undefined,
+      variant: stringValue(node.properties['variant']),
+      motionPreset: stringValue(node.properties['motionPreset']),
       clickAt: timing.clickAt,
       exitAt:
         node.properties['exitAt'] !== undefined
@@ -671,6 +679,8 @@ function componentRootProperties(
   behaviors: string[],
   layer: string
 ): Record<string, unknown> {
+  const definition = vectorDefinition(type);
+  const width = numberValue(node.properties['width'], definition.width);
   const properties = Object.fromEntries(
     Object.entries(node.properties).filter(
       ([key]) => !COMPILER_PROPERTIES.has(key) && !key.includes('.')
@@ -679,6 +689,8 @@ function componentRootProperties(
   return {
     ...properties,
     center: node.properties['center'] ?? true,
+    width,
+    height: Math.round((width * definition.height) / definition.width),
     opacity: node.properties['opacity'] ?? 1,
     layer,
     ...(node.properties['animation'] ? { animation: node.properties['animation'] } : {}),

@@ -13,6 +13,7 @@ import {
   type MotionlySvgData,
 } from '../assets/asset-loader';
 import { formatCountValue } from '../animation-library/count-up';
+import { canonicalEffectName } from '../semantic/catalog';
 
 /**
  * Canvas renderer class
@@ -1098,9 +1099,26 @@ function drawVectorPrimitive(
   } else if (shape === 'path') {
     const d = String(props['path'] ?? '');
     if (!d) return;
+    if (progress <= 0) return;
     const svgPath = new Path2D(d);
-    if (fill !== 'none') ctx.fill(svgPath);
-    if (stroke !== 'none') ctx.stroke(svgPath);
+    const trimStart = Math.max(0, Math.min(progress, finiteNumber(props['trimStart'], 0)));
+    if (fill !== 'none' && progress >= 1 && trimStart <= 0) ctx.fill(svgPath);
+    if (stroke !== 'none') {
+      const measure = motionPathElement(d);
+      const length = (() => {
+        try {
+          return measure?.getTotalLength() ?? 0;
+        } catch {
+          return 0;
+        }
+      })();
+      if (length > 0 && (progress < 1 || trimStart > 0)) {
+        const segment = Math.max(0, progress - trimStart) * length;
+        ctx.setLineDash([segment, Math.max(0.001, length - segment)]);
+        ctx.lineDashOffset = -trimStart * length;
+      }
+      ctx.stroke(svgPath);
+    }
     return;
   } else {
     const originX = finiteNumber(props['originX'], 0.5);
@@ -1239,7 +1257,7 @@ function drawEffect(
   canvas: Canvas,
   props: Record<string, unknown>
 ): void {
-  const effect = props['effect'] as string;
+  const effect = canonicalEffectName(String(props['effect'] ?? 'gradientMotion'));
 
   if (effect === 'noise') {
     drawNoise(ctx, canvas, props);

@@ -90,6 +90,8 @@ export interface LayoutSlot {
   y: number;
   width: number;
   height: number;
+  /** Final card angle for stacks/collages; zero for rigid layouts. */
+  rotation: number;
   /** Entrance delay in seconds — math-driven, never simultaneous. */
   delay: number;
   /** Composition weight, used to pick focal treatment and camera targets. */
@@ -151,7 +153,7 @@ const definitions: Record<LayoutType, LayoutDefinition> = {
     type: 'masonryGrid',
     category: 'layout',
     description: 'Column-packed grid for many screenshots of differing height.',
-    useCases: ['screenshot gallery', 'portfolio', 'press collage'],
+    useCases: ['screenshot gallery', 'portfolio', 'press collage', 'pinterest masonry'],
     assetKinds: ['screenshot', 'ui', 'photo'],
     items: { min: 3, max: 12 },
     defaults: { columns: 3, gap: 32, stagger: 0.05 },
@@ -213,8 +215,8 @@ const definitions: Record<LayoutType, LayoutDefinition> = {
   floatingCollage: {
     type: 'floatingCollage',
     category: 'layout',
-    description: 'Deterministic depth collage of floating cards.',
-    useCases: ['ambient background', 'brand collage'],
+    description: 'Deterministic fanned collage of layered, rotated cards.',
+    useCases: ['card assembly', 'brand collage', 'social design wall'],
     assetKinds: ['screenshot', 'ui', 'photo', 'illustration'],
     items: { min: 3, max: 9 },
     defaults: { columns: 3, gap: 48, stagger: 0.09 },
@@ -308,7 +310,8 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
     y: number,
     width: number,
     height: number,
-    emphasis: LayoutSlot['emphasis']
+    emphasis: LayoutSlot['emphasis'],
+    rotation = 0
   ) => {
     slots[index] = {
       index,
@@ -316,6 +319,7 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
       y: snap(y),
       width: Math.max(RHYTHM, snap(width)),
       height: Math.max(RHYTHM, snap(height)),
+      rotation,
       delay: delays[index]!,
       emphasis,
       travel: ARRIVAL[emphasis].travel,
@@ -463,7 +467,8 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
         spec.type === 'deviceStack' ? distance * 26 : 0,
         itemWidth * Math.max(0.55, scale),
         (spec.itemHeight ?? frameHeight * 0.86) * Math.max(0.55, scale),
-        distance < 0.51 ? 'focal' : 'support'
+        distance < 0.51 ? 'focal' : 'support',
+        spec.type === 'deviceStack' ? offset * 4 : 0
       );
     }
     return slots;
@@ -485,27 +490,28 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
   }
 
   // floatingCollage — fixed depth pattern, deterministic by design.
-  const pattern: Array<[number, number, number]> = [
-    [-0.3, -0.22, 1],
-    [0.28, -0.12, 0.86],
-    [-0.06, 0.24, 0.94],
-    [0.36, 0.28, 0.72],
-    [-0.38, 0.14, 0.78],
-    [0.08, -0.32, 0.8],
-    [-0.18, 0.36, 0.68],
-    [0.42, -0.34, 0.64],
-    [-0.44, -0.04, 0.7],
+  const pattern: Array<[number, number, number, number]> = [
+    [-0.3, -0.22, 1, -5],
+    [0.28, -0.12, 0.86, 4],
+    [-0.06, 0.24, 0.94, -2],
+    [0.36, 0.28, 0.72, 6],
+    [-0.38, 0.14, 0.78, -7],
+    [0.08, -0.32, 0.8, 3],
+    [-0.18, 0.36, 0.68, -4],
+    [0.42, -0.34, 0.64, 7],
+    [-0.44, -0.04, 0.7, -3],
   ];
   const baseWidth = spec.itemWidth ?? frameWidth * 0.3;
   for (let index = 0; index < count; index += 1) {
-    const [fx, fy, scale] = pattern[index % pattern.length]!;
+    const [fx, fy, scale, rotation] = pattern[index % pattern.length]!;
     push(
       index,
       fx * frameWidth,
       fy * frameHeight,
       baseWidth * scale,
       (spec.itemHeight ?? baseWidth * 0.66) * scale,
-      scale >= 0.94 ? 'focal' : 'support'
+      scale >= 0.94 ? 'focal' : 'support',
+      rotation
     );
   }
   return slots;

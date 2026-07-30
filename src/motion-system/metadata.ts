@@ -10,7 +10,10 @@
  * so a new layout or showcase cannot ship without a description the AI can read.
  */
 
-import { semanticVectorDefinitions } from '../semantic/vector-registry';
+import {
+  publishedSemanticVectorDefinitions,
+  semanticComponentMetadata,
+} from '../semantic/vector-registry';
 import type { AssetKind } from './asset-kinds';
 import { layoutDefinitions } from './layout';
 import { showcaseDefinitions } from './showcase';
@@ -31,6 +34,10 @@ export interface MotionComponentMetadata {
   assetKinds: readonly AssetKind[];
   /** Child count range, for blocks that arrange several items. */
   items?: { min: number; max: number };
+  variants?: readonly string[];
+  accessibility?: string;
+  responsive?: string;
+  recommendedSpacing?: number;
 }
 
 /** Archetypes keep their slide-style role; described here so selection sees them. */
@@ -137,16 +144,23 @@ function showcaseMetadata(): MotionComponentMetadata[] {
 }
 
 function componentMetadata(): MotionComponentMetadata[] {
-  return semanticVectorDefinitions().map((definition) => ({
-    name: definition.type,
-    kind: 'component' as const,
-    category: 'component',
-    description: `Structured ${definition.type} artwork: ${definition.layers.join(', ')}.`,
-    useCases: [...definition.capabilities],
-    inputs: ['label', 'detail', 'headline', 'cta', 'values', 'labels', 'countTo', 'source'],
-    animations: [definition.defaultBehavior, ...definition.capabilities],
-    assetKinds: definition.type === 'logo' ? ['logo'] : [],
-  }));
+  return publishedSemanticVectorDefinitions().map((definition) => {
+    const metadata = semanticComponentMetadata(definition.type);
+    return {
+      name: definition.type,
+      kind: 'component' as const,
+      category: metadata.category,
+      description: `${metadata.purpose} ${metadata.interaction}`,
+      useCases: metadata.useCases,
+      inputs: metadata.inputs,
+      animations: [definition.defaultBehavior, ...metadata.motionPresets],
+      assetKinds: definition.type === 'logo' ? (['logo'] as const) : [],
+      variants: metadata.variants,
+      accessibility: metadata.accessibility,
+      responsive: metadata.responsive,
+      recommendedSpacing: metadata.recommendedSpacing,
+    };
+  });
 }
 
 /** Every selectable block in the motion system. */
@@ -178,6 +192,17 @@ export interface SelectionResult {
   score: number;
 }
 
+const INTENT_STOP_WORDS = new Set([
+  'add',
+  'animate',
+  'build',
+  'create',
+  'make',
+  'open',
+  'show',
+  'use',
+]);
+
 /**
  * Score and rank blocks against a query.
  *
@@ -193,7 +218,7 @@ export function selectComponents(query: SelectionQuery, limit = 6): SelectionRes
   const words = (query.intent ?? '')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 2);
+    .filter((word) => word.length > 2 && !INTENT_STOP_WORDS.has(word));
 
   return motionComponentMetadata()
     .filter((entry) => (query.kind ? entry.kind === query.kind : true))
@@ -236,7 +261,9 @@ export function metadataPrompt(): string {
         (entry) =>
           `- ${entry.name}: ${entry.description} Use for: ${entry.useCases.join(', ') || 'general'}. Inputs: ${entry.inputs.join(', ')}. Owns motion: ${entry.animations.slice(0, 4).join(', ')}.${
             entry.assetKinds.length ? ` Asset kinds: ${entry.assetKinds.join(', ')}.` : ''
-          }${entry.items ? ` Items: ${entry.items.min}-${entry.items.max}.` : ''}`
+          }${entry.items ? ` Items: ${entry.items.min}-${entry.items.max}.` : ''}${
+            entry.variants?.length ? ` Variants: ${entry.variants.join(', ')}.` : ''
+          }${entry.recommendedSpacing ? ` Spacing: ${entry.recommendedSpacing}px.` : ''}`
       )
       .join('\n')}`;
   };
@@ -244,6 +271,8 @@ export function metadataPrompt(): string {
     'Motion system index — select blocks by name, never assemble them from primitives:',
     group('showcase', 'Showcases (one real asset becomes a product presentation)'),
     group('layout', 'Layouts (composition: spacing rhythm, alignment, stagger)'),
+    group('component', 'Semantic UI components (primary vocabulary for common interfaces)'),
+    'Component policy — Accessibility: preserve labels, readable contrast, focus order, and reduced motion. Responsive: scale authored width and preserve touch-sized targets.',
     group('archetype', 'Archetypes (complete slide-style shots)'),
   ].join('\n\n');
 }

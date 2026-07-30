@@ -11,9 +11,21 @@ import { SHOWCASE_TYPES } from '../../src/motion-system/showcase';
 const examples = registryExamples();
 
 describe('registry example compositions', () => {
-  it('ships one installable example per layout and showcase', () => {
+  it('ships installable examples for every layout, showcase, and featured component recipe', () => {
     const names = examples.map((example) => example.name).sort();
-    expect(names).toEqual([...LAYOUT_TYPES, ...SHOWCASE_TYPES].sort());
+    expect(names).toEqual(
+      [
+        ...LAYOUT_TYPES,
+        ...SHOWCASE_TYPES,
+        'tilted-card',
+        'magic-bento',
+        'spotlight-card',
+        'fluid-glass',
+        'form',
+        'button',
+        'loader',
+      ].sort()
+    );
   });
 
   it('compiles every example into a renderable scene', () => {

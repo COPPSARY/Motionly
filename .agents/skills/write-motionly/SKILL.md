@@ -122,8 +122,9 @@ Select complete motion design ideas before placing primitives. Beats pace, layou
 
 ## Semantic Components
 
-- Compose recognizable interfaces from the component library before hand-drawing UI: `component name { type dashboard ... }`. Types: cloud, database, server, arrow, button, dashboard, phone, browser, logo, chart, notification, cursor, codeeditor, website, terminal, pricingcard, laptop, and editor (the Motionly workspace itself).
-- Components compile into structured parts named `NAME__PART` with built-in staggered choreography and Space Grotesk typography. Fill them with `label`, `detail`, `headline`, `url`, `cta`, `values`, `labels`, and `countTo`.
+- The component registry is the primary UI vocabulary. Compose recognizable interfaces from it before hand-drawing UI: `component name { type dashboard ... }`. Types: cloud, database, server, arrow, button, dashboard, phone, browser, logo, chart, notification, cursor, codeeditor, website, terminal, pricingcard, laptop, editor (the Motionly workspace itself), card, form, chat, modal, and navigation.
+- Intent maps directly to components: login/sign-in → `form`; Discord/assistant conversation → `chat`; notifications/toasts → `notification`; dialog/confirmation → `modal`; mobile navigation/dock → `navigation`; feature/KPI cards → `card`.
+- Components compile into structured parts named `NAME__PART` with built-in staggered choreography and Space Grotesk typography. Fill them with `label`, `detail`, `headline`, `url`, `cta`, `values`, `labels`, and `countTo`; customize `variant` and choose `motionPreset minimal|smooth|spring|premium`.
 - Customize any part with a dotted override (`price.countPrefix "€"`, `headline.color #fff`) or animate it directly (`animate NAME__PART { ... }`). Unknown parts error with the available part names.
 - Wire cause and effect: `connects TARGET` (drawn connector + data particle), `clicks TARGET` + `clickAt` on a cursor, `reactsTo TARGET` for consequences, `exitAt`/`exitDuration` for deliberate exits.
 - Full contract: [motion-syntax.md](references/motion-syntax.md).

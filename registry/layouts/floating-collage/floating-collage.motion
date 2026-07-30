@@ -1,4 +1,4 @@
-// floatingCollage — Deterministic depth collage of floating cards.
+// floatingCollage — Deterministic fanned collage of layered, rotated cards.
 canvas {
   size 1920x1080
   fps 60
@@ -17,7 +17,7 @@ beat compose {
   duration 1.6s
   focus showcase
   route stagedReveals
-  label "ambient background"
+  label "card assembly"
 }
 
 beat inspect {
@@ -62,7 +62,7 @@ component floatingCollageItem3 {
 }
 
 text caption {
-  value "ambient background"
+  value "card assembly"
   center
   layer text
   y 430

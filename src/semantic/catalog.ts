@@ -1,9 +1,112 @@
-import { semanticVectorDefinitions } from './vector-registry';
+import {
+  BASE_SEMANTIC_COMPONENT_TYPES,
+  publishedSemanticVectorDefinitions,
+  semanticComponentMetadata,
+  semanticVectorDefinitions,
+  type SemanticVectorDefinition,
+  type SemanticComponentMetadata,
+} from './vector-registry';
 import { layoutDefinitions } from '../motion-system/layout';
 import { showcaseDefinitions } from '../motion-system/showcase';
 import { parseTime } from '../core/units';
 
 export const MOTION_CATALOG_VERSION = 1;
+
+/** ReactBits names stay public; Motionly lowers them to its deterministic recipes. */
+export const REACTBITS_MOVE_ALIASES = {
+  'animated-content': 'softReveal',
+  'blob-cursor': 'cursorTap',
+  'click-spark': 'cursorTap',
+  crosshair: 'snapMove',
+  cubes: 'rotateScale',
+  'fade-content': 'softReveal',
+  'glare-hover': 'pulse',
+  'image-trail': 'cascadeIn',
+  magnet: 'snapMove',
+  'magnet-lines': 'snapMove',
+  'meta-balls': 'orbitDrift',
+  'metallic-paint': 'pulse',
+  noise: 'pulse',
+  'pixel-trail': 'cascadeIn',
+  'pixel-transition': 'maskReveal',
+  ribbons: 'orbitDrift',
+  'shape-blur': 'rackFocus',
+  'splash-cursor': 'cursorTap',
+  'star-border': 'pulse',
+  'sticker-peel': 'tiltReveal',
+  'target-cursor': 'cursorTap',
+  'ascii-text': 'charReveal',
+  'blur-text': 'blurReveal',
+  'circular-text': 'charReveal',
+  'count-up': 'countUp',
+  'curved-loop': 'charReveal',
+  'decrypted-text': 'charReveal',
+  'falling-text': 'charReveal',
+  'fuzzy-text': 'blurReveal',
+  'glitch-text': 'charReveal',
+  'gradient-text': 'gradientReveal',
+  'rotating-text': 'scaleText',
+  'scrambled-text': 'charReveal',
+  'scroll-float': 'fadeUp',
+  'scroll-reveal': 'wordReveal',
+  'scroll-velocity': 'slideIn',
+  'shiny-text': 'gradientReveal',
+  'split-text': 'splitReveal',
+  'text-cursor': 'typewriter',
+  'text-pressure': 'scaleText',
+  'text-trail': 'charReveal',
+  'text-type': 'typewriter',
+  'true-focus': 'blurReveal',
+  'variable-proximity': 'scaleText',
+} as const;
+
+export function canonicalMoveName(name: string): string {
+  return REACTBITS_MOVE_ALIASES[name as keyof typeof REACTBITS_MOVE_ALIASES] ?? name;
+}
+
+const DISTINCT_REACTBITS_TEXT_MOVES = new Set([
+  'split-text',
+  'decrypted-text',
+  'scrambled-text',
+  'glitch-text',
+  'rotating-text',
+  'falling-text',
+  'scroll-float',
+  'text-trail',
+  'text-pressure',
+  'variable-proximity',
+]);
+
+export const REACTBITS_EFFECT_ALIASES = {
+  aurora: 'aurora',
+  balatro: 'meshGradient',
+  ballpit: 'particles',
+  beams: 'prism',
+  'dark-veil': 'vignette',
+  dither: 'noise',
+  'dot-grid': 'grid',
+  'faulty-terminal': 'noise',
+  galaxy: 'particles',
+  'grid-distortion': 'rippleGrid',
+  'grid-motion': 'grid',
+  hyperspeed: 'prism',
+  iridescence: 'meshGradient',
+  'letter-glitch': 'noise',
+  'light-rays': 'prism',
+  lightning: 'prism',
+  'liquid-chrome': 'gradientMotion',
+  orb: 'radialGlow',
+  particles: 'particles',
+  'ripple-grid': 'rippleGrid',
+  silk: 'meshGradient',
+  squares: 'grid',
+  threads: 'rippleGrid',
+  waves: 'rippleGrid',
+} as const;
+
+export function canonicalEffectName(name: string): string {
+  return REACTBITS_EFFECT_ALIASES[name as keyof typeof REACTBITS_EFFECT_ALIASES] ?? name;
+}
 
 export type FieldSchema = Readonly<{
   type: 'string' | 'number' | 'time' | 'boolean' | 'asset' | 'list';
@@ -17,6 +120,7 @@ export type CatalogEntry = Readonly<{
   schema: Readonly<Record<string, FieldSchema>>;
   defaults: Readonly<Record<string, string | number | boolean>>;
   docs: string;
+  metadata?: SemanticComponentMetadata;
 }>;
 
 const field = (type: FieldSchema['type'], docs: string): FieldSchema => ({ type, docs });
@@ -90,7 +194,7 @@ const move = (
   docs,
 });
 
-export const MOVES: readonly CatalogEntry[] = [
+const BASE_MOVES: readonly CatalogEntry[] = [
   move('keynoteText', 'text', 'Line-masked hero text reveal.', { duration: 0.85, stagger: 0.08 }),
   move('wordReveal', 'text', 'Readable word-by-word reveal.', { stagger: 0.08 }),
   move('charReveal', 'text', 'Fast character treatment.', { stagger: 0.04 }),
@@ -271,6 +375,22 @@ export const MOVES: readonly CatalogEntry[] = [
   move('spotlight-mask', 'object', 'Open a structural spotlight mask.'),
 ];
 
+const REACTBITS_MOVES: readonly CatalogEntry[] = Object.entries(REACTBITS_MOVE_ALIASES).map(
+  ([name, target]) => {
+    const base = BASE_MOVES.find((entry) => entry.name === target)!;
+    return move(
+      name,
+      base.category,
+      DISTINCT_REACTBITS_TEXT_MOVES.has(name)
+        ? `ReactBits ${name} adapted as distinct editable deterministic text choreography.`
+        : `ReactBits ${name} adapted to Motionly's editable deterministic ${target} recipe.`,
+      base.defaults
+    );
+  }
+);
+
+export const MOVES: readonly CatalogEntry[] = [...BASE_MOVES, ...REACTBITS_MOVES];
+
 const effect = (
   name: string,
   category: string,
@@ -297,7 +417,7 @@ const effect = (
   docs,
 });
 
-export const EFFECTS: readonly CatalogEntry[] = [
+const BASE_EFFECTS: readonly CatalogEntry[] = [
   effect('gradientMotion', 'background', 'Legacy moving gradient.', {
     opacity: 0.2,
     intensity: 1,
@@ -390,6 +510,21 @@ export const EFFECTS: readonly CatalogEntry[] = [
     duration: 0,
   }),
 ];
+
+const BASE_EFFECT_NAMES = new Set(BASE_EFFECTS.map((entry) => entry.name));
+const REACTBITS_EFFECTS: readonly CatalogEntry[] = Object.entries(REACTBITS_EFFECT_ALIASES)
+  .filter(([name]) => !BASE_EFFECT_NAMES.has(name))
+  .map(([name, target]) => {
+    const base = BASE_EFFECTS.find((entry) => entry.name === target)!;
+    return effect(
+      name,
+      'background reactbits',
+      `ReactBits ${name} adapted to Motionly's editable deterministic ${target} renderer.`,
+      base.defaults
+    );
+  });
+
+export const EFFECTS: readonly CatalogEntry[] = [...BASE_EFFECTS, ...REACTBITS_EFFECTS];
 
 const archetypeSchema = {
   title: field('string', 'Primary headline slot.'),
@@ -649,11 +784,12 @@ export function moveRegistry(): readonly CatalogEntry[] {
   return MOVES;
 }
 
-export function componentRegistry(): readonly CatalogEntry[] {
-  return semanticVectorDefinitions().map((definition) => ({
+function componentCatalogEntry(definition: SemanticVectorDefinition): CatalogEntry {
+  const metadata = semanticComponentMetadata(definition.type);
+  return {
     name: definition.type,
     version: MOTION_CATALOG_VERSION,
-    category: 'component',
+    category: `component ${metadata.category}`,
     schema: {
       label: field('string', 'Primary label slot.'),
       detail: field('string', 'Supporting detail slot.'),
@@ -666,6 +802,8 @@ export function componentRegistry(): readonly CatalogEntry[] {
       role: field('string', 'Semantic role.'),
       intent: field('string', 'Story intent.'),
       behavior: field('list', 'Built-in behaviors.'),
+      variant: field('string', `Visual variant: ${metadata.variants.join(', ')}.`),
+      motionPreset: field('string', `Motion recipe: ${metadata.motionPresets.join(', ')}.`),
       parent: field('string', 'Parent scene or group.'),
       color: field('string', 'Primary themed color override.'),
       accent: field('string', 'Accent override.'),
@@ -679,9 +817,22 @@ export function componentRegistry(): readonly CatalogEntry[] {
     defaults: {
       width: definition.width,
       behavior: definition.defaultBehavior,
+      variant: metadata.variants[0] ?? 'default',
+      motionPreset: 'premium',
     },
-    docs: `${definition.type}: ${definition.capabilities.join(', ')}. Parts: ${definition.layers.join(', ')}.`,
-  }));
+    docs: `${metadata.purpose} Use for ${metadata.useCases.join(', ')}. Interaction: ${metadata.interaction} Parts: ${definition.layers.join(', ')}.`,
+    metadata,
+  };
+}
+
+/** Public registry: only names backed by their own visual recipe. */
+export function componentRegistry(): readonly CatalogEntry[] {
+  return publishedSemanticVectorDefinitions().map(componentCatalogEntry);
+}
+
+/** Parser compatibility for old alias-authored projects; not publicly advertised. */
+export function runtimeComponentRegistry(): readonly CatalogEntry[] {
+  return semanticVectorDefinitions().map(componentCatalogEntry);
 }
 
 export function archetypeRegistry(): readonly CatalogEntry[] {
@@ -699,7 +850,12 @@ export function catalogPrompt(): string {
   return [
     section('Effects', EFFECTS),
     section('Moves', MOVES),
-    section('Components', componentRegistry()),
+    section(
+      'Components',
+      componentRegistry().filter((entry) =>
+        (BASE_SEMANTIC_COMPONENT_TYPES as readonly string[]).includes(entry.name)
+      )
+    ),
     section('Showcases', showcaseRegistry()),
     section('Layouts', layoutRegistry()),
     section('Beats', beatRegistry()),
