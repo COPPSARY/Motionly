@@ -1,0 +1,69 @@
+{
+  "name": "faulty-terminal",
+  "type": "motionly:effect",
+  "title": "Faulty Terminal",
+  "description": "ReactBits faulty-terminal adapted to Motionly's editable deterministic noise renderer.",
+  "tags": [
+    "effect",
+    "background",
+    "reactbits"
+  ],
+  "version": 1,
+  "builtin": true,
+  "implementation": {
+    "name": "faulty-terminal",
+    "source": "src/render/canvas-renderer.ts"
+  },
+  "schema": {
+    "opacity": {
+      "type": "number",
+      "docs": "Effect opacity."
+    },
+    "intensity": {
+      "type": "number",
+      "docs": "Effect strength."
+    },
+    "duration": {
+      "type": "time",
+      "docs": "Loop duration."
+    },
+    "blendMode": {
+      "type": "string",
+      "docs": "Canvas blend mode."
+    },
+    "gradientFrom": {
+      "type": "string",
+      "docs": "Theme gradient start."
+    },
+    "gradientTo": {
+      "type": "string",
+      "docs": "Theme gradient end."
+    },
+    "color": {
+      "type": "string",
+      "docs": "Effect color."
+    },
+    "gridSize": {
+      "type": "number",
+      "docs": "Grid cell size."
+    },
+    "gridThickness": {
+      "type": "number",
+      "docs": "Grid line thickness."
+    },
+    "particleCount": {
+      "type": "number",
+      "docs": "Particle count."
+    },
+    "particleSize": {
+      "type": "number",
+      "docs": "Particle size."
+    }
+  },
+  "defaults": {
+    "opacity": 0.05,
+    "intensity": 0.5,
+    "duration": 6
+  },
+  "manifest": "effects/faulty-terminal/registry-item.json"
+}

@@ -21,6 +21,7 @@ describe('composition engine', () => {
       for (const slot of slots) {
         expect(Number.isFinite(slot.x), `${type} x`).toBe(true);
         expect(Number.isFinite(slot.y), `${type} y`).toBe(true);
+        expect(Number.isFinite(slot.rotation), `${type} rotation`).toBe(true);
         expect(slot.width, `${type} width`).toBeGreaterThan(0);
         expect(slot.height, `${type} height`).toBeGreaterThan(0);
       }
@@ -151,6 +152,14 @@ describe('composition engine', () => {
     expect(slots[0]!.x).toBeLessThan(0);
     expect(slots[2]!.x).toBeGreaterThan(0);
     expect(slots[0]!.width).toBeLessThan(slots[1]!.width);
+    expect(slots[0]!.rotation).toBeLessThan(0);
+    expect(slots[2]!.rotation).toBeGreaterThan(0);
+  });
+
+  it('gives floating collages a deterministic card fan', () => {
+    const slots = resolveLayout({ type: 'floatingCollage', count: 5 });
+    expect(slots.some((slot) => slot.rotation < 0)).toBe(true);
+    expect(slots.some((slot) => slot.rotation > 0)).toBe(true);
   });
 
   it('splits a comparison layout into balanced halves', () => {

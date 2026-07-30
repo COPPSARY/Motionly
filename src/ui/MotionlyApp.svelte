@@ -9,6 +9,7 @@
   const githubIconUrl = appUrl('github.svg');
   // ponytail: localStorage is enough for source drafts; move to IndexedDB if projects exceed its quota.
   const autoSaveKey = 'motionly:auto-save';
+  const retiredBlueskySignatures = ['as phonePair', 'as phoneHero', 'as feedUi', 'as butterfly'];
 
   type MotionFileHandle = {
     name: string;
@@ -68,9 +69,12 @@ animate title {
         code?: unknown;
         name?: unknown;
       } | null;
-      return saved && typeof saved.code === 'string' && typeof saved.name === 'string'
-        ? { code: saved.code, name: saved.name }
-        : null;
+      if (!saved || typeof saved.code !== 'string' || typeof saved.name !== 'string') return null;
+      if (retiredBlueskySignatures.every((signature) => saved.code.includes(signature))) {
+        localStorage.removeItem(autoSaveKey);
+        return null;
+      }
+      return { code: saved.code, name: saved.name };
     } catch {
       return null;
     }

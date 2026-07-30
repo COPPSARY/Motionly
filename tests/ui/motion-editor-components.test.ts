@@ -393,6 +393,40 @@ text restored { value "Still here" center }`;
     localStorage.removeItem('motionly:auto-save');
   });
 
+  it('drops the retired Bluesky preset autosave after its assets are removed', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    localStorage.setItem(
+      'motionly:auto-save',
+      JSON.stringify({
+        name: 'untitled.motion',
+        code: 'import "./pair.jpg" as phonePair\nimport "./hero.jpg" as phoneHero\nimport "./feed.png" as feedUi\nimport "./butterfly.svg" as butterfly',
+      })
+    );
+
+    const host = target();
+    const instance = mount(MotionlyApp, { target: host });
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+
+    expect(host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value).toContain(
+      'Motion graphics, written.'
+    );
+    expect(localStorage.getItem('motionly:auto-save')).not.toContain('phonePair');
+
+    await unmount(instance);
+    localStorage.removeItem('motionly:auto-save');
+  });
+
   it('deletes selected timeline items with Delete or Backspace', async () => {
     class ResizeObserverStub {
       observe(): void {}

@@ -1,4 +1,4 @@
-export const SEMANTIC_COMPONENT_TYPES = [
+export const BASE_SEMANTIC_COMPONENT_TYPES = [
   'cloud',
   'database',
   'server',
@@ -17,13 +17,134 @@ export const SEMANTIC_COMPONENT_TYPES = [
   'pricingcard',
   'laptop',
   'editor',
+  'card',
+  'form',
+  'chat',
+  'modal',
+  'navigation',
+  'loader',
 ] as const;
+
+export type BaseSemanticComponentType = (typeof BASE_SEMANTIC_COMPONENT_TYPES)[number];
+
+/** ReactBits catalog names mapped to the nearest editable Motionly component recipe. */
+export const REACTBITS_COMPONENT_ALIASES = {
+  'animated-list': 'chat',
+  'bounce-cards': 'card',
+  'card-swap': 'card',
+  carousel: 'card',
+  'chroma-grid': 'card',
+  'circular-gallery': 'card',
+  counter: 'chart',
+  'decay-card': 'card',
+  dock: 'navigation',
+  'elastic-slider': 'button',
+  'flowing-menu': 'navigation',
+  'fluid-glass': 'card',
+  'flying-posters': 'card',
+  folder: 'card',
+  'glass-icons': 'navigation',
+  'glass-surface': 'card',
+  'gooey-nav': 'navigation',
+  'infinite-menu': 'navigation',
+  'infinite-scroll': 'card',
+  lanyard: 'card',
+  'magic-bento': 'card',
+  masonry: 'card',
+  'media-card': 'card',
+  'metric-card': 'card',
+  'model-viewer': 'card',
+  'pixel-card': 'card',
+  'rolling-gallery': 'card',
+  'scroll-stack': 'card',
+  'spotlight-card': 'card',
+  stack: 'card',
+  stepper: 'navigation',
+  'tilted-card': 'card',
+  'button-1': 'button',
+  'button-2': 'button',
+  'button-3': 'button',
+  'button-4': 'button',
+  'button-5': 'button',
+  'button-6': 'button',
+  'button-7': 'button',
+  'button-8': 'button',
+  'form-1': 'form',
+  'form-2': 'form',
+  'form-3': 'form',
+  'form-4': 'form',
+  'form-5': 'form',
+  'form-6': 'form',
+  'form-7': 'form',
+  'form-8': 'form',
+  'form-9': 'form',
+  'form-10': 'form',
+  'form-11': 'form',
+  'form-12': 'form',
+  'form-13': 'form',
+  'form-14': 'form',
+  'form-15': 'form',
+  'form-16': 'form',
+  'form-17': 'form',
+  'form-18': 'form',
+  'form-19': 'form',
+  'form-20': 'form',
+  'loader-1': 'loader',
+  'loader-2': 'loader',
+  'loader-3': 'loader',
+  'loader-4': 'loader',
+  'loader-5': 'loader',
+  'loader-6': 'loader',
+  'loader-7': 'loader',
+  'loader-8': 'loader',
+  'loader-9': 'loader',
+} as const satisfies Record<string, BaseSemanticComponentType>;
+
+export type ReactBitsComponentType = keyof typeof REACTBITS_COMPONENT_ALIASES;
+export type SemanticComponentType = BaseSemanticComponentType | ReactBitsComponentType;
+export const SEMANTIC_COMPONENT_TYPES: readonly SemanticComponentType[] = [
+  ...BASE_SEMANTIC_COMPONENT_TYPES,
+  ...(Object.keys(REACTBITS_COMPONENT_ALIASES) as ReactBitsComponentType[]),
+];
+export const SPECIALIZED_SEMANTIC_COMPONENT_TYPES = [
+  'tilted-card',
+  'magic-bento',
+  'fluid-glass',
+  'spotlight-card',
+  'metric-card',
+  'media-card',
+] as const satisfies readonly ReactBitsComponentType[];
+export const PUBLISHED_SEMANTIC_COMPONENT_TYPES: readonly SemanticComponentType[] = [
+  ...BASE_SEMANTIC_COMPONENT_TYPES,
+  ...SPECIALIZED_SEMANTIC_COMPONENT_TYPES,
+];
 
 export const VECTOR_PROVIDERS = ['phosphor', 'lucide', 'heroicons', 'tabler', 'motionly'] as const;
 
-export type SemanticComponentType = (typeof SEMANTIC_COMPONENT_TYPES)[number];
 export type VectorProvider = (typeof VECTOR_PROVIDERS)[number];
 export type VectorStyle = 'filled' | 'outline';
+export type SemanticComponentCategory =
+  | 'layout'
+  | 'input'
+  | 'feedback'
+  | 'communication'
+  | 'data'
+  | 'media'
+  | 'mobile'
+  | 'infrastructure';
+
+export interface SemanticComponentMetadata {
+  category: SemanticComponentCategory;
+  purpose: string;
+  useCases: readonly string[];
+  inputs: readonly string[];
+  interaction: string;
+  recommendedSpacing: number;
+  variants: readonly string[];
+  motionPresets: readonly string[];
+  accessibility: string;
+  responsive: string;
+}
 
 export interface SemanticVectorDefinition {
   type: SemanticComponentType;
@@ -40,7 +161,7 @@ export interface SemanticVectorDefinition {
   layers: readonly string[];
 }
 
-const definitions: Record<SemanticComponentType, SemanticVectorDefinition> = {
+const baseDefinitions: Record<BaseSemanticComponentType, SemanticVectorDefinition> = {
   cloud: {
     type: 'cloud',
     provider: 'phosphor',
@@ -79,7 +200,7 @@ const definitions: Record<SemanticComponentType, SemanticVectorDefinition> = {
     svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>',
     width: 180,
     height: 180,
-    defaultBehavior: 'premiumReveal activate',
+    defaultBehavior: 'premiumReveal',
     capabilities: ['stackReveal', 'pulse', 'glow', 'receiveData', 'sendData', 'connect'],
     layers: ['chassis', 'status'],
   },
@@ -294,7 +415,439 @@ const definitions: Record<SemanticComponentType, SemanticVectorDefinition> = {
     capabilities: ['screenReveal', 'typeIn', 'cardStagger', 'chartGrowth', 'count', 'highlight'],
     layers: ['frame', 'rail', 'topbar', 'canvas', 'timeline', 'panel', 'draft'],
   },
+  card: {
+    type: 'card',
+    provider: 'motionly',
+    icon: 'ui-card',
+    source: 'Motionly native semantic component inspired by spotlight-card interactions',
+    license: 'Motionly',
+    style: 'filled',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h7"/></svg>',
+    width: 420,
+    height: 280,
+    defaultBehavior: 'cardReveal',
+    capabilities: ['cardReveal', 'hoverLift', 'spotlight', 'glow'],
+    layers: ['surface', 'eyebrow', 'headline', 'detail', 'cta', 'spotlight'],
+  },
+  form: {
+    type: 'form',
+    provider: 'motionly',
+    icon: 'ui-form',
+    source: 'Motionly native semantic form',
+    license: 'Motionly',
+    style: 'filled',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+    width: 460,
+    height: 520,
+    defaultBehavior: 'formReveal',
+    capabilities: ['formReveal', 'focusField', 'submit', 'validation'],
+    layers: ['panel', 'title', 'detail', 'field0', 'field1', 'submit'],
+  },
+  chat: {
+    type: 'chat',
+    provider: 'motionly',
+    icon: 'ui-chat',
+    source: 'Motionly native semantic conversation',
+    license: 'Motionly',
+    style: 'filled',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
+    width: 620,
+    height: 560,
+    defaultBehavior: 'messageCascade',
+    capabilities: ['messageCascade', 'typing', 'autoScroll', 'reactsTo'],
+    layers: ['frame', 'header', 'avatar', 'bubble0', 'bubble1', 'bubble2', 'typing'],
+  },
+  modal: {
+    type: 'modal',
+    provider: 'motionly',
+    icon: 'ui-modal',
+    source: 'Motionly native semantic dialog',
+    license: 'Motionly',
+    style: 'filled',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M16 14h2"/></svg>',
+    width: 520,
+    height: 320,
+    defaultBehavior: 'modalReveal',
+    capabilities: ['modalReveal', 'backdrop', 'focus', 'dismiss'],
+    layers: ['backdrop', 'panel', 'title', 'detail', 'cancel', 'confirm'],
+  },
+  navigation: {
+    type: 'navigation',
+    provider: 'motionly',
+    icon: 'ui-navigation',
+    source: 'Motionly native semantic navigation inspired by dock interactions',
+    license: 'Motionly',
+    style: 'filled',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    width: 760,
+    height: 88,
+    defaultBehavior: 'dockReveal',
+    capabilities: ['dockReveal', 'activeItem', 'hoverLift', 'mobileNavigation'],
+    layers: ['bar', 'brand', 'active', 'item0', 'item1', 'item2', 'item3'],
+  },
+  loader: {
+    type: 'loader',
+    provider: 'motionly',
+    icon: 'ui-loader',
+    source: 'Motionly native deterministic loader',
+    license: 'Motionly',
+    style: 'outline',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 1-9 9"/><path d="M3 3v6h6"/></svg>',
+    width: 180,
+    height: 180,
+    defaultBehavior: 'spin',
+    capabilities: ['spin', 'pulse', 'progress', 'skeleton'],
+    layers: ['track', 'progress', 'label'],
+  },
 };
+
+const baseMetadata: Record<BaseSemanticComponentType, SemanticComponentMetadata> = {
+  cloud: meta(
+    'infrastructure',
+    'Cloud service node.',
+    ['cloud architecture', 'data pipeline'],
+    ['label'],
+    'Receives and sends data.'
+  ),
+  database: meta(
+    'infrastructure',
+    'Persistent data store.',
+    ['database', 'storage', 'data pipeline'],
+    ['label'],
+    'Receives, stores, and sends data.'
+  ),
+  server: meta(
+    'infrastructure',
+    'Application server node.',
+    ['server', 'api', 'backend architecture'],
+    ['label'],
+    'Activates and exchanges data.'
+  ),
+  arrow: meta(
+    'infrastructure',
+    'Directional relationship.',
+    ['flow', 'connection', 'process direction'],
+    ['label'],
+    'Draws between subjects.'
+  ),
+  button: meta(
+    'input',
+    'Primary interactive action.',
+    ['button', 'call to action', 'submit control'],
+    ['label'],
+    'Hover, press, ripple, and click.'
+  ),
+  dashboard: meta(
+    'data',
+    'Complete analytics dashboard.',
+    ['dashboard', 'analytics', 'productivity workspace', 'kpi overview'],
+    ['label', 'values', 'labels'],
+    'Cards stagger, metrics count, and charts draw.'
+  ),
+  phone: meta(
+    'mobile',
+    'Mobile device interface.',
+    ['mobile app', 'phone screen', 'app inbox'],
+    ['label', 'values'],
+    'Screen and rows reveal in sequence.'
+  ),
+  browser: meta(
+    'layout',
+    'Browser-based product screen.',
+    ['website', 'browser', 'web app'],
+    ['url', 'headline', 'cta'],
+    'Chrome and page content reveal.'
+  ),
+  logo: meta(
+    'media',
+    'Brand mark.',
+    ['logo', 'brand reveal', 'identity'],
+    ['source', 'label'],
+    'Draws or reveals the real mark.'
+  ),
+  chart: meta(
+    'data',
+    'Animated metric chart.',
+    ['chart', 'graph', 'data visualization', 'growth'],
+    ['label', 'countTo', 'values'],
+    'Counts a metric and grows the series.'
+  ),
+  notification: meta(
+    'feedback',
+    'Notification or toast card.',
+    [
+      'notification',
+      'notifications',
+      'notification stack',
+      'toast',
+      'alert',
+      'success banner',
+      'error banner',
+    ],
+    ['label', 'detail'],
+    'Slides, pushes, reacts, and dismisses.',
+    ['default', 'success', 'warning', 'error']
+  ),
+  cursor: meta(
+    'input',
+    'Visible interaction pointer.',
+    ['cursor', 'click', 'product walkthrough'],
+    ['clicks', 'clickAt'],
+    'Travels, presses, and ripples.'
+  ),
+  codeeditor: meta(
+    'layout',
+    'Developer code workspace.',
+    ['code editor', 'developer workflow', 'ide'],
+    ['label', 'detail', 'values'],
+    'Types code and reports status.'
+  ),
+  website: meta(
+    'layout',
+    'Structured marketing website.',
+    ['landing page', 'hero section', 'website'],
+    ['headline', 'cta', 'label'],
+    'Navigation, hero, and call to action reveal.'
+  ),
+  terminal: meta(
+    'layout',
+    'Command-line workflow.',
+    ['terminal', 'cli', 'developer workflow'],
+    ['label', 'detail'],
+    'Types a command and advances progress.'
+  ),
+  pricingcard: meta(
+    'layout',
+    'Pricing plan card.',
+    ['pricing table', 'pricing plan', 'subscription'],
+    ['label', 'countTo', 'values', 'cta'],
+    'Plan, price, features, and CTA cascade.',
+    ['default', 'featured']
+  ),
+  laptop: meta(
+    'layout',
+    'Laptop product frame.',
+    ['desktop app', 'laptop', 'product demo'],
+    ['headline', 'cta'],
+    'Device and populated screen reveal.'
+  ),
+  editor: meta(
+    'layout',
+    'Motionly editing workspace.',
+    ['motion editor', 'animation editor', 'creative workflow'],
+    ['label', 'detail', 'headline', 'values', 'cta'],
+    'Workspace parts assemble and animate.'
+  ),
+  card: meta(
+    'layout',
+    'Reusable content or feature card.',
+    ['card', 'cards', 'feature card', 'stats card', 'kpi widget'],
+    ['label', 'headline', 'detail', 'cta'],
+    'Rises, elevates, and sweeps a spotlight.',
+    ['default', 'outlined', 'featured']
+  ),
+  form: meta(
+    'input',
+    'Complete editable form panel.',
+    ['form', 'login screen', 'sign in', 'signup', 'search form', 'password input'],
+    ['label', 'detail', 'labels', 'values', 'cta'],
+    'Fields focus in order and the submit action settles.',
+    ['login', 'signup', 'search']
+  ),
+  chat: meta(
+    'communication',
+    'Complete chat conversation.',
+    ['chat', 'discord chat', 'conversation', 'assistant response', 'ai chat'],
+    ['label', 'values', 'labels'],
+    'Messages cascade, typing dots pulse, and content scrolls.',
+    ['direct', 'group', 'assistant']
+  ),
+  modal: meta(
+    'feedback',
+    'Focused dialog over a backdrop.',
+    ['modal', 'dialog', 'confirmation', 'command palette'],
+    ['label', 'detail', 'cta'],
+    'Backdrop appears, panel scales up, and focus moves to the action.',
+    ['default', 'success', 'warning', 'error']
+  ),
+  navigation: meta(
+    'mobile',
+    'Responsive navigation bar or dock.',
+    ['navigation bar', 'mobile navigation', 'bottom navigation', 'dock', 'sidebar navigation'],
+    ['label', 'labels'],
+    'Items cascade and the active item lifts.',
+    ['desktop', 'mobile', 'bottom', 'dock']
+  ),
+  loader: meta(
+    'feedback',
+    'Loading and progress indicator.',
+    ['loader', 'loading spinner', 'progress', 'skeleton loader'],
+    ['label', 'countTo'],
+    'Spins, pulses, or fills deterministically.',
+    ['spinner', 'dots', 'progress', 'skeleton']
+  ),
+};
+
+function meta(
+  category: SemanticComponentCategory,
+  purpose: string,
+  useCases: readonly string[],
+  inputs: readonly string[],
+  interaction: string,
+  variants: readonly string[] = ['default']
+): SemanticComponentMetadata {
+  return {
+    category,
+    purpose,
+    useCases,
+    inputs,
+    interaction,
+    recommendedSpacing: category === 'mobile' || category === 'input' ? 16 : 24,
+    variants,
+    motionPresets: ['minimal', 'smooth', 'spring', 'premium'],
+    accessibility: 'Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.',
+    responsive: 'Scales from its authored width and preserves touch-sized interactive targets.',
+  };
+}
+
+const definitions = {
+  ...baseDefinitions,
+  ...Object.fromEntries(
+    Object.entries(REACTBITS_COMPONENT_ALIASES).map(([alias, target]) => [
+      alias,
+      {
+        ...baseDefinitions[target],
+        type: alias,
+        icon: alias,
+        source: `ReactBits ${alias} concept adapted to Motionly's deterministic renderer`,
+        license: 'Motionly',
+      },
+    ])
+  ),
+  'tilted-card': {
+    ...baseDefinitions.card,
+    type: 'tilted-card',
+    icon: 'tilted-card',
+    source: 'Motionly native tilted editorial card',
+    layers: ['poster', 'stripe', 'index', 'eyebrow', 'headline', 'detail'],
+  },
+  'magic-bento': {
+    ...baseDefinitions.card,
+    type: 'magic-bento',
+    icon: 'magic-bento',
+    source: 'Motionly native asymmetric bento card',
+    layers: [
+      'surface',
+      'mainTile',
+      'topTile',
+      'bottomTile',
+      'eyebrow',
+      'headline',
+      'detail',
+      'stat',
+      'status',
+    ],
+  },
+  'fluid-glass': {
+    ...baseDefinitions.card,
+    type: 'fluid-glass',
+    icon: 'fluid-glass',
+    source: 'Motionly native layered glass card',
+    layers: [
+      'backplate',
+      'surface',
+      'rule',
+      'eyebrow',
+      'headline',
+      'detail',
+      'chip0',
+      'chip1',
+      'chip2',
+    ],
+  },
+  'spotlight-card': {
+    ...baseDefinitions.card,
+    type: 'spotlight-card',
+    icon: 'spotlight-card',
+    source: 'Motionly native hard-light focus card',
+    layers: ['surface', 'sun', 'eyebrow', 'headline', 'detail', 'footer'],
+  },
+  'metric-card': {
+    ...baseDefinitions.card,
+    type: 'metric-card',
+    icon: 'metric-card',
+    source: 'Motionly native metric card',
+    height: 260,
+    defaultBehavior: 'count',
+    capabilities: ['cardReveal', 'count', 'drawPath'],
+    layers: ['surface', 'eyebrow', 'value', 'delta', 'detail', 'sparkline', 'baseline'],
+  },
+  'media-card': {
+    ...baseDefinitions.card,
+    type: 'media-card',
+    icon: 'media-card',
+    source: 'Motionly native image-backed card',
+    height: 302,
+    defaultBehavior: 'cardReveal',
+    capabilities: ['cardReveal', 'screenReveal'],
+    layers: ['surface', 'media', 'eyebrow', 'headline', 'detail'],
+  },
+} as unknown as Record<SemanticComponentType, SemanticVectorDefinition>;
+
+const metadata = {
+  ...baseMetadata,
+  ...Object.fromEntries(
+    Object.entries(REACTBITS_COMPONENT_ALIASES).map(([alias, target]) => {
+      const base = baseMetadata[target];
+      return [
+        alias,
+        {
+          ...base,
+          purpose: `ReactBits ${alias} pattern. ${base.purpose}`,
+          useCases: [alias, ...base.useCases],
+        },
+      ];
+    })
+  ),
+  'tilted-card': {
+    ...baseMetadata.card,
+    purpose: 'Tilted editorial feature card with a numbered poster hierarchy.',
+    useCases: ['tilted card', 'editorial feature', 'opening promise'],
+    interaction: 'The poster settles, then its index and accent rail answer in sequence.',
+  },
+  'magic-bento': {
+    ...baseMetadata.card,
+    purpose: 'Asymmetric bento composition with one focal tile and two live modules.',
+    useCases: ['magic bento', 'feature summary', 'metric card'],
+    interaction: 'The focal tile leads while the stat and status modules follow.',
+  },
+  'fluid-glass': {
+    ...baseMetadata.card,
+    purpose: 'Layered translucent material card with a refracted edge treatment.',
+    useCases: ['fluid glass', 'material study', 'premium feature card'],
+    interaction: 'The backplate offsets, the glass surface settles, and side chips cascade.',
+  },
+  'spotlight-card': {
+    ...baseMetadata.card,
+    purpose: 'Dark focus card with a hard moving light and anchored footer.',
+    useCases: ['spotlight card', 'feature focus', 'high-contrast callout'],
+    interaction: 'A hard light travels across the card before the copy and footer settle.',
+  },
+  'metric-card': {
+    ...baseMetadata.card,
+    purpose: 'Single-stat card with count-up value and a drawn trend line.',
+    useCases: ['metric card', 'KPI', 'dashboard statistic'],
+    inputs: ['label', 'detail', 'countTo', 'cta'],
+    interaction: 'The value counts up while its trend draws across the baseline.',
+  },
+  'media-card': {
+    ...baseMetadata.card,
+    purpose: 'Image-backed editorial card with a compact text hierarchy.',
+    useCases: ['media card', 'product screenshot', 'portfolio tile'],
+    inputs: ['source', 'label', 'headline', 'detail'],
+    interaction: 'The media settles first, followed by the caption hierarchy.',
+  },
+} as unknown as Record<SemanticComponentType, SemanticComponentMetadata>;
 
 export function isSemanticComponentType(value: string): value is SemanticComponentType {
   return (SEMANTIC_COMPONENT_TYPES as readonly string[]).includes(value);
@@ -306,6 +859,15 @@ export function vectorDefinition(type: SemanticComponentType): SemanticVectorDef
 
 export function semanticVectorDefinitions(): readonly SemanticVectorDefinition[] {
   return Object.values(definitions);
+}
+
+/** Registry entries must have their own visual builder, not only a compatibility alias. */
+export function publishedSemanticVectorDefinitions(): readonly SemanticVectorDefinition[] {
+  return PUBLISHED_SEMANTIC_COMPONENT_TYPES.map((type) => definitions[type]);
+}
+
+export function semanticComponentMetadata(type: SemanticComponentType): SemanticComponentMetadata {
+  return metadata[type];
 }
 
 export function svgDataUri(source: string): string {

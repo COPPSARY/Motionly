@@ -858,6 +858,582 @@
       "manifest": "moves/spotlight-mask/registry-item.json"
     },
     {
+      "name": "animated-content",
+      "type": "motionly:move",
+      "title": "Animated Content",
+      "description": "ReactBits animated-content adapted to Motionly's editable deterministic softReveal recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/animated-content/registry-item.json"
+    },
+    {
+      "name": "blob-cursor",
+      "type": "motionly:move",
+      "title": "Blob Cursor",
+      "description": "ReactBits blob-cursor adapted to Motionly's editable deterministic cursorTap recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/blob-cursor/registry-item.json"
+    },
+    {
+      "name": "click-spark",
+      "type": "motionly:move",
+      "title": "Click Spark",
+      "description": "ReactBits click-spark adapted to Motionly's editable deterministic cursorTap recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/click-spark/registry-item.json"
+    },
+    {
+      "name": "crosshair",
+      "type": "motionly:move",
+      "title": "Crosshair",
+      "description": "ReactBits crosshair adapted to Motionly's editable deterministic snapMove recipe.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/crosshair/registry-item.json"
+    },
+    {
+      "name": "cubes",
+      "type": "motionly:move",
+      "title": "Cubes",
+      "description": "ReactBits cubes adapted to Motionly's editable deterministic rotateScale recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/cubes/registry-item.json"
+    },
+    {
+      "name": "fade-content",
+      "type": "motionly:move",
+      "title": "Fade Content",
+      "description": "ReactBits fade-content adapted to Motionly's editable deterministic softReveal recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fade-content/registry-item.json"
+    },
+    {
+      "name": "glare-hover",
+      "type": "motionly:move",
+      "title": "Glare Hover",
+      "description": "ReactBits glare-hover adapted to Motionly's editable deterministic pulse recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/glare-hover/registry-item.json"
+    },
+    {
+      "name": "image-trail",
+      "type": "motionly:move",
+      "title": "Image Trail",
+      "description": "ReactBits image-trail adapted to Motionly's editable deterministic cascadeIn recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/image-trail/registry-item.json"
+    },
+    {
+      "name": "magnet",
+      "type": "motionly:move",
+      "title": "Magnet",
+      "description": "ReactBits magnet adapted to Motionly's editable deterministic snapMove recipe.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/magnet/registry-item.json"
+    },
+    {
+      "name": "magnet-lines",
+      "type": "motionly:move",
+      "title": "Magnet Lines",
+      "description": "ReactBits magnet-lines adapted to Motionly's editable deterministic snapMove recipe.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/magnet-lines/registry-item.json"
+    },
+    {
+      "name": "meta-balls",
+      "type": "motionly:move",
+      "title": "Meta Balls",
+      "description": "ReactBits meta-balls adapted to Motionly's editable deterministic orbitDrift recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/meta-balls/registry-item.json"
+    },
+    {
+      "name": "metallic-paint",
+      "type": "motionly:move",
+      "title": "Metallic Paint",
+      "description": "ReactBits metallic-paint adapted to Motionly's editable deterministic pulse recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/metallic-paint/registry-item.json"
+    },
+    {
+      "name": "noise",
+      "type": "motionly:move",
+      "title": "Noise",
+      "description": "ReactBits noise adapted to Motionly's editable deterministic pulse recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/noise/registry-item.json"
+    },
+    {
+      "name": "pixel-trail",
+      "type": "motionly:move",
+      "title": "Pixel Trail",
+      "description": "ReactBits pixel-trail adapted to Motionly's editable deterministic cascadeIn recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pixel-trail/registry-item.json"
+    },
+    {
+      "name": "pixel-transition",
+      "type": "motionly:move",
+      "title": "Pixel Transition",
+      "description": "ReactBits pixel-transition adapted to Motionly's editable deterministic maskReveal recipe.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pixel-transition/registry-item.json"
+    },
+    {
+      "name": "ribbons",
+      "type": "motionly:move",
+      "title": "Ribbons",
+      "description": "ReactBits ribbons adapted to Motionly's editable deterministic orbitDrift recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/ribbons/registry-item.json"
+    },
+    {
+      "name": "shape-blur",
+      "type": "motionly:move",
+      "title": "Shape Blur",
+      "description": "ReactBits shape-blur adapted to Motionly's editable deterministic rackFocus recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/shape-blur/registry-item.json"
+    },
+    {
+      "name": "splash-cursor",
+      "type": "motionly:move",
+      "title": "Splash Cursor",
+      "description": "ReactBits splash-cursor adapted to Motionly's editable deterministic cursorTap recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/splash-cursor/registry-item.json"
+    },
+    {
+      "name": "star-border",
+      "type": "motionly:move",
+      "title": "Star Border",
+      "description": "ReactBits star-border adapted to Motionly's editable deterministic pulse recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/star-border/registry-item.json"
+    },
+    {
+      "name": "sticker-peel",
+      "type": "motionly:move",
+      "title": "Sticker Peel",
+      "description": "ReactBits sticker-peel adapted to Motionly's editable deterministic tiltReveal recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/sticker-peel/registry-item.json"
+    },
+    {
+      "name": "target-cursor",
+      "type": "motionly:move",
+      "title": "Target Cursor",
+      "description": "ReactBits target-cursor adapted to Motionly's editable deterministic cursorTap recipe.",
+      "tags": [
+        "move",
+        "object"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/target-cursor/registry-item.json"
+    },
+    {
+      "name": "ascii-text",
+      "type": "motionly:move",
+      "title": "Ascii Text",
+      "description": "ReactBits ascii-text adapted to Motionly's editable deterministic charReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/ascii-text/registry-item.json"
+    },
+    {
+      "name": "blur-text",
+      "type": "motionly:move",
+      "title": "Blur Text",
+      "description": "ReactBits blur-text adapted to Motionly's editable deterministic blurReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/blur-text/registry-item.json"
+    },
+    {
+      "name": "circular-text",
+      "type": "motionly:move",
+      "title": "Circular Text",
+      "description": "ReactBits circular-text adapted to Motionly's editable deterministic charReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/circular-text/registry-item.json"
+    },
+    {
+      "name": "count-up",
+      "type": "motionly:move",
+      "title": "Count Up",
+      "description": "ReactBits count-up adapted to Motionly's editable deterministic countUp recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/count-up-2/registry-item.json"
+    },
+    {
+      "name": "curved-loop",
+      "type": "motionly:move",
+      "title": "Curved Loop",
+      "description": "ReactBits curved-loop adapted to Motionly's editable deterministic charReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/curved-loop/registry-item.json"
+    },
+    {
+      "name": "decrypted-text",
+      "type": "motionly:move",
+      "title": "Decrypted Text",
+      "description": "ReactBits decrypted-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/decrypted-text/registry-item.json"
+    },
+    {
+      "name": "falling-text",
+      "type": "motionly:move",
+      "title": "Falling Text",
+      "description": "ReactBits falling-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/falling-text/registry-item.json"
+    },
+    {
+      "name": "fuzzy-text",
+      "type": "motionly:move",
+      "title": "Fuzzy Text",
+      "description": "ReactBits fuzzy-text adapted to Motionly's editable deterministic blurReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fuzzy-text/registry-item.json"
+    },
+    {
+      "name": "glitch-text",
+      "type": "motionly:move",
+      "title": "Glitch Text",
+      "description": "ReactBits glitch-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/glitch-text/registry-item.json"
+    },
+    {
+      "name": "gradient-text",
+      "type": "motionly:move",
+      "title": "Gradient Text",
+      "description": "ReactBits gradient-text adapted to Motionly's editable deterministic gradientReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/gradient-text/registry-item.json"
+    },
+    {
+      "name": "rotating-text",
+      "type": "motionly:move",
+      "title": "Rotating Text",
+      "description": "ReactBits rotating-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rotating-text/registry-item.json"
+    },
+    {
+      "name": "scrambled-text",
+      "type": "motionly:move",
+      "title": "Scrambled Text",
+      "description": "ReactBits scrambled-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scrambled-text/registry-item.json"
+    },
+    {
+      "name": "scroll-float",
+      "type": "motionly:move",
+      "title": "Scroll Float",
+      "description": "ReactBits scroll-float adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scroll-float/registry-item.json"
+    },
+    {
+      "name": "scroll-reveal",
+      "type": "motionly:move",
+      "title": "Scroll Reveal",
+      "description": "ReactBits scroll-reveal adapted to Motionly's editable deterministic wordReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scroll-reveal/registry-item.json"
+    },
+    {
+      "name": "scroll-velocity",
+      "type": "motionly:move",
+      "title": "Scroll Velocity",
+      "description": "ReactBits scroll-velocity adapted to Motionly's editable deterministic slideIn recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scroll-velocity/registry-item.json"
+    },
+    {
+      "name": "shiny-text",
+      "type": "motionly:move",
+      "title": "Shiny Text",
+      "description": "ReactBits shiny-text adapted to Motionly's editable deterministic gradientReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/shiny-text/registry-item.json"
+    },
+    {
+      "name": "split-text",
+      "type": "motionly:move",
+      "title": "Split Text",
+      "description": "ReactBits split-text adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/split-text/registry-item.json"
+    },
+    {
+      "name": "text-cursor",
+      "type": "motionly:move",
+      "title": "Text Cursor",
+      "description": "ReactBits text-cursor adapted to Motionly's editable deterministic typewriter recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/text-cursor/registry-item.json"
+    },
+    {
+      "name": "text-pressure",
+      "type": "motionly:move",
+      "title": "Text Pressure",
+      "description": "ReactBits text-pressure adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/text-pressure/registry-item.json"
+    },
+    {
+      "name": "text-trail",
+      "type": "motionly:move",
+      "title": "Text Trail",
+      "description": "ReactBits text-trail adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/text-trail/registry-item.json"
+    },
+    {
+      "name": "text-type",
+      "type": "motionly:move",
+      "title": "Text Type",
+      "description": "ReactBits text-type adapted to Motionly's editable deterministic typewriter recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/text-type/registry-item.json"
+    },
+    {
+      "name": "true-focus",
+      "type": "motionly:move",
+      "title": "True Focus",
+      "description": "ReactBits true-focus adapted to Motionly's editable deterministic blurReveal recipe.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/true-focus/registry-item.json"
+    },
+    {
+      "name": "variable-proximity",
+      "type": "motionly:move",
+      "title": "Variable Proximity",
+      "description": "ReactBits variable-proximity adapted as distinct editable deterministic text choreography.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/variable-proximity/registry-item.json"
+    },
+    {
       "name": "gradientMotion",
       "type": "motionly:effect",
       "title": "Gradient Motion",
@@ -1092,12 +1668,307 @@
       "manifest": "effects/device-frame/registry-item.json"
     },
     {
+      "name": "balatro",
+      "type": "motionly:effect",
+      "title": "Balatro",
+      "description": "ReactBits balatro adapted to Motionly's editable deterministic meshGradient renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/balatro/registry-item.json"
+    },
+    {
+      "name": "ballpit",
+      "type": "motionly:effect",
+      "title": "Ballpit",
+      "description": "ReactBits ballpit adapted to Motionly's editable deterministic particles renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/ballpit/registry-item.json"
+    },
+    {
+      "name": "beams",
+      "type": "motionly:effect",
+      "title": "Beams",
+      "description": "ReactBits beams adapted to Motionly's editable deterministic prism renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/beams/registry-item.json"
+    },
+    {
+      "name": "dark-veil",
+      "type": "motionly:effect",
+      "title": "Dark Veil",
+      "description": "ReactBits dark-veil adapted to Motionly's editable deterministic vignette renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/dark-veil/registry-item.json"
+    },
+    {
+      "name": "dither",
+      "type": "motionly:effect",
+      "title": "Dither",
+      "description": "ReactBits dither adapted to Motionly's editable deterministic noise renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/dither/registry-item.json"
+    },
+    {
+      "name": "dot-grid",
+      "type": "motionly:effect",
+      "title": "Dot Grid",
+      "description": "ReactBits dot-grid adapted to Motionly's editable deterministic grid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/dot-grid/registry-item.json"
+    },
+    {
+      "name": "faulty-terminal",
+      "type": "motionly:effect",
+      "title": "Faulty Terminal",
+      "description": "ReactBits faulty-terminal adapted to Motionly's editable deterministic noise renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/faulty-terminal/registry-item.json"
+    },
+    {
+      "name": "galaxy",
+      "type": "motionly:effect",
+      "title": "Galaxy",
+      "description": "ReactBits galaxy adapted to Motionly's editable deterministic particles renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/galaxy/registry-item.json"
+    },
+    {
+      "name": "grid-distortion",
+      "type": "motionly:effect",
+      "title": "Grid Distortion",
+      "description": "ReactBits grid-distortion adapted to Motionly's editable deterministic rippleGrid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/grid-distortion/registry-item.json"
+    },
+    {
+      "name": "grid-motion",
+      "type": "motionly:effect",
+      "title": "Grid Motion",
+      "description": "ReactBits grid-motion adapted to Motionly's editable deterministic grid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/grid-motion/registry-item.json"
+    },
+    {
+      "name": "hyperspeed",
+      "type": "motionly:effect",
+      "title": "Hyperspeed",
+      "description": "ReactBits hyperspeed adapted to Motionly's editable deterministic prism renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/hyperspeed/registry-item.json"
+    },
+    {
+      "name": "iridescence",
+      "type": "motionly:effect",
+      "title": "Iridescence",
+      "description": "ReactBits iridescence adapted to Motionly's editable deterministic meshGradient renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/iridescence/registry-item.json"
+    },
+    {
+      "name": "letter-glitch",
+      "type": "motionly:effect",
+      "title": "Letter Glitch",
+      "description": "ReactBits letter-glitch adapted to Motionly's editable deterministic noise renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/letter-glitch/registry-item.json"
+    },
+    {
+      "name": "light-rays",
+      "type": "motionly:effect",
+      "title": "Light Rays",
+      "description": "ReactBits light-rays adapted to Motionly's editable deterministic prism renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/light-rays/registry-item.json"
+    },
+    {
+      "name": "lightning",
+      "type": "motionly:effect",
+      "title": "Lightning",
+      "description": "ReactBits lightning adapted to Motionly's editable deterministic prism renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/lightning/registry-item.json"
+    },
+    {
+      "name": "liquid-chrome",
+      "type": "motionly:effect",
+      "title": "Liquid Chrome",
+      "description": "ReactBits liquid-chrome adapted to Motionly's editable deterministic gradientMotion renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/liquid-chrome/registry-item.json"
+    },
+    {
+      "name": "orb",
+      "type": "motionly:effect",
+      "title": "Orb",
+      "description": "ReactBits orb adapted to Motionly's editable deterministic radialGlow renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/orb/registry-item.json"
+    },
+    {
+      "name": "silk",
+      "type": "motionly:effect",
+      "title": "Silk",
+      "description": "ReactBits silk adapted to Motionly's editable deterministic meshGradient renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/silk/registry-item.json"
+    },
+    {
+      "name": "squares",
+      "type": "motionly:effect",
+      "title": "Squares",
+      "description": "ReactBits squares adapted to Motionly's editable deterministic grid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/squares/registry-item.json"
+    },
+    {
+      "name": "threads",
+      "type": "motionly:effect",
+      "title": "Threads",
+      "description": "ReactBits threads adapted to Motionly's editable deterministic rippleGrid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/threads/registry-item.json"
+    },
+    {
+      "name": "waves",
+      "type": "motionly:effect",
+      "title": "Waves",
+      "description": "ReactBits waves adapted to Motionly's editable deterministic rippleGrid renderer.",
+      "tags": [
+        "effect",
+        "background",
+        "reactbits"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "effects/waves/registry-item.json"
+    },
+    {
       "name": "cloud",
       "type": "motionly:component",
       "title": "Cloud",
-      "description": "cloud: float, pulse, glow, receiveData, sendData, connect. Parts: glyph, glow.",
+      "description": "Cloud service node. Use for cloud architecture, data pipeline. Interaction: Receives and sends data. Parts: glyph, glow.",
       "tags": [
-        "component"
+        "component",
+        "infrastructure"
       ],
       "version": 1,
       "builtin": true,
@@ -1107,9 +1978,10 @@
       "name": "database",
       "type": "motionly:component",
       "title": "Database",
-      "description": "database: stackReveal, pulse, glow, receiveData, sendData, connect. Parts: stack, activity.",
+      "description": "Persistent data store. Use for database, storage, data pipeline. Interaction: Receives, stores, and sends data. Parts: stack, activity.",
       "tags": [
-        "component"
+        "component",
+        "infrastructure"
       ],
       "version": 1,
       "builtin": true,
@@ -1119,9 +1991,10 @@
       "name": "server",
       "type": "motionly:component",
       "title": "Server",
-      "description": "server: stackReveal, pulse, glow, receiveData, sendData, connect. Parts: chassis, status.",
+      "description": "Application server node. Use for server, api, backend architecture. Interaction: Activates and exchanges data. Parts: chassis, status.",
       "tags": [
-        "component"
+        "component",
+        "infrastructure"
       ],
       "version": 1,
       "builtin": true,
@@ -1131,21 +2004,57 @@
       "name": "arrow",
       "type": "motionly:component",
       "title": "Arrow",
-      "description": "arrow: draw, travel, connect, followPath, guideAttention. Parts: shaft, head.",
+      "description": "Directional relationship. Use for flow, connection, process direction. Interaction: Draws between subjects. Parts: shaft, head.",
       "tags": [
-        "component"
+        "component",
+        "infrastructure"
       ],
       "version": 1,
       "builtin": true,
       "manifest": "components/arrow/registry-item.json"
     },
     {
+      "name": "button",
+      "type": "motionly:component",
+      "title": "Button",
+      "description": "Primary interactive action. Use for button, call to action, submit control. Interaction: Hover, press, ripple, and click. Parts: surface, label, highlight.",
+      "tags": [
+        "component",
+        "input"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/button/button.motion",
+          "target": "compositions/button.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/button/registry-item.json"
+    },
+    {
+      "name": "dashboard",
+      "type": "motionly:component",
+      "title": "Dashboard",
+      "description": "Complete analytics dashboard. Use for dashboard, analytics, productivity workspace, kpi overview. Interaction: Cards stagger, metrics count, and charts draw. Parts: frame, cards, chart, metric, highlight.",
+      "tags": [
+        "component",
+        "data"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/dashboard/registry-item.json"
+    },
+    {
       "name": "phone",
       "type": "motionly:component",
       "title": "Phone",
-      "description": "phone: screenReveal, notification, tap, glow. Parts: frame, screen, status.",
+      "description": "Mobile device interface. Use for mobile app, phone screen, app inbox. Interaction: Screen and rows reveal in sequence. Parts: frame, screen, status.",
       "tags": [
-        "component"
+        "component",
+        "mobile"
       ],
       "version": 1,
       "builtin": true,
@@ -1155,45 +2064,23 @@
       "name": "browser",
       "type": "motionly:component",
       "title": "Browser",
-      "description": "browser: screenReveal, highlight, cursor, connect. Parts: chrome, viewport, controls.",
+      "description": "Browser-based product screen. Use for website, browser, web app. Interaction: Chrome and page content reveal. Parts: chrome, viewport, controls.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
       "manifest": "components/browser/registry-item.json"
     },
     {
-      "name": "dashboard",
-      "type": "motionly:component",
-      "title": "Dashboard",
-      "description": "dashboard: screenReveal, cardStagger, chartGrowth, count, highlight. Parts: frame, cards, chart, metric, highlight.",
-      "tags": [
-        "component"
-      ],
-      "version": 1,
-      "builtin": true,
-      "manifest": "components/dashboard/registry-item.json"
-    },
-    {
-      "name": "button",
-      "type": "motionly:component",
-      "title": "Button",
-      "description": "button: popIn, hoverLift, clickCompression, attentionGlow. Parts: surface, label, highlight.",
-      "tags": [
-        "component"
-      ],
-      "version": 1,
-      "builtin": true,
-      "manifest": "components/button/registry-item.json"
-    },
-    {
       "name": "logo",
       "type": "motionly:component",
       "title": "Logo",
-      "description": "logo: draw, reveal, glow, morph. Parts: mark, glow.",
+      "description": "Brand mark. Use for logo, brand reveal, identity. Interaction: Draws or reveals the real mark. Parts: mark, glow.",
       "tags": [
-        "component"
+        "component",
+        "media"
       ],
       "version": 1,
       "builtin": true,
@@ -1203,9 +2090,10 @@
       "name": "chart",
       "type": "motionly:component",
       "title": "Chart",
-      "description": "chart: chartGrowth, count, highlight, connect. Parts: panel, axis, bars, line, metric.",
+      "description": "Animated metric chart. Use for chart, graph, data visualization, growth. Interaction: Counts a metric and grows the series. Parts: panel, axis, bars, line, metric.",
       "tags": [
-        "component"
+        "component",
+        "data"
       ],
       "version": 1,
       "builtin": true,
@@ -1215,9 +2103,10 @@
       "name": "notification",
       "type": "motionly:component",
       "title": "Notification",
-      "description": "notification: popIn, reactsTo, glow, dismiss. Parts: card, stripe, icon, copy.",
+      "description": "Notification or toast card. Use for notification, notifications, notification stack, toast, alert, success banner, error banner. Interaction: Slides, pushes, reacts, and dismisses. Parts: card, stripe, icon, copy.",
       "tags": [
-        "component"
+        "component",
+        "feedback"
       ],
       "version": 1,
       "builtin": true,
@@ -1227,9 +2116,10 @@
       "name": "cursor",
       "type": "motionly:component",
       "title": "Cursor",
-      "description": "cursor: moveTo, click, ripple. Parts: pointer, ripple.",
+      "description": "Visible interaction pointer. Use for cursor, click, product walkthrough. Interaction: Travels, presses, and ripples. Parts: pointer, ripple.",
       "tags": [
-        "component"
+        "component",
+        "input"
       ],
       "version": 1,
       "builtin": true,
@@ -1239,9 +2129,10 @@
       "name": "codeeditor",
       "type": "motionly:component",
       "title": "Codeeditor",
-      "description": "codeeditor: typeIn, screenReveal, highlight, connect. Parts: frame, titlebar, lines, status.",
+      "description": "Developer code workspace. Use for code editor, developer workflow, ide. Interaction: Types code and reports status. Parts: frame, titlebar, lines, status.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
@@ -1251,9 +2142,10 @@
       "name": "website",
       "type": "motionly:component",
       "title": "Website",
-      "description": "website: screenReveal, highlight, cursor, connect. Parts: frame, nav, hero, cta, banner.",
+      "description": "Structured marketing website. Use for landing page, hero section, website. Interaction: Navigation, hero, and call to action reveal. Parts: frame, nav, hero, cta, banner.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
@@ -1263,9 +2155,10 @@
       "name": "terminal",
       "type": "motionly:component",
       "title": "Terminal",
-      "description": "terminal: typeIn, progress, connect. Parts: frame, titlebar, prompt, progress, status.",
+      "description": "Command-line workflow. Use for terminal, cli, developer workflow. Interaction: Types a command and advances progress. Parts: frame, titlebar, prompt, progress, status.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
@@ -1275,9 +2168,10 @@
       "name": "pricingcard",
       "type": "motionly:component",
       "title": "Pricingcard",
-      "description": "pricingcard: popIn, count, highlight. Parts: card, plan, price, features, cta.",
+      "description": "Pricing plan card. Use for pricing table, pricing plan, subscription. Interaction: Plan, price, features, and CTA cascade. Parts: card, plan, price, features, cta.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
@@ -1287,9 +2181,10 @@
       "name": "laptop",
       "type": "motionly:component",
       "title": "Laptop",
-      "description": "laptop: screenReveal, highlight, cursor, connect. Parts: lid, screen, nav, hero, cta, base.",
+      "description": "Laptop product frame. Use for desktop app, laptop, product demo. Interaction: Device and populated screen reveal. Parts: lid, screen, nav, hero, cta, base.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
@@ -1299,13 +2194,218 @@
       "name": "editor",
       "type": "motionly:component",
       "title": "Editor",
-      "description": "editor: screenReveal, typeIn, cardStagger, chartGrowth, count, highlight. Parts: frame, rail, topbar, canvas, timeline, panel, draft.",
+      "description": "Motionly editing workspace. Use for motion editor, animation editor, creative workflow. Interaction: Workspace parts assemble and animate. Parts: frame, rail, topbar, canvas, timeline, panel, draft.",
       "tags": [
-        "component"
+        "component",
+        "layout"
       ],
       "version": 1,
       "builtin": true,
       "manifest": "components/editor/registry-item.json"
+    },
+    {
+      "name": "card",
+      "type": "motionly:component",
+      "title": "Card",
+      "description": "Reusable content or feature card. Use for card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, eyebrow, headline, detail, cta, spotlight.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/card/registry-item.json"
+    },
+    {
+      "name": "form",
+      "type": "motionly:component",
+      "title": "Form",
+      "description": "Complete editable form panel. Use for form, login screen, sign in, signup, search form, password input. Interaction: Fields focus in order and the submit action settles. Parts: panel, title, detail, field0, field1, submit.",
+      "tags": [
+        "component",
+        "input"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/form/form.motion",
+          "target": "compositions/form.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/form/registry-item.json"
+    },
+    {
+      "name": "chat",
+      "type": "motionly:component",
+      "title": "Chat",
+      "description": "Complete chat conversation. Use for chat, discord chat, conversation, assistant response, ai chat. Interaction: Messages cascade, typing dots pulse, and content scrolls. Parts: frame, header, avatar, bubble0, bubble1, bubble2, typing.",
+      "tags": [
+        "component",
+        "communication"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/chat/registry-item.json"
+    },
+    {
+      "name": "modal",
+      "type": "motionly:component",
+      "title": "Modal",
+      "description": "Focused dialog over a backdrop. Use for modal, dialog, confirmation, command palette. Interaction: Backdrop appears, panel scales up, and focus moves to the action. Parts: backdrop, panel, title, detail, cancel, confirm.",
+      "tags": [
+        "component",
+        "feedback"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/modal/registry-item.json"
+    },
+    {
+      "name": "navigation",
+      "type": "motionly:component",
+      "title": "Navigation",
+      "description": "Responsive navigation bar or dock. Use for navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: bar, brand, active, item0, item1, item2, item3.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/navigation/registry-item.json"
+    },
+    {
+      "name": "loader",
+      "type": "motionly:component",
+      "title": "Loader",
+      "description": "Loading and progress indicator. Use for loader, loading spinner, progress, skeleton loader. Interaction: Spins, pulses, or fills deterministically. Parts: track, progress, label.",
+      "tags": [
+        "component",
+        "feedback"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/loader/loader.motion",
+          "target": "compositions/loader.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/loader/registry-item.json"
+    },
+    {
+      "name": "tilted-card",
+      "type": "motionly:component",
+      "title": "Tilted Card",
+      "description": "Tilted editorial feature card with a numbered poster hierarchy. Use for tilted card, editorial feature, opening promise. Interaction: The poster settles, then its index and accent rail answer in sequence. Parts: poster, stripe, index, eyebrow, headline, detail.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/tilted-card/tilted-card.motion",
+          "target": "compositions/tilted-card.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/tilted-card/registry-item.json"
+    },
+    {
+      "name": "magic-bento",
+      "type": "motionly:component",
+      "title": "Magic Bento",
+      "description": "Asymmetric bento composition with one focal tile and two live modules. Use for magic bento, feature summary, metric card. Interaction: The focal tile leads while the stat and status modules follow. Parts: surface, mainTile, topTile, bottomTile, eyebrow, headline, detail, stat, status.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/magic-bento/magic-bento.motion",
+          "target": "compositions/magic-bento.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/magic-bento/registry-item.json"
+    },
+    {
+      "name": "fluid-glass",
+      "type": "motionly:component",
+      "title": "Fluid Glass",
+      "description": "Layered translucent material card with a refracted edge treatment. Use for fluid glass, material study, premium feature card. Interaction: The backplate offsets, the glass surface settles, and side chips cascade. Parts: backplate, surface, rule, eyebrow, headline, detail, chip0, chip1, chip2.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/fluid-glass/fluid-glass.motion",
+          "target": "compositions/fluid-glass.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/fluid-glass/registry-item.json"
+    },
+    {
+      "name": "spotlight-card",
+      "type": "motionly:component",
+      "title": "Spotlight Card",
+      "description": "Dark focus card with a hard moving light and anchored footer. Use for spotlight card, feature focus, high-contrast callout. Interaction: A hard light travels across the card before the copy and footer settle. Parts: surface, sun, eyebrow, headline, detail, footer.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/components/spotlight-card/spotlight-card.motion",
+          "target": "compositions/spotlight-card.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "components/spotlight-card/registry-item.json"
+    },
+    {
+      "name": "metric-card",
+      "type": "motionly:component",
+      "title": "Metric Card",
+      "description": "Single-stat card with count-up value and a drawn trend line. Use for metric card, KPI, dashboard statistic. Interaction: The value counts up while its trend draws across the baseline. Parts: surface, eyebrow, value, delta, detail, sparkline, baseline.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/metric-card/registry-item.json"
+    },
+    {
+      "name": "media-card",
+      "type": "motionly:component",
+      "title": "Media Card",
+      "description": "Image-backed editorial card with a compact text hierarchy. Use for media card, product screenshot, portfolio tile. Interaction: The media settles first, followed by the caption hierarchy. Parts: surface, media, eyebrow, headline, detail.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/media-card/registry-item.json"
     },
     {
       "name": "productHero",
@@ -1551,7 +2651,7 @@
       "name": "masonryGrid",
       "type": "motionly:layout",
       "title": "Masonry Grid",
-      "description": "Column-packed grid for many screenshots of differing height. Use for: screenshot gallery, portfolio, press collage. Items 3-12.",
+      "description": "Column-packed grid for many screenshots of differing height. Use for: screenshot gallery, portfolio, press collage, pinterest masonry. Items 3-12.",
       "tags": [
         "layout"
       ],
@@ -1691,7 +2791,7 @@
       "name": "floatingCollage",
       "type": "motionly:layout",
       "title": "Floating Collage",
-      "description": "Deterministic depth collage of floating cards. Use for: ambient background, brand collage. Items 3-9.",
+      "description": "Deterministic fanned collage of layered, rotated cards. Use for: card assembly, brand collage, social design wall. Items 3-9.",
       "tags": [
         "layout"
       ],
@@ -1836,6 +2936,35 @@
       "project": "preset/motionly/motionly.motion",
       "preview": "preset/motionly/motionly-preset.gif",
       "manifest": "presets/motionly/registry-item.json"
+    },
+    {
+      "name": "database-indexing",
+      "type": "motionly:preset",
+      "title": "How Database Indexing Works",
+      "description": "A 42-second editorial explainer following one query from full table scan to a direct index seek.",
+      "tags": [
+        "database",
+        "indexing",
+        "sql",
+        "engineering",
+        "explainer"
+      ],
+      "version": 1,
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration": 42,
+      "files": [
+        {
+          "path": "preset/database-indexing",
+          "target": "presets/database-indexing",
+          "type": "motionly:preset"
+        }
+      ],
+      "project": "preset/database-indexing/database-indexing.motion",
+      "preview": "preset/database-indexing/database-indexing-preview.png",
+      "manifest": "presets/database-indexing/registry-item.json"
     }
   ]
 }

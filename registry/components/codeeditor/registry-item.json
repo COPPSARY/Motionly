@@ -2,9 +2,10 @@
   "name": "codeeditor",
   "type": "motionly:component",
   "title": "Codeeditor",
-  "description": "codeeditor: typeIn, screenReveal, highlight, connect. Parts: frame, titlebar, lines, status.",
+  "description": "Developer code workspace. Use for code editor, developer workflow, ide. Interaction: Types code and reports status. Parts: frame, titlebar, lines, status.",
   "tags": [
-    "component"
+    "component",
+    "layout"
   ],
   "version": 1,
   "builtin": true,
@@ -57,6 +58,14 @@
       "type": "list",
       "docs": "Built-in behaviors."
     },
+    "variant": {
+      "type": "string",
+      "docs": "Visual variant: default."
+    },
+    "motionPreset": {
+      "type": "string",
+      "docs": "Motion recipe: minimal, smooth, spring, premium."
+    },
     "parent": {
       "type": "string",
       "docs": "Parent scene or group."
@@ -96,7 +105,36 @@
   },
   "defaults": {
     "width": 680,
-    "behavior": "typeIn"
+    "behavior": "typeIn",
+    "variant": "default",
+    "motionPreset": "premium"
+  },
+  "metadata": {
+    "category": "layout",
+    "purpose": "Developer code workspace.",
+    "useCases": [
+      "code editor",
+      "developer workflow",
+      "ide"
+    ],
+    "inputs": [
+      "label",
+      "detail",
+      "values"
+    ],
+    "interaction": "Types code and reports status.",
+    "recommendedSpacing": 24,
+    "variants": [
+      "default"
+    ],
+    "motionPresets": [
+      "minimal",
+      "smooth",
+      "spring",
+      "premium"
+    ],
+    "accessibility": "Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.",
+    "responsive": "Scales from its authored width and preserves touch-sized interactive targets."
   },
   "manifest": "components/codeeditor/registry-item.json"
 }

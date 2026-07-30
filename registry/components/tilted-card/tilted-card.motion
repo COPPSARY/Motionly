@@ -1,0 +1,48 @@
+// tilted-card — editable registry component recipe
+canvas {
+  size 1920x1080
+  fps 60
+  duration 4.8s
+}
+
+camera {
+  zoom 1
+}
+
+theme {
+  accent #7CF7C5
+}
+
+beat reveal {
+  duration 1.6s
+  focus subject
+  route uiLife
+  label "Reveal component"
+}
+
+beat inspect {
+  duration 1.6s
+  focus subject
+  zoom 1.12
+  route cameraIntent
+  label "Inspect motion"
+}
+
+beat settle {
+  duration 1.6s
+  focus subject
+  zoom 1
+  route cameraIntent
+  label "Settle"
+}
+
+component subject {
+  type tilted-card
+  beat reveal
+  role main
+  motionPreset premium
+  label "FEATURE"
+  headline "Replace this headline"
+  detail "Keep the component, motion, and layout. Change only the content."
+  cta "Explore →"
+}

@@ -11,6 +11,7 @@ import {
   moveRegistry,
   showcaseRegistry,
 } from '../../src/semantic/catalog';
+import { PUBLISHED_SEMANTIC_COMPONENT_TYPES } from '../../src/semantic/vector-registry';
 
 const registry = JSON.parse(readFileSync(resolve('registry/registry.json'), 'utf8'));
 
@@ -40,6 +41,35 @@ describe('Motionly registry catalog', () => {
     expect(types).toContain('motionly:showcase');
     expect(types).toContain('motionly:layout');
     expect(types).toContain('motionly:beat');
+  });
+
+  it('publishes semantic component intent metadata', () => {
+    const chat = JSON.parse(
+      readFileSync(resolve('registry/components/chat/registry-item.json'), 'utf8')
+    );
+    expect(chat.metadata).toMatchObject({
+      category: 'communication',
+      recommendedSpacing: 24,
+    });
+    expect(chat.metadata.useCases).toContain('discord chat');
+    expect(chat.metadata.motionPresets).toContain('premium');
+  });
+
+  it('publishes only components backed by real structured builders', () => {
+    const names = registry.items
+      .filter((item: { type: string }) => item.type === 'motionly:component')
+      .map((item: { name: string }) => item.name)
+      .sort();
+    expect(names).toEqual([...PUBLISHED_SEMANTIC_COMPONENT_TYPES].sort());
+  });
+
+  it('describes specialized component parts truthfully', () => {
+    const bento = JSON.parse(
+      readFileSync(resolve('registry/components/magic-bento/registry-item.json'), 'utf8')
+    );
+    expect(bento.description).toContain('mainTile');
+    expect(bento.description).toContain('stat');
+    expect(bento.metadata.purpose).toContain('Asymmetric bento');
   });
 
   it('keeps every preset in its own source folder', () => {

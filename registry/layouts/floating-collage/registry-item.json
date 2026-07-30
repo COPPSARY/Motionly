@@ -2,7 +2,7 @@
   "name": "floatingCollage",
   "type": "motionly:layout",
   "title": "Floating Collage",
-  "description": "Deterministic depth collage of floating cards. Use for: ambient background, brand collage. Items 3-9.",
+  "description": "Deterministic fanned collage of layered, rotated cards. Use for: card assembly, brand collage, social design wall. Items 3-9.",
   "tags": [
     "layout"
   ],

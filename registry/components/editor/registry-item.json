@@ -2,9 +2,10 @@
   "name": "editor",
   "type": "motionly:component",
   "title": "Editor",
-  "description": "editor: screenReveal, typeIn, cardStagger, chartGrowth, count, highlight. Parts: frame, rail, topbar, canvas, timeline, panel, draft.",
+  "description": "Motionly editing workspace. Use for motion editor, animation editor, creative workflow. Interaction: Workspace parts assemble and animate. Parts: frame, rail, topbar, canvas, timeline, panel, draft.",
   "tags": [
-    "component"
+    "component",
+    "layout"
   ],
   "version": 1,
   "builtin": true,
@@ -57,6 +58,14 @@
       "type": "list",
       "docs": "Built-in behaviors."
     },
+    "variant": {
+      "type": "string",
+      "docs": "Visual variant: default."
+    },
+    "motionPreset": {
+      "type": "string",
+      "docs": "Motion recipe: minimal, smooth, spring, premium."
+    },
     "parent": {
       "type": "string",
       "docs": "Parent scene or group."
@@ -96,7 +105,38 @@
   },
   "defaults": {
     "width": 1200,
-    "behavior": "screenReveal"
+    "behavior": "screenReveal",
+    "variant": "default",
+    "motionPreset": "premium"
+  },
+  "metadata": {
+    "category": "layout",
+    "purpose": "Motionly editing workspace.",
+    "useCases": [
+      "motion editor",
+      "animation editor",
+      "creative workflow"
+    ],
+    "inputs": [
+      "label",
+      "detail",
+      "headline",
+      "values",
+      "cta"
+    ],
+    "interaction": "Workspace parts assemble and animate.",
+    "recommendedSpacing": 24,
+    "variants": [
+      "default"
+    ],
+    "motionPresets": [
+      "minimal",
+      "smooth",
+      "spring",
+      "premium"
+    ],
+    "accessibility": "Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.",
+    "responsive": "Scales from its authored width and preserves touch-sized interactive targets."
   },
   "manifest": "components/editor/registry-item.json"
 }

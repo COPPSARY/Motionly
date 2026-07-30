@@ -2,9 +2,10 @@
   "name": "server",
   "type": "motionly:component",
   "title": "Server",
-  "description": "server: stackReveal, pulse, glow, receiveData, sendData, connect. Parts: chassis, status.",
+  "description": "Application server node. Use for server, api, backend architecture. Interaction: Activates and exchanges data. Parts: chassis, status.",
   "tags": [
-    "component"
+    "component",
+    "infrastructure"
   ],
   "version": 1,
   "builtin": true,
@@ -57,6 +58,14 @@
       "type": "list",
       "docs": "Built-in behaviors."
     },
+    "variant": {
+      "type": "string",
+      "docs": "Visual variant: default."
+    },
+    "motionPreset": {
+      "type": "string",
+      "docs": "Motion recipe: minimal, smooth, spring, premium."
+    },
     "parent": {
       "type": "string",
       "docs": "Parent scene or group."
@@ -96,7 +105,34 @@
   },
   "defaults": {
     "width": 180,
-    "behavior": "premiumReveal activate"
+    "behavior": "premiumReveal",
+    "variant": "default",
+    "motionPreset": "premium"
+  },
+  "metadata": {
+    "category": "infrastructure",
+    "purpose": "Application server node.",
+    "useCases": [
+      "server",
+      "api",
+      "backend architecture"
+    ],
+    "inputs": [
+      "label"
+    ],
+    "interaction": "Activates and exchanges data.",
+    "recommendedSpacing": 24,
+    "variants": [
+      "default"
+    ],
+    "motionPresets": [
+      "minimal",
+      "smooth",
+      "spring",
+      "premium"
+    ],
+    "accessibility": "Preserve readable contrast, labels, focus order, and reduced-motion fallbacks.",
+    "responsive": "Scales from its authored width and preserves touch-sized interactive targets."
   },
   "manifest": "components/server/registry-item.json"
 }

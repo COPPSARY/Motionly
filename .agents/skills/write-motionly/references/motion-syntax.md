@@ -571,7 +571,8 @@ editable multi-part vector artwork with staggered entrance choreography —
 never a lone icon or an empty rectangle. Types: `cloud`, `database`,
 `server`, `arrow`, `button`, `dashboard`, `phone`, `browser`, `logo`,
 `chart`, `notification`, `cursor`, `codeeditor`, `website`, `terminal`,
-`pricingcard`, `laptop`, `editor` (the Motionly workspace itself).
+`pricingcard`, `laptop`, `editor` (the Motionly workspace itself), `card`,
+`form`, `chat`, `modal`, and `navigation`.
 Component text renders in Space Grotesk, the bundled display face, so
 composed scenes share one typographic system. Prefer composing scenes from
 these components over hand-drawing UI.
@@ -633,17 +634,24 @@ component toast {
   enters a component just after that target's click. `exitAt`/`exitDuration`
   choreograph a deliberate exit.
 - Content props: `label`, `detail`, `headline`, `url`, `cta`, `values`,
-  `labels`, `countTo`, `surface` (panel fill). Separate multi-item
-  `values`/`labels` with two spaces or commas.
+  `labels`, `countTo`, `surface` (panel fill), `variant`, and `motionPreset`.
+  Motion presets are `minimal`, `smooth`, `spring`, and `premium`. Separate
+  multi-item `values`/`labels` with two spaces or commas.
+- Common intent maps directly to the registry: login/sign-in → `form`;
+  Discord/assistant conversation → `chat`; notification/toast → `notification`;
+  dialog/confirmation → `modal`; mobile navigation/dock → `navigation`;
+  feature/KPI card → `card`.
 
 Scenes support `enter`/`exit` fade envelopes (`enter .35s`, `exit .5s`) so a
 whole composition enters and leaves cleanly instead of popping at the scene
 boundary. Text elements render animated count-ups with a numeric `value` plus
 `countDecimals`, `countSeparator`, `countPrefix`, and `countSuffix`.
 
-## UI Components
+## Raw UI Primitives
 
-Cards, buttons, progress bars, badges, and panels are standalone `overlay` shapes (no `parent`) composed with the normal shape/fill/text system above, animated with the presets below. There are no dedicated `button`/`card`/`modal` element kinds — everything is built from `rect`/`text`/`circle` overlays, kept purposeful rather than growing a large widget library.
+Use semantic `component` blocks first. Standalone `overlay` shapes remain useful
+for unique progress bars, badges, masks, and structural panels that no registry
+component represents.
 
 ```motion
 overlay pricingCard {

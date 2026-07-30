@@ -330,6 +330,9 @@ function applyComposition(
   if (slot) {
     if (properties['x'] === undefined) properties['x'] = slot.x;
     if (properties['y'] === undefined) properties['y'] = slot.y;
+    if (properties['rotation'] === undefined && slot.rotation) {
+      properties['rotation'] = slot.rotation;
+    }
     if (properties['width'] === undefined) properties['width'] = fitWidth(node, slot);
     if (properties['height'] === undefined && acceptsHeight(node.kind)) {
       properties['height'] = slot.height;
@@ -340,17 +343,42 @@ function applyComposition(
 
   if (SELF_TIMED.has(node.kind)) {
     properties['delay'] = `${round(delay)}s`;
-    return [{ ...node, properties }];
+    const lowered = { ...node, properties };
+    return slot && node.kind === 'component'
+      ? [lowered, arrival(node.name, properties, slot, round(delay))]
+      : [lowered];
   }
 
   const authored = Boolean(
     properties['animation'] || properties['textAnimation'] || properties['backgroundEffect']
   );
-  if (authored || (!slot && beatStart === undefined)) {
+  if (authored) {
+    for (const key of ['animation', 'textAnimation', 'backgroundEffect']) {
+      if (properties[key] !== undefined) {
+        properties[key] = offsetPresetDelay(properties[key], delay);
+      }
+    }
+    return [{ ...node, properties }];
+  }
+  if (!slot && beatStart === undefined) {
     return [{ ...node, properties }];
   }
 
   return [{ ...node, properties }, arrival(node.name, properties, slot, round(delay))];
+}
+
+function offsetPresetDelay(value: unknown, offset: number): string {
+  const source = String(value ?? '').trim();
+  if (!source || offset === 0) return source;
+  const open = source.indexOf('(');
+  if (open < 0 || !source.endsWith(')')) return `${source}(delay ${round(offset)}s)`;
+  const body = source.slice(open + 1, -1).trim();
+  const delay = /\bdelay\s+([^\s,)]+)/.exec(body);
+  if (delay) {
+    const resolved = timeValue(delay[1], 0) + offset;
+    return `${source.slice(0, open + 1)}${body.replace(delay[0], `delay ${round(resolved)}s`)})`;
+  }
+  return `${source.slice(0, open + 1)}delay ${round(offset)}s${body ? ` ${body}` : ''})`;
 }
 
 /**
@@ -372,6 +400,7 @@ function arrival(
   delay: number
 ): AnimationNode {
   const y = numberValue(properties['y'], 0);
+  const rotation = numberValue(properties['rotation'], 0);
   const travel = slot?.travel ?? ARRIVAL.support.travel;
   const duration = slot?.duration ?? ARRIVAL.support.duration;
   properties['opacity'] = properties['opacity'] ?? 0;
@@ -383,9 +412,19 @@ function arrival(
     from: {},
     to: {},
     keyframes: [
-      { offset: 0, properties: { opacity: 0, y: round(y + travel) } },
-      { offset: Number(reveal.toFixed(4)), properties: { opacity: 1, y: round(y + travel) } },
-      { offset: 1, properties: { opacity: 1, y: round(y) } },
+      {
+        offset: 0,
+        properties: {
+          opacity: 0,
+          y: round(y + travel),
+          rotation: round(rotation * 1.8),
+        },
+      },
+      {
+        offset: Number(reveal.toFixed(4)),
+        properties: { opacity: 1, y: round(y + travel), rotation: round(rotation * 1.8) },
+      },
+      { offset: 1, properties: { opacity: 1, y: round(y), rotation: round(rotation) } },
     ],
     delay,
     duration,

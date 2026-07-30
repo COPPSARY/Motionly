@@ -82,6 +82,11 @@ describe('AI chat helpers', () => {
     expect(String(init.body)).toContain('group owns parent');
     expect(String(init.body)).toContain('Shared continuity is transition');
     expect(String(init.body)).toContain('component name { type cloud ... }');
+    expect(String(init.body)).toContain(
+      'semantic component registry is your primary UI vocabulary'
+    );
+    expect(String(init.body)).toContain('chat, modal, navigation');
+    expect(String(init.body)).toContain('tilted-card');
     expect(String(init.body)).toContain('Use connects TARGET');
     expect(String(init.body)).toContain('Archetypes (catalog v1)');
     expect(String(init.body)).toContain('archetype NAME');

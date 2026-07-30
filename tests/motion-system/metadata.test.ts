@@ -14,7 +14,7 @@ import {
   layoutRegistry,
   showcaseRegistry,
 } from '../../src/semantic/catalog';
-import { SEMANTIC_COMPONENT_TYPES } from '../../src/semantic/vector-registry';
+import { PUBLISHED_SEMANTIC_COMPONENT_TYPES } from '../../src/semantic/vector-registry';
 
 describe('motion component metadata', () => {
   it('describes every selectable block with complete, valid metadata', () => {
@@ -49,7 +49,7 @@ describe('motion component metadata', () => {
         .sort();
     expect(names('layout')).toEqual([...LAYOUT_TYPES].sort());
     expect(names('showcase')).toEqual([...SHOWCASE_TYPES].sort());
-    expect(names('component')).toEqual([...SEMANTIC_COMPONENT_TYPES].sort());
+    expect(names('component')).toEqual([...PUBLISHED_SEMANTIC_COMPONENT_TYPES].sort());
     expect(names('archetype')).toEqual(
       archetypeRegistry()
         .map((entry) => entry.name)
@@ -123,11 +123,25 @@ describe('motion component metadata', () => {
     expect(selectComponents(query)[0]!.metadata.name).toBe('bentoGrid');
   });
 
+  it.each([
+    ['Create a Discord chat', 'chat'],
+    ['Build a login screen', 'form'],
+    ['Show notifications', 'notification'],
+    ['Open a confirmation modal', 'modal'],
+    ['Add mobile navigation', 'navigation'],
+    ['Create Pinterest', 'masonryGrid'],
+  ])('maps common UI intent %s to %s', (intent, expected) => {
+    expect(selectComponents({ intent })[0]!.metadata.name).toBe(expected);
+  });
+
   it('builds a prompt index the model can select from', () => {
     const prompt = metadataPrompt();
     expect(prompt).toContain('select blocks by name');
     for (const type of SHOWCASE_TYPES) expect(prompt).toContain(type);
     for (const type of LAYOUT_TYPES) expect(prompt).toContain(type);
+    for (const type of PUBLISHED_SEMANTIC_COMPONENT_TYPES) expect(prompt).toContain(type);
+    expect(prompt).toContain('Semantic UI components');
+    expect(prompt).toContain('Accessibility:');
     expect(prompt).toContain('Items: 3-9');
   });
 });

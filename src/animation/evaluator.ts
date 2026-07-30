@@ -81,8 +81,11 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
       return { ...element, render };
     });
 
+  // Structural transitions must move the group before its transform is pushed
+  // into visible descendants. Leaf transitions stay here in resolved world space.
+  applySharedTransitions(scene, elements, time, 'structural');
   resolveHierarchy(elements);
-  applySharedTransitions(scene, elements, time);
+  applySharedTransitions(scene, elements, time, 'leaf');
 
   // Visual tracks stack bottom-to-top: higher track numbers render last.
   // Authored source order is the explicit same-track tie-breaker.
@@ -157,6 +160,9 @@ function prepareScene(scene: Scene): PreparedScene {
     const targetAnimations = animationsByTarget.get(animation.target);
     if (targetAnimations) targetAnimations.push(animation);
     else animationsByTarget.set(animation.target, [animation]);
+  }
+  for (const animations of animationsByTarget.values()) {
+    animations.sort((left, right) => left.delay - right.delay);
   }
 
   const tracksById = new Map(scene.tracks.map((track) => [track.id, track]));
@@ -308,7 +314,12 @@ function resolveHierarchy(elements: EvaluatedElement[]): void {
     elements[index] = resolve(elements[index]!);
 }
 
-function applySharedTransitions(scene: Scene, elements: EvaluatedElement[], time: number): void {
+function applySharedTransitions(
+  scene: Scene,
+  elements: EvaluatedElement[],
+  time: number,
+  phase: 'structural' | 'leaf'
+): void {
   const byId = new Map(elements.map((element) => [element.id, element]));
   for (const transition of scene.transitions) {
     const start = transition.at - transition.duration / 2;
@@ -316,6 +327,12 @@ function applySharedTransitions(scene: Scene, elements: EvaluatedElement[], time
     const source = byId.get(transition.from);
     const target = byId.get(transition.to);
     if (!source || !target) continue;
+    const structural =
+      source.kind === 'group' ||
+      source.kind === 'scene' ||
+      target.kind === 'group' ||
+      target.kind === 'scene';
+    if ((phase === 'structural') !== structural) continue;
     const progress = ease(clamp((time - start) / transition.duration), transition.easing);
     const from = source.render as unknown as Record<string, unknown>;
     const to = target.render as unknown as Record<string, unknown>;
@@ -343,6 +360,23 @@ function applySharedTransitions(scene: Scene, elements: EvaluatedElement[], time
           progress
         );
       }
+    }
+    if (structural) {
+      const fromWidth = finiteNumber(from['width'], 0);
+      const toWidth = finiteNumber(to['width'], 0);
+      if (fromWidth > 0 && toWidth > 0) {
+        const fromScale = finiteNumber(from['scale'], 1);
+        const fittedScale = (toWidth * finiteNumber(to['scale'], 1)) / fromWidth;
+        next['scale'] = fromScale + (fittedScale - fromScale) * progress;
+      }
+      const handoff = clamp((progress - 0.62) / 0.38);
+      next['opacity'] = finiteNumber(from['opacity'], 1) * (1 - handoff);
+      source.render = next as unknown as ElementProperties;
+      target.render = {
+        ...target.render,
+        opacity: finiteNumber(to['opacity'], 1) * handoff,
+      } as ElementProperties;
+      continue;
     }
     if (source.kind === 'path' && target.kind === 'path') {
       const morphed = interpolateCompatiblePath(
@@ -659,6 +693,7 @@ function entranceState(animations: Animation[]): { delay: number; state: Propert
 
   let delay = Infinity;
   for (const animation of animations) {
+    if (animation.repeat !== undefined) continue;
     if (animation.delay < delay && declaresHiddenStart(animationStartValues(animation))) {
       delay = animation.delay;
     }
@@ -668,6 +703,7 @@ function entranceState(animations: Animation[]): { delay: number; state: Propert
   if (delay > 0 && Number.isFinite(delay)) {
     const state: PropertyMap = {};
     for (const animation of animations) {
+      if (animation.repeat !== undefined) continue;
       if (animation.delay !== delay) continue;
       const start = animationStartValues(animation);
       if (declaresHiddenStart(start)) Object.assign(state, start);

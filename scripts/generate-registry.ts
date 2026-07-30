@@ -104,6 +104,7 @@ for (const group of builtins) {
       implementation: { name: entry.name, source: group.source },
       schema: entry.schema,
       defaults: entry.defaults,
+      ...(entry.metadata ? { metadata: entry.metadata } : {}),
       ...(example && exampleFile
         ? {
             duration: example.duration,

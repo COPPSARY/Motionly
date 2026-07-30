@@ -14,9 +14,9 @@ import {
 } from './vector-registry';
 import {
   archetypeRegistry,
-  componentRegistry,
   effectRegistry,
   resolveTheme,
+  componentRegistry,
   validateCatalogProperties,
   type MotionTheme,
 } from './catalog';
@@ -138,6 +138,9 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
       'cta',
       'opacity',
       'scale',
+      'rotation',
+      'skewX',
+      'skewY',
       'center',
       'track',
       'start',
@@ -213,6 +216,8 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
         node.properties['countTo'] !== undefined
           ? numberValue(node.properties['countTo'], 0)
           : undefined,
+      variant: stringValue(node.properties['variant']),
+      motionPreset: stringValue(node.properties['motionPreset']),
       clickAt: timing.clickAt,
       exitAt:
         node.properties['exitAt'] !== undefined
@@ -671,6 +676,8 @@ function componentRootProperties(
   behaviors: string[],
   layer: string
 ): Record<string, unknown> {
+  const definition = vectorDefinition(type);
+  const width = numberValue(node.properties['width'], definition.width);
   const properties = Object.fromEntries(
     Object.entries(node.properties).filter(
       ([key]) => !COMPILER_PROPERTIES.has(key) && !key.includes('.')
@@ -679,6 +686,8 @@ function componentRootProperties(
   return {
     ...properties,
     center: node.properties['center'] ?? true,
+    width,
+    height: Math.round((width * definition.height) / definition.width),
     opacity: node.properties['opacity'] ?? 1,
     layer,
     ...(node.properties['animation'] ? { animation: node.properties['animation'] } : {}),

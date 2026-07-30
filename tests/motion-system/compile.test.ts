@@ -139,6 +139,7 @@ describe('motion system lowering', () => {
     }
     const positions = new Set(cards.map((card) => `${card.properties.x}:${card.properties.y}`));
     expect(positions.size).toBe(3);
+    expect(scene.animations.some((animation) => animation.target === 'planCard')).toBe(true);
   });
 
   it('fits fixed-aspect components inside their slot instead of stretching them', () => {
@@ -181,6 +182,25 @@ component three {
     expect(entranceOf(scene, 'planCard')).toBeLessThan(12.5);
     // The showcase on the reveal beat waits for 5s.
     expect(entranceOf(scene, 'product')).toBeGreaterThanOrEqual(5);
+  });
+
+  it('offsets authored text presets by the attached beat start', () => {
+    const scene = build(`
+beat intro { duration 5s }
+beat reveal { duration 5s }
+text title {
+  value "Later"
+  beat reveal
+  textAnimation "maskReveal(split words delay .25s duration .5s)"
+}`);
+    const words = scene.animations.filter((animation) => animation.target.startsWith('title__'));
+    expect(words.length).toBeGreaterThan(0);
+    expect(Math.min(...words.map((animation) => animation.delay))).toBe(5.25);
+    expect(
+      evaluateScene(scene, 2).elements.filter(
+        (element) => element.id.startsWith('title__') && Number(element.render.opacity) > 0
+      )
+    ).toHaveLength(0);
   });
 
   it('staggers layout siblings instead of firing them together', () => {
@@ -325,6 +345,47 @@ component cardB {
     expect(scene.transitions[0]!.from).toBe('cardA');
     expect(scene.transitions[0]!.to).toBe('cardB');
     expect(scene.transitions[0]!.at).toBe(6);
+  });
+
+  it('pushes a component-root morph into its visible children', () => {
+    const scene = build(`beat one {
+  duration 6s
+}
+
+beat two {
+  duration 6s
+  transition sharedElement
+  from cardA
+  to cardB
+  transitionDuration 1s
+}
+
+component cardA {
+  type card
+  x -400
+  width 600
+}
+
+component cardB {
+  type card
+  x 400
+  width 300
+}`);
+    const middle = evaluateScene(scene, 6);
+    const sourceSurface = middle.elements.find((element) => element.id === 'cardA__surface')!;
+    const targetSurface = middle.elements.find((element) => element.id === 'cardB__surface')!;
+    expect(Number(sourceSurface.render.x)).toBeCloseTo(0, 0);
+    expect(Number(sourceSurface.render.scale)).toBeCloseTo(0.75, 1);
+    expect(Number(sourceSurface.render.opacity)).toBeCloseTo(1, 1);
+    expect(Number(targetSurface.render.opacity)).toBeCloseTo(0, 1);
+
+    const handoff = evaluateScene(scene, 6.35);
+    expect(
+      Number(handoff.elements.find((element) => element.id === 'cardA__surface')!.render.opacity)
+    ).toBeLessThan(0.5);
+    expect(
+      Number(handoff.elements.find((element) => element.id === 'cardB__surface')!.render.opacity)
+    ).toBeGreaterThan(0.5);
   });
 
   it('evaluates and renders across the whole timeline without errors', () => {
