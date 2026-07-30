@@ -92,7 +92,6 @@ Browse the built-in animation registry or install a complete editable preset:
 ```bash
 npx @coppsary/motionly catalog --type move --tag text
 npx @coppsary/motionly catalog --type preset
-npx @coppsary/motionly add bsky
 ```
 
 Moves, effects, components, and archetypes are built into the engine; preset
