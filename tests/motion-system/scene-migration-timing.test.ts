@@ -90,11 +90,11 @@ describe('migration preserves timing', () => {
     }
   });
 
-  it('gives a departing member an exit instead of letting it pop at the boundary', () => {
+  it('keeps scene members visible across boundaries unless a scene is cleared', () => {
     const after = migrateToScenes(parseMotion(flat)).program;
-    // `early` does not continue into scene 2, so the boundary animates it out.
-    // Before scenes it simply stopped being drawn.
-    expect(sample(after, 'early', 5.99)).toBeLessThan(sample(after, 'early', 3));
+    // Scenes are organizational by default: members stay visible after their source scene
+    // unless a scene is explicitly marked `clear`.
+    expect(sample(after, 'early', 5.99)).toBe(sample(after, 'early', 3));
     expect(sample(parseMotion(flat), 'early', 5.99)).toBe(1);
   });
 

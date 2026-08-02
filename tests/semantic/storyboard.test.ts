@@ -235,10 +235,10 @@ text t { scene a value "x" }
 
     const later = evaluateScene(scene, 6);
     expect(later.elements.map((element) => element.id)).toContain('panel');
-    // `tagline` does not continue, so the boundary faded it out rather than
-    // clearing the frame; it is still in the graph, just invisible.
+    // Scene membership is organizational by default, so members stay visible
+    // after their source scene unless a scene declares `clear`.
     const tagline = later.elements.find((element) => element.id === 'tagline');
-    expect(Number(tagline!.render.opacity)).toBeLessThan(0.05);
+    expect(Number(tagline!.render.opacity)).toBeGreaterThan(0.9);
     // The shared brandmark is never cleared at the boundary.
     expect(later.elements.map((element) => element.id)).toContain('brandmark');
   });

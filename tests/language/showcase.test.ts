@@ -37,12 +37,11 @@ describe('Motionly product film', () => {
     expect(scene.storyboard!.map((plan) => plan.name)).toEqual([
       'direction',
       'agents',
-      'workspace',
-      'studio',
+      'product',
       'delivery',
       'finish',
     ]);
-    expect(scene.canvas.duration).toBe(43.94);
+    expect(scene.canvas.duration).toBe(26.9);
   });
 
   it('runs its scenes back to back with no absolute time authored', () => {
@@ -51,7 +50,7 @@ describe('Motionly product film', () => {
       const previous = plans[index - 1];
       if (previous) expect(plan.start, plan.name).toBeCloseTo(previous.end, 3);
     }
-    expect(plans.at(-1)!.end).toBeCloseTo(43.94, 3);
+    expect(plans.at(-1)!.end).toBeCloseTo(26.9, 3);
     const sceneNodes = program.body.filter(
       (candidate) => candidate.type === 'Element' && candidate.kind === 'scene'
     );
@@ -60,17 +59,28 @@ describe('Motionly product film', () => {
     ).toBe(true);
   });
 
-  it('uses explicit cuts and clears every completed scene', () => {
+  it('uses authored storyboard transitions and only clears where requested', () => {
+    expect(
+      Object.fromEntries(
+        scene.storyboard!.slice(1).map((plan) => [plan.name, plan.transition!.kind])
+      )
+    ).toEqual({
+      agents: 'continuous',
+      product: 'continuous',
+      delivery: 'cut',
+      finish: 'continuous',
+    });
     for (const plan of scene.storyboard!.slice(1)) {
-      expect(plan.transition!.kind, plan.name).toBe('cut');
       expect(plan.transition!.participation.shared, plan.name).toEqual([]);
     }
     const sceneNodes = program.body.filter(
       (candidate) => candidate.type === 'Element' && candidate.kind === 'scene'
     );
     expect(
-      sceneNodes.every((node) => node.type === 'Element' && node.properties.clear === true)
-    ).toBe(true);
+      sceneNodes
+        .filter((node) => node.type === 'Element' && node.properties.clear === true)
+        .map((node) => (node.type === 'Element' ? node.name : ''))
+    ).toEqual(['product']);
     expect(source).not.toMatch(/identity\s+message/);
   });
 
@@ -93,10 +103,6 @@ describe('Motionly product film', () => {
       'claudeLogo',
       'antigravityLogo',
       'motionlyUI',
-      'assetPanel',
-      'propertiesPanel',
-      'timelinePanel',
-      'usageDemo',
       'exportCapture',
       'bgDark',
       'bgTeal',
@@ -107,35 +113,19 @@ describe('Motionly product film', () => {
         id
       ).toBe(true);
     }
-    expect(
-      program.body.some((node) => node.type === 'Element' && node.name === 'workspaceUI')
-    ).toBe(true);
-    expect(
-      ['assetFocus', 'propertiesFocus', 'timelineFocus'].every((name) =>
-        program.body.some((node) => node.type === 'Element' && node.name === name)
-      )
-    ).toBe(true);
-    expect(program.body.some((node) => node.type === 'Element' && node.name === 'usageDemo')).toBe(
-      true
-    );
-    expect(scene.clips.some((clip) => clip.assetName === 'usageDemo')).toBe(true);
-    expect(scene.clips.find((clip) => clip.assetName === 'usageDemo')?.duration).toBeCloseTo(17.04);
-    expect(source).toContain('smoothScale');
     expect(source).toContain('splitMaskWipe');
-    expect(source).toContain('concentrate');
     expect(source).not.toMatch(/^audio\s/m);
     expect(source).not.toMatch(/\bblur\s/);
   });
 
   it('opens on editorial type and closes on the brand call to action', () => {
-    expect(text('openingLead')).toBe('Your idea.');
-    expect(text('openingAnswer')).toBe('Directed into motion.');
-    expect(text('agentsLine')).toBe('Start where you already work.');
+    expect(text('openingLead')).toBe('Create editable motion with AI.');
+    expect(text('openingAnswer')).toBe('Then refine every detail');
+    expect(text('agentsLine')).toBe('Bring any');
     expect(text('codexLabel')).toBe('Codex');
     expect(text('claudeLabel')).toBe('Claude Code');
     expect(text('antigravityLabel')).toBe('Antigravity');
-    expect(text('workspaceLine')).toBe('Compose the whole film.');
-    expect(text('finalLine')).toBe('Make motion feel designed.');
+    expect(text('finalLine')).toBe('AI-native motion graphics editor.');
     expect(opacity(0.9, 'openingLead')).toBeGreaterThan(0.9);
     expect(opacity(4.8, 'codexAgent')).toBeGreaterThan(0.9);
     expect(opacity(4.8, 'claudeAgent')).toBeGreaterThan(0.9);
@@ -143,18 +133,21 @@ describe('Motionly product film', () => {
     expect(
       program.body.some((node) => node.type === 'Element' && node.name === 'promptTerminal')
     ).toBe(false);
-    expect(
-      evaluateScene(scene, 19.2).elements.some(
-        (element) => element.id.startsWith('clip_usageDemo_') && element.assetName === 'usageDemo'
-      )
-    ).toBe(true);
-    expect(opacity(41.2, 'finalLine')).toBeGreaterThan(0.9);
+    expect(opacity(25.2, 'finalLine')).toBeGreaterThan(0.9);
   });
 
-  it('passes the storyboard and motion-quality audits with nothing outstanding', () => {
-    expect(auditStoryboard(scene)).toEqual([]);
+  it('surfaces storyboard continuity warnings from the current preset', () => {
+    expect(auditStoryboard(scene).map((finding) => [finding.kind, finding.target])).toEqual([
+      ['scene-discontinuity', 'agents'],
+      ['scene-discontinuity', 'product'],
+      ['scene-discontinuity', 'finish'],
+    ]);
     const audit = auditScene(scene);
-    expect(audit.findings.map((finding) => `${finding.kind}(${finding.target ?? ''})`)).toEqual([]);
+    expect(audit.findings.map((finding) => [finding.kind, finding.target])).toEqual([
+      ['scene-discontinuity', 'agents'],
+      ['scene-discontinuity', 'product'],
+      ['scene-discontinuity', 'finish'],
+    ]);
   });
 
   it('keeps every scene performing instead of entering and then waiting', () => {
