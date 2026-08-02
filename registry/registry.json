@@ -160,6 +160,592 @@
       "manifest": "moves/count-up/registry-item.json"
     },
     {
+      "name": "fadeIn",
+      "type": "motionly:move",
+      "title": "Fade In",
+      "description": "Whole-line opacity entrance.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fade-in/registry-item.json"
+    },
+    {
+      "name": "fadeOut",
+      "type": "motionly:move",
+      "title": "Fade Out",
+      "description": "Whole-line opacity exit.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fade-out/registry-item.json"
+    },
+    {
+      "name": "bounceOut",
+      "type": "motionly:move",
+      "title": "Bounce Out",
+      "description": "Compact text exit with a downward rebound.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/bounce-out/registry-item.json"
+    },
+    {
+      "name": "slideLeft",
+      "type": "motionly:move",
+      "title": "Slide Left",
+      "description": "Text glides left into its resting position.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-left/registry-item.json"
+    },
+    {
+      "name": "slideRight",
+      "type": "motionly:move",
+      "title": "Slide Right",
+      "description": "Text glides right into its resting position.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-right/registry-item.json"
+    },
+    {
+      "name": "slideUp",
+      "type": "motionly:move",
+      "title": "Slide Up",
+      "description": "Text rises into its resting position.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-up/registry-item.json"
+    },
+    {
+      "name": "slideDown",
+      "type": "motionly:move",
+      "title": "Slide Down",
+      "description": "Text drops into its resting position.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-down/registry-item.json"
+    },
+    {
+      "name": "zoomIn",
+      "type": "motionly:move",
+      "title": "Zoom In",
+      "description": "Text scales cleanly into view.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/zoom-in/registry-item.json"
+    },
+    {
+      "name": "zoomOut",
+      "type": "motionly:move",
+      "title": "Zoom Out",
+      "description": "Text scales away from view.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/zoom-out/registry-item.json"
+    },
+    {
+      "name": "spinOut",
+      "type": "motionly:move",
+      "title": "Spin Out",
+      "description": "Text rotates and contracts out of view.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/spin-out/registry-item.json"
+    },
+    {
+      "name": "flicker",
+      "type": "motionly:move",
+      "title": "Flicker",
+      "description": "Finite seek-safe text flicker over the authored duration.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/flicker/registry-item.json"
+    },
+    {
+      "name": "wave",
+      "type": "motionly:move",
+      "title": "Wave",
+      "description": "Per-letter vertical wave.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/wave/registry-item.json"
+    },
+    {
+      "name": "jitter",
+      "type": "motionly:move",
+      "title": "Jitter",
+      "description": "Fast restrained per-letter shake.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/jitter/registry-item.json"
+    },
+    {
+      "name": "fallDown",
+      "type": "motionly:move",
+      "title": "Fall Down",
+      "description": "Letters fall from above and settle.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fall-down/registry-item.json"
+    },
+    {
+      "name": "riseUp",
+      "type": "motionly:move",
+      "title": "Rise Up",
+      "description": "Letters rise decisively into place.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rise-up/registry-item.json"
+    },
+    {
+      "name": "driftUp",
+      "type": "motionly:move",
+      "title": "Drift Up",
+      "description": "Whole-line gentle upward entrance.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/drift-up/registry-item.json"
+    },
+    {
+      "name": "expand",
+      "type": "motionly:move",
+      "title": "Expand",
+      "description": "Whole-line tracking expands into place.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/expand/registry-item.json"
+    },
+    {
+      "name": "concentrate",
+      "type": "motionly:move",
+      "title": "Concentrate",
+      "description": "Wide tracking contracts into a precise lockup.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/concentrate/registry-item.json"
+    },
+    {
+      "name": "jigglyWobble",
+      "type": "motionly:move",
+      "title": "Jiggly Wobble",
+      "description": "Finite per-letter wobble.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/jiggly-wobble/registry-item.json"
+    },
+    {
+      "name": "rainbow",
+      "type": "motionly:move",
+      "title": "Rainbow",
+      "description": "Cycles editable text color across a finite loop.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/rainbow/registry-item.json"
+    },
+    {
+      "name": "fontShift",
+      "type": "motionly:move",
+      "title": "Font Shift",
+      "description": "Cycles between bundled font families over time.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/font-shift/registry-item.json"
+    },
+    {
+      "name": "roll",
+      "type": "motionly:move",
+      "title": "Roll",
+      "description": "Text rolls vertically into place.",
+      "tags": [
+        "move",
+        "text"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/roll/registry-item.json"
+    },
+    {
+      "name": "pendulumSwing",
+      "type": "motionly:move",
+      "title": "Pendulum Swing",
+      "description": "Whole-line pendulum motion.",
+      "tags": [
+        "move",
+        "text",
+        "loop"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pendulum-swing/registry-item.json"
+    },
+    {
+      "name": "glitchTransition",
+      "type": "motionly:move",
+      "title": "Glitch Transition",
+      "description": "Per-letter digital slice and settle.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/glitch-transition/registry-item.json"
+    },
+    {
+      "name": "blurPass",
+      "type": "motionly:move",
+      "title": "Blur Pass",
+      "description": "Directional blur travels across words.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/blur-pass/registry-item.json"
+    },
+    {
+      "name": "whiteFlash",
+      "type": "motionly:move",
+      "title": "White Flash",
+      "description": "Bright impact flash resolving to the text color.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/white-flash/registry-item.json"
+    },
+    {
+      "name": "blackSmoke",
+      "type": "motionly:move",
+      "title": "Black Smoke",
+      "description": "Dark blurred text dispersal.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/black-smoke/registry-item.json"
+    },
+    {
+      "name": "pullIn",
+      "type": "motionly:move",
+      "title": "Pull In",
+      "description": "Fast depth pull into the resting title.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pull-in/registry-item.json"
+    },
+    {
+      "name": "pullOut",
+      "type": "motionly:move",
+      "title": "Pull Out",
+      "description": "Fast depth push away from the viewer.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/pull-out/registry-item.json"
+    },
+    {
+      "name": "slideTransition",
+      "type": "motionly:move",
+      "title": "Slide Transition",
+      "description": "Directional old-to-new title slide recipe.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/slide-transition/registry-item.json"
+    },
+    {
+      "name": "splitMaskWipe",
+      "type": "motionly:move",
+      "title": "Split Mask Wipe",
+      "description": "Text opens from the center as a split mask.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/split-mask-wipe/registry-item.json"
+    },
+    {
+      "name": "revolvingChecker",
+      "type": "motionly:move",
+      "title": "Revolving Checker",
+      "description": "Alternating glyph blocks revolve into view.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/revolving-checker/registry-item.json"
+    },
+    {
+      "name": "fanOut",
+      "type": "motionly:move",
+      "title": "Fan Out",
+      "description": "Words spread outward from one focal point.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/fan-out/registry-item.json"
+    },
+    {
+      "name": "clockWipe",
+      "type": "motionly:move",
+      "title": "Clock Wipe",
+      "description": "Radial-style ordered glyph reveal.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/clock-wipe/registry-item.json"
+    },
+    {
+      "name": "zoomLens",
+      "type": "motionly:move",
+      "title": "Zoom Lens",
+      "description": "Optical blur and scale snap into focus.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/zoom-lens/registry-item.json"
+    },
+    {
+      "name": "pageCurl",
+      "type": "motionly:move",
+      "title": "Page Curl",
+      "description": "Line segments turn in like a page.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/page-curl/registry-item.json"
+    },
+    {
+      "name": "mosaicPixelate",
+      "type": "motionly:move",
+      "title": "Mosaic Pixelate",
+      "description": "Glyph blocks assemble from pixel-like pieces.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/mosaic-pixelate/registry-item.json"
+    },
+    {
+      "name": "neonGlowWipe",
+      "type": "motionly:move",
+      "title": "Neon Glow Wipe",
+      "description": "A bright glow sweeps across the title.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/neon-glow-wipe/registry-item.json"
+    },
+    {
+      "name": "verticalBlinds",
+      "type": "motionly:move",
+      "title": "Vertical Blinds",
+      "description": "Glyph slats open around the vertical axis.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/vertical-blinds/registry-item.json"
+    },
+    {
+      "name": "horizontalBlinds",
+      "type": "motionly:move",
+      "title": "Horizontal Blinds",
+      "description": "Word slats open around the horizontal axis.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/horizontal-blinds/registry-item.json"
+    },
+    {
+      "name": "smoothScale",
+      "type": "motionly:move",
+      "title": "Smooth Scale",
+      "description": "Fluid whole-line scale transition.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/smooth-scale/registry-item.json"
+    },
+    {
+      "name": "doubleCrossShift",
+      "type": "motionly:move",
+      "title": "Double Cross Shift",
+      "description": "Alternating diagonal text slices cross and settle.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/double-cross-shift/registry-item.json"
+    },
+    {
+      "name": "waveWarp",
+      "type": "motionly:move",
+      "title": "Wave Warp",
+      "description": "Per-letter liquid wave resolves into a title.",
+      "tags": [
+        "move",
+        "text",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/wave-warp/registry-item.json"
+    },
+    {
       "name": "softReveal",
       "type": "motionly:move",
       "title": "Soft Reveal",
@@ -205,6 +791,7 @@
       "description": "Restrained emphasis loop.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -241,7 +828,7 @@
       "name": "scaleReveal",
       "type": "motionly:move",
       "title": "Scale Reveal",
-      "description": "Small elastic scale entrance.",
+      "description": "Restrained scale entrance.",
       "tags": [
         "move",
         "object"
@@ -439,6 +1026,48 @@
       "manifest": "moves/scene-zoom/registry-item.json"
     },
     {
+      "name": "sceneWhip",
+      "type": "motionly:move",
+      "title": "Scene Whip",
+      "description": "Fast directional whole-scene travel with a short motion-blur bridge.",
+      "tags": [
+        "move",
+        "scene",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-whip/registry-item.json"
+    },
+    {
+      "name": "sceneFocus",
+      "type": "motionly:move",
+      "title": "Scene Focus",
+      "description": "Depth handoff that keeps the frame covered while focus shifts between scenes.",
+      "tags": [
+        "move",
+        "scene",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-focus/registry-item.json"
+    },
+    {
+      "name": "scenePivot",
+      "type": "motionly:move",
+      "title": "Scene Pivot",
+      "description": "Shallow whole-scene perspective pivot with restrained travel and blur.",
+      "tags": [
+        "move",
+        "scene",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/scene-pivot/registry-item.json"
+    },
+    {
       "name": "rackFocus",
       "type": "motionly:move",
       "title": "Rack Focus",
@@ -565,6 +1194,7 @@
       "description": "Compact bounce entrance.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -591,6 +1221,7 @@
       "description": "Single spin entrance.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -630,6 +1261,7 @@
       "description": "Damped swing emphasis.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -643,6 +1275,7 @@
       "description": "Pendulum loop.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -656,6 +1289,7 @@
       "description": "Rolling entrance.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -726,6 +1360,20 @@
       "version": 1,
       "builtin": true,
       "manifest": "moves/tilt-reveal/registry-item.json"
+    },
+    {
+      "name": "mediaTour",
+      "type": "motionly:move",
+      "title": "Media Tour",
+      "description": "Establish one real screenshot, then travel through two authored focus points without rebuilding the UI.",
+      "tags": [
+        "move",
+        "object",
+        "transition"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "moves/media-tour/registry-item.json"
     },
     {
       "name": "cardReveal",
@@ -943,6 +1591,7 @@
       "description": "ReactBits glare-hover adapted to Motionly's editable deterministic pulse recipe.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -1010,6 +1659,7 @@
       "description": "ReactBits metallic-paint adapted to Motionly's editable deterministic pulse recipe.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -1023,6 +1673,7 @@
       "description": "ReactBits noise adapted to Motionly's editable deterministic pulse recipe.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -1102,6 +1753,7 @@
       "description": "ReactBits star-border adapted to Motionly's editable deterministic pulse recipe.",
       "tags": [
         "move",
+        "text",
         "object"
       ],
       "version": 1,
@@ -1457,6 +2109,14 @@
       ],
       "version": 1,
       "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/effects/grid/grid.motion",
+          "target": "compositions/grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
       "manifest": "effects/grid/registry-item.json"
     },
     {
@@ -2298,6 +2958,331 @@
       "manifest": "components/loader/registry-item.json"
     },
     {
+      "name": "mac-window",
+      "type": "motionly:component",
+      "title": "Mac Window",
+      "description": "Motionly mac-window pattern. Browser-based product screen. Use for mac-window, website, browser, web app. Interaction: Chrome and page content reveal. Parts: chrome, viewport, controls.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/mac-window/registry-item.json"
+    },
+    {
+      "name": "sidebar",
+      "type": "motionly:component",
+      "title": "Sidebar",
+      "description": "Motionly sidebar pattern. Responsive navigation bar or dock. Use for sidebar, navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: surface, brand, item0, label0, item1, label1, item2, label2.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/sidebar/registry-item.json"
+    },
+    {
+      "name": "navbar",
+      "type": "motionly:component",
+      "title": "Navbar",
+      "description": "Motionly navbar pattern. Responsive navigation bar or dock. Use for navbar, navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: bar, brand, active, item0, item1, item2, item3.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/navbar/registry-item.json"
+    },
+    {
+      "name": "feature-card",
+      "type": "motionly:component",
+      "title": "Feature Card",
+      "description": "Motionly feature-card pattern. Reusable content or feature card. Use for feature-card, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, eyebrow, headline, detail, cta, spotlight.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/feature-card/registry-item.json"
+    },
+    {
+      "name": "analytics-chart",
+      "type": "motionly:component",
+      "title": "Analytics Chart",
+      "description": "Motionly analytics-chart pattern. Animated metric chart. Use for analytics-chart, chart, graph, data visualization, growth. Interaction: Counts a metric and grows the series. Parts: panel, axis, bars, line, metric.",
+      "tags": [
+        "component",
+        "data"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/analytics-chart/registry-item.json"
+    },
+    {
+      "name": "table",
+      "type": "motionly:component",
+      "title": "Table",
+      "description": "Motionly table pattern. Complete analytics dashboard. Use for table, dashboard, analytics, productivity workspace, kpi overview. Interaction: Cards stagger, metrics count, and charts draw. Parts: panel, title, row0, rowLabel0, rowAction0, row1, rowLabel1.",
+      "tags": [
+        "component",
+        "data"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/table/registry-item.json"
+    },
+    {
+      "name": "notification-toast",
+      "type": "motionly:component",
+      "title": "Notification Toast",
+      "description": "Motionly notification-toast pattern. Notification or toast card. Use for notification-toast, notification, notifications, notification stack, toast, alert, success banner, error banner. Interaction: Slides, pushes, reacts, and dismisses. Parts: card, stripe, icon, copy.",
+      "tags": [
+        "component",
+        "feedback"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/notification-toast/registry-item.json"
+    },
+    {
+      "name": "command-palette",
+      "type": "motionly:component",
+      "title": "Command Palette",
+      "description": "Motionly command-palette pattern. Focused dialog over a backdrop. Use for command-palette, modal, dialog, confirmation, command palette. Interaction: Backdrop appears, panel scales up, and focus moves to the action. Parts: panel, title, search, query, row0, rowLabel0, rowAction0.",
+      "tags": [
+        "component",
+        "feedback"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/command-palette/registry-item.json"
+    },
+    {
+      "name": "search-bar",
+      "type": "motionly:component",
+      "title": "Search Bar",
+      "description": "Motionly search-bar pattern. Complete editable form panel. Use for search-bar, form, login screen, sign in, signup, search form, password input. Interaction: Fields focus in order and the submit action settles. Parts: surface, marker, label, shortcut.",
+      "tags": [
+        "component",
+        "input"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/search-bar/registry-item.json"
+    },
+    {
+      "name": "phone-mockup",
+      "type": "motionly:component",
+      "title": "Phone Mockup",
+      "description": "Motionly phone-mockup pattern. Mobile device interface. Use for phone-mockup, mobile app, phone screen, app inbox. Interaction: Screen and rows reveal in sequence. Parts: frame, screen, status.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/phone-mockup/registry-item.json"
+    },
+    {
+      "name": "laptop-mockup",
+      "type": "motionly:component",
+      "title": "Laptop Mockup",
+      "description": "Motionly laptop-mockup pattern. Laptop product frame. Use for laptop-mockup, desktop app, laptop, product demo. Interaction: Device and populated screen reveal. Parts: lid, screen, nav, hero, cta, base.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/laptop-mockup/registry-item.json"
+    },
+    {
+      "name": "avatar",
+      "type": "motionly:component",
+      "title": "Avatar",
+      "description": "Motionly avatar pattern. Brand mark. Use for avatar, logo, brand reveal, identity. Interaction: Draws or reveals the real mark. Parts: halo, face, initials.",
+      "tags": [
+        "component",
+        "media"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/avatar/registry-item.json"
+    },
+    {
+      "name": "badge",
+      "type": "motionly:component",
+      "title": "Badge",
+      "description": "Motionly badge pattern. Reusable content or feature card. Use for badge, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, marker, label.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/badge/registry-item.json"
+    },
+    {
+      "name": "tag",
+      "type": "motionly:component",
+      "title": "Tag",
+      "description": "Motionly tag pattern. Reusable content or feature card. Use for tag, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, marker, label.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/tag/registry-item.json"
+    },
+    {
+      "name": "progress-bar",
+      "type": "motionly:component",
+      "title": "Progress Bar",
+      "description": "Motionly progress-bar pattern. Loading and progress indicator. Use for progress-bar, loader, loading spinner, progress, skeleton loader. Interaction: Spins, pulses, or fills deterministically. Parts: track, progress, label.",
+      "tags": [
+        "component",
+        "feedback"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/progress-bar/registry-item.json"
+    },
+    {
+      "name": "timeline",
+      "type": "motionly:component",
+      "title": "Timeline",
+      "description": "Motionly timeline pattern. Responsive navigation bar or dock. Use for timeline, navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: surface, line, step0, label0, step1, label1, step2, label2.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/timeline/registry-item.json"
+    },
+    {
+      "name": "stepper",
+      "type": "motionly:component",
+      "title": "Stepper",
+      "description": "Motionly stepper pattern. Responsive navigation bar or dock. Use for stepper, navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: surface, line, step0, label0, step1, label1, step2, label2.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/stepper/registry-item.json"
+    },
+    {
+      "name": "cta-button",
+      "type": "motionly:component",
+      "title": "Cta Button",
+      "description": "Motionly cta-button pattern. Primary interactive action. Use for cta-button, button, call to action, submit control. Interaction: Hover, press, ripple, and click. Parts: surface, label, highlight.",
+      "tags": [
+        "component",
+        "input"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/cta-button/registry-item.json"
+    },
+    {
+      "name": "glass-card",
+      "type": "motionly:component",
+      "title": "Glass Card",
+      "description": "Motionly glass-card pattern. Reusable content or feature card. Use for glass-card, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, eyebrow, headline, detail, cta, spotlight.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/glass-card/registry-item.json"
+    },
+    {
+      "name": "floating-card",
+      "type": "motionly:component",
+      "title": "Floating Card",
+      "description": "Motionly floating-card pattern. Reusable content or feature card. Use for floating-card, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, eyebrow, headline, detail, cta, spotlight.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/floating-card/registry-item.json"
+    },
+    {
+      "name": "hero-section",
+      "type": "motionly:component",
+      "title": "Hero Section",
+      "description": "Motionly hero-section pattern. Structured marketing website. Use for hero-section, landing page, hero section, website. Interaction: Navigation, hero, and call to action reveal. Parts: frame, nav, hero, cta, banner.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/hero-section/registry-item.json"
+    },
+    {
+      "name": "footer",
+      "type": "motionly:component",
+      "title": "Footer",
+      "description": "Motionly footer pattern. Responsive navigation bar or dock. Use for footer, navigation bar, mobile navigation, bottom navigation, dock, sidebar navigation. Interaction: Items cascade and the active item lifts. Parts: surface, brand, column0, column1, column2, legal.",
+      "tags": [
+        "component",
+        "mobile"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/footer/registry-item.json"
+    },
+    {
+      "name": "logo-grid",
+      "type": "motionly:component",
+      "title": "Logo Grid",
+      "description": "Motionly logo-grid pattern. Brand mark. Use for logo-grid, logo, brand reveal, identity. Interaction: Draws or reveals the real mark. Parts: title, tile0, logo0, tile1, logo1, tile2, logo2.",
+      "tags": [
+        "component",
+        "media"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/logo-grid/registry-item.json"
+    },
+    {
+      "name": "testimonials",
+      "type": "motionly:component",
+      "title": "Testimonials",
+      "description": "Motionly testimonials pattern. Reusable content or feature card. Use for testimonials, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: surface, quote, avatar, author, role.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/testimonials/registry-item.json"
+    },
+    {
+      "name": "faq-accordion",
+      "type": "motionly:component",
+      "title": "Faq Accordion",
+      "description": "Motionly faq-accordion pattern. Reusable content or feature card. Use for faq-accordion, card, cards, feature card, stats card, kpi widget. Interaction: Rises, elevates, and sweeps a spotlight. Parts: panel, title, row0, rowLabel0, rowAction0, row1, rowLabel1.",
+      "tags": [
+        "component",
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "manifest": "components/faq-accordion/registry-item.json"
+    },
+    {
       "name": "tilted-card",
       "type": "motionly:component",
       "title": "Tilted Card",
@@ -2568,6 +3553,86 @@
       "manifest": "showcases/ui-walkthrough/registry-item.json"
     },
     {
+      "name": "verticalStack",
+      "type": "motionly:layout",
+      "title": "Vertical Stack",
+      "description": "A vertically aligned stack on the shared spacing rhythm. Use for: feature list, settings panel, editorial sequence. Items 1-8.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/vertical-stack/vertical-stack.motion",
+          "target": "compositions/vertical-stack.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/vertical-stack/registry-item.json"
+    },
+    {
+      "name": "horizontalStack",
+      "type": "motionly:layout",
+      "title": "Horizontal Stack",
+      "description": "A balanced horizontal row with equal visual weight. Use for: metrics, logo row, process steps. Items 1-8.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/horizontal-stack/horizontal-stack.motion",
+          "target": "compositions/horizontal-stack.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/horizontal-stack/registry-item.json"
+    },
+    {
+      "name": "grid",
+      "type": "motionly:layout",
+      "title": "Grid",
+      "description": "A responsive equal-cell grid for general interface content. Use for: content grid, gallery, overview. Items 1-12.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/grid/grid.motion",
+          "target": "compositions/grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/grid/registry-item.json"
+    },
+    {
+      "name": "centerLayout",
+      "type": "motionly:layout",
+      "title": "Center Layout",
+      "description": "A centered focal composition with optional supporting items. Use for: title card, single product focus, brand reveal. Items 1-4.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/center-layout/center-layout.motion",
+          "target": "compositions/center-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/center-layout/registry-item.json"
+    },
+    {
       "name": "heroLayout",
       "type": "motionly:layout",
       "title": "Hero Layout",
@@ -2606,6 +3671,46 @@
         }
       ],
       "manifest": "layouts/split-layout/registry-item.json"
+    },
+    {
+      "name": "dashboardLayout",
+      "type": "motionly:layout",
+      "title": "Dashboard Layout",
+      "description": "A dashboard composition with one focal panel and supporting modules. Use for: analytics overview, product dashboard, operations view. Items 3-9.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/dashboard-layout/dashboard-layout.motion",
+          "target": "compositions/dashboard-layout.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/dashboard-layout/registry-item.json"
+    },
+    {
+      "name": "cardGrid",
+      "type": "motionly:layout",
+      "title": "Card Grid",
+      "description": "An equal-cell grid tuned for reusable cards. Use for: feature cards, pricing tiers, testimonials. Items 2-12.",
+      "tags": [
+        "layout"
+      ],
+      "version": 1,
+      "builtin": true,
+      "duration": 4.8,
+      "files": [
+        {
+          "path": "registry/layouts/card-grid/card-grid.motion",
+          "target": "compositions/card-grid.motion",
+          "type": "motionly:composition"
+        }
+      ],
+      "manifest": "layouts/card-grid/registry-item.json"
     },
     {
       "name": "bentoGrid",
@@ -2914,18 +4019,21 @@
       "name": "motionly",
       "type": "motionly:preset",
       "title": "Motionly",
-      "description": "A concise introduction to Motionly and editable .motion projects.",
+      "description": "A 43.94-second editorial SaaS launch film with agent handoff, pixel-matched editor reconstruction, a full product demo, and precision export.",
       "tags": [
         "product",
         "editor",
-        "launch"
+        "launch",
+        "storyboard",
+        "scenes",
+        "saas"
       ],
       "version": 1,
       "dimensions": {
         "width": 1920,
         "height": 1080
       },
-      "duration": 32.1,
+      "duration": 43.94,
       "files": [
         {
           "path": "preset/motionly",
@@ -2936,35 +4044,6 @@
       "project": "preset/motionly/motionly.motion",
       "preview": "preset/motionly/motionly-preset.gif",
       "manifest": "presets/motionly/registry-item.json"
-    },
-    {
-      "name": "database-indexing",
-      "type": "motionly:preset",
-      "title": "How Database Indexing Works",
-      "description": "A 42-second editorial explainer following one query from full table scan to a direct index seek.",
-      "tags": [
-        "database",
-        "indexing",
-        "sql",
-        "engineering",
-        "explainer"
-      ],
-      "version": 1,
-      "dimensions": {
-        "width": 1920,
-        "height": 1080
-      },
-      "duration": 42,
-      "files": [
-        {
-          "path": "preset/database-indexing",
-          "target": "presets/database-indexing",
-          "type": "motionly:preset"
-        }
-      ],
-      "project": "preset/database-indexing/database-indexing.motion",
-      "preview": "preset/database-indexing/database-indexing-preview.png",
-      "manifest": "presets/database-indexing/registry-item.json"
     }
   ]
 }

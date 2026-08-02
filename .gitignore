@@ -14,3 +14,7 @@ build/
 coverage/
 coverage/
 .kiro/
+
+# Local render and browser inspection artifacts
+output/
+.playwright-cli/

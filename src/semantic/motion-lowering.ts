@@ -457,6 +457,8 @@ function intrinsicAspect(node: ElementNode): number | undefined {
     return definition.height ? definition.width / definition.height : undefined;
   }
   if (node.kind === 'showcase') {
+    const explicit = numberValue(node.properties['aspect'], 0);
+    if (explicit > 0) return explicit;
     const type = String(node.properties['type'] ?? '');
     return isShowcaseType(type) ? showcaseDefinition(type).screenRatio : undefined;
   }
@@ -492,6 +494,9 @@ function lowerShowcase(
     x: numberValue(node.properties['x'], slot?.x ?? 0),
     y: numberValue(node.properties['y'], slot?.y ?? 0),
     width: numberValue(node.properties['width'], slot?.width ?? definition.defaults.width),
+    ...(numberValue(node.properties['aspect'], 0) > 0
+      ? { aspect: numberValue(node.properties['aspect'], definition.screenRatio) }
+      : {}),
     ...(node.properties['media'] !== undefined ? { media: String(node.properties['media']) } : {}),
     ...(node.properties['headline'] !== undefined
       ? { headline: String(node.properties['headline']) }
@@ -513,6 +518,16 @@ function lowerShowcase(
       .filter(Boolean),
     focusX: numberValue(node.properties['focusX'], 0.5),
     focusY: numberValue(node.properties['focusY'], 0.45),
+    focusScale: numberValue(node.properties['focusScale'], 1.28),
+    ...(node.properties['focus2X'] !== undefined
+      ? { focus2X: numberValue(node.properties['focus2X'], 0.5) }
+      : {}),
+    ...(node.properties['focus2Y'] !== undefined
+      ? { focus2Y: numberValue(node.properties['focus2Y'], 0.5) }
+      : {}),
+    ...(node.properties['focus2Scale'] !== undefined
+      ? { focus2Scale: numberValue(node.properties['focus2Scale'], 1.32) }
+      : {}),
   });
 }
 

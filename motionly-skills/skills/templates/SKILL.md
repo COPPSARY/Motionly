@@ -1,51 +1,34 @@
 ---
 name: templates
-description: Turn a creative brief, script, storyboard, or asset folder into a production-ready Motionly scene plan. Use for product launches, logo reveals, feature demos, social motion graphics, diagrams, title cards, brand stings, and choosing a non-generic animation structure.
+description: Turn a product brief into an editable Motionly storyboard for SaaS launches, demos, logo reveals, diagrams, walkthroughs, metric stories, and social exports using intentional composition and continuity.
 ---
 
-# Motion Templates
+# Templates
 
-Infer technical defaults from the creative brief. Ask only when a missing choice changes the story, brand, exact copy, or required assets.
+Templates are starting story plans, not disposable visual slides. Read
+[authoring-contract.md](../../references/authoring-contract.md) and build the
+layout/components/showcase before animation.
 
-## Product Launch — 8 Seconds
+## Product Launch Default
 
-1. `0–2s`: bold promise in full-frame type; decisive word lands last.
-2. `1.8–5.8s`: product panel enters through a mask; one callout proves the feature.
-3. `5.6–8s`: panel clears quickly; logo and CTA resolve with quiet confidence.
+1. Promise: one large hero sentence and brand lockup.
+2. Context: one clean statement about the workflow/problem.
+3. Proof: exact product screenshot/video in a showcase or `mediaTour`.
+4. Behavior: one visible click, progress, count, chart, or UI response.
+5. Composition: editor/workspace or feature arrangement only if it advances the story.
+6. Delivery: export/result state with no unnecessary modal construction.
+7. Close: logo, CTA, and a readable final hold.
 
-Use different compositions per shot while keeping a shared easing and color language.
+Vary shots by editorial purpose: centered type, split copy/media, full-frame
+product UI, local detail tour, and clean close. Do not repeat the same zoom/pan,
+small labels, or generic card grid.
 
-## Logo Reveal — 4 Seconds
+## Other Patterns
 
-1. Draw or mask the simple SVG mark.
-2. Resolve fill and stroke as the full artwork becomes readable.
-3. Add the wordmark with a short stagger.
-4. Hold the completed lockup before a fast clean exit or end frame.
+- logo reveal: real SVG -> `heroLogo` or restrained `drawSVG` -> identity hold;
+- diagram: named nodes -> `layout`/paths -> `connects` -> local focus;
+- metric story: `metric-card`/`chart` -> `countUp`/`chartGrowth` -> result hold;
+- UI walkthrough: exact screenshot/video -> `uiWalkthrough` -> focus points -> cause/effect;
+- social stat: one number -> `countUp` -> one supporting phrase -> logo close.
 
-## Diagram Walkthrough — 10 Seconds
-
-1. Establish the full diagram.
-2. Animate the SVG itself toward the first region using local origin/scale/x/y.
-3. Reveal one path/callout, then hold.
-4. Pull back or pan locally to the second region.
-5. Return to the complete diagram and summarize.
-
-## Social Stat — 6 Seconds
-
-1. Context label enters quietly.
-2. Metric counts or scales into focus.
-3. Supporting comparison arrives 120–180ms later.
-4. Brand/source appears after the value is understood.
-
-## Creative Quality Gate
-
-- One focal subject per shot.
-- Clear hierarchy and negative space.
-- Staggered entrances with `power3.out` by default.
-- Readable holds and faster exits.
-- Purposeful scene transition, not effect stacking.
-- Native editable SVG for vector needs.
-- Animated imports preserved when requested.
-- Clean timeline, no stale layers or accidental overlaps.
-
-The result should resemble a designed launch sequence, not a slideshow with fades.
+Every template must still pass storyboard audit and visual frame review.

@@ -64,5 +64,13 @@
     "intensity": 0.7,
     "duration": 8
   },
+  "duration": 4.8,
+  "files": [
+    {
+      "path": "registry/effects/grid/grid.motion",
+      "target": "compositions/grid.motion",
+      "type": "motionly:composition"
+    }
+  ],
   "manifest": "effects/grid/registry-item.json"
 }

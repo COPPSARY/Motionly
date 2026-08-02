@@ -15,8 +15,14 @@
 import type { AssetKind } from './asset-kinds';
 
 export const LAYOUT_TYPES = [
+  'verticalStack',
+  'horizontalStack',
+  'grid',
+  'centerLayout',
   'heroLayout',
   'splitLayout',
+  'dashboardLayout',
+  'cardGrid',
   'bentoGrid',
   'featureGrid',
   'masonryGrid',
@@ -113,6 +119,42 @@ export interface LayoutDefinition {
 }
 
 const definitions: Record<LayoutType, LayoutDefinition> = {
+  verticalStack: {
+    type: 'verticalStack',
+    category: 'layout',
+    description: 'A vertically aligned stack on the shared spacing rhythm.',
+    useCases: ['feature list', 'settings panel', 'editorial sequence'],
+    assetKinds: ['icon', 'ui', 'screenshot', 'chart'],
+    items: { min: 1, max: 8 },
+    defaults: { columns: 1, gap: 32, stagger: 0.07 },
+  },
+  horizontalStack: {
+    type: 'horizontalStack',
+    category: 'layout',
+    description: 'A balanced horizontal row with equal visual weight.',
+    useCases: ['metrics', 'logo row', 'process steps'],
+    assetKinds: ['icon', 'ui', 'logo', 'chart'],
+    items: { min: 1, max: 8 },
+    defaults: { columns: 4, gap: 40, stagger: 0.06 },
+  },
+  grid: {
+    type: 'grid',
+    category: 'layout',
+    description: 'A responsive equal-cell grid for general interface content.',
+    useCases: ['content grid', 'gallery', 'overview'],
+    assetKinds: ['icon', 'ui', 'screenshot', 'photo'],
+    items: { min: 1, max: 12 },
+    defaults: { columns: 3, gap: 40, stagger: 0.06 },
+  },
+  centerLayout: {
+    type: 'centerLayout',
+    category: 'layout',
+    description: 'A centered focal composition with optional supporting items.',
+    useCases: ['title card', 'single product focus', 'brand reveal'],
+    assetKinds: ['logo', 'ui', 'screenshot', 'photo'],
+    items: { min: 1, max: 4 },
+    defaults: { columns: 1, gap: 40, stagger: 0.08 },
+  },
   heroLayout: {
     type: 'heroLayout',
     category: 'layout',
@@ -130,6 +172,24 @@ const definitions: Record<LayoutType, LayoutDefinition> = {
     assetKinds: ['screenshot', 'ui', 'photo', 'illustration'],
     items: { min: 2, max: 4 },
     defaults: { columns: 2, gap: 80, stagger: 0.09 },
+  },
+  dashboardLayout: {
+    type: 'dashboardLayout',
+    category: 'layout',
+    description: 'A dashboard composition with one focal panel and supporting modules.',
+    useCases: ['analytics overview', 'product dashboard', 'operations view'],
+    assetKinds: ['ui', 'screenshot', 'chart'],
+    items: { min: 3, max: 9 },
+    defaults: { columns: 3, gap: 32, stagger: 0.06 },
+  },
+  cardGrid: {
+    type: 'cardGrid',
+    category: 'layout',
+    description: 'An equal-cell grid tuned for reusable cards.',
+    useCases: ['feature cards', 'pricing tiers', 'testimonials'],
+    assetKinds: ['ui', 'screenshot', 'photo', 'icon'],
+    items: { min: 2, max: 12 },
+    defaults: { columns: 3, gap: 40, stagger: 0.06 },
   },
   bentoGrid: {
     type: 'bentoGrid',
@@ -327,6 +387,37 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
     };
   };
 
+  if (spec.type === 'verticalStack' || spec.type === 'centerLayout') {
+    const itemHeight = spec.itemHeight ?? (frameHeight - gap * Math.max(0, count - 1)) / count;
+    const itemWidth = spec.itemWidth ?? frameWidth * (spec.type === 'centerLayout' ? 0.72 : 1);
+    for (let index = 0; index < count; index += 1) {
+      push(
+        index,
+        0,
+        -frameHeight / 2 + itemHeight / 2 + index * (itemHeight + gap),
+        itemWidth,
+        itemHeight,
+        index === 0 && spec.type === 'centerLayout' ? 'focal' : 'support'
+      );
+    }
+    return slots;
+  }
+
+  if (spec.type === 'horizontalStack') {
+    const itemWidth = spec.itemWidth ?? (frameWidth - gap * Math.max(0, count - 1)) / count;
+    for (let index = 0; index < count; index += 1) {
+      push(
+        index,
+        -frameWidth / 2 + itemWidth / 2 + index * (itemWidth + gap),
+        0,
+        itemWidth,
+        spec.itemHeight ?? frameHeight,
+        'support'
+      );
+    }
+    return slots;
+  }
+
   if (spec.type === 'heroLayout') {
     const itemWidth = spec.itemWidth ?? frameWidth * 0.72;
     const focalHeight = spec.itemHeight ?? frameHeight * (count > 1 ? 0.58 : 0.8);
@@ -367,7 +458,7 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
     return slots;
   }
 
-  if (spec.type === 'bentoGrid') {
+  if (spec.type === 'bentoGrid' || spec.type === 'dashboardLayout') {
     const rows = Math.max(2, Math.ceil((count + 3) / columns));
     const cellWidth = (frameWidth - gap * (columns - 1)) / columns;
     const cellHeight = (frameHeight - gap * (rows - 1)) / rows;
@@ -409,7 +500,13 @@ export function resolveLayout(spec: LayoutSpec): LayoutSlot[] {
     return slots;
   }
 
-  if (spec.type === 'featureGrid' || spec.type === 'logoWall' || spec.type === 'gallery') {
+  if (
+    spec.type === 'featureGrid' ||
+    spec.type === 'grid' ||
+    spec.type === 'cardGrid' ||
+    spec.type === 'logoWall' ||
+    spec.type === 'gallery'
+  ) {
     const perRow = spec.type === 'gallery' ? Math.min(columns, count) : columns;
     const rows = Math.ceil(count / perRow);
     const cellWidth = (frameWidth - gap * (perRow - 1)) / perRow;

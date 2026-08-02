@@ -83,6 +83,22 @@ describe('pre-entrance visibility', () => {
     expect(opacityAt(source, 'title', 5)).toBe(0);
   });
 
+  it('does not hide an element before a delayed retirement hold', () => {
+    const source = `
+      canvas { duration 6s }
+      text title { value "Shared" opacity 1 }
+      animate title {
+        from { opacity 0 }
+        to { opacity 0 }
+        duration .001s
+        delay 3s
+        easing linear
+      }
+    `;
+    expect(opacityAt(source, 'title', 1)).toBe(1);
+    expect(opacityAt(source, 'title', 4)).toBe(0);
+  });
+
   it('lets the latest timeline action win regardless of source order', () => {
     const source = `
       canvas { duration 6s }

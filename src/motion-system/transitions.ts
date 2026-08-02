@@ -22,6 +22,7 @@
  */
 
 import type { AnimationNode, ASTNode } from '../types/parser';
+import { TRANSITION_TOKENS } from './budget';
 
 export const BEAT_TRANSITION_KINDS = [
   'sharedElement',
@@ -56,10 +57,10 @@ export function requiresEndpoints(kind: BeatTransitionKind): boolean {
 }
 
 const DEFAULT_EASING: Record<BeatTransitionKind, string> = {
-  sharedElement: 'power3.inOut',
-  objectMorph: 'power2.inOut',
-  layoutMorph: 'power3.inOut',
-  cameraMove: 'sine.inOut',
+  sharedElement: TRANSITION_TOKENS.easing.smoothOut,
+  objectMorph: TRANSITION_TOKENS.easing.smoothOut,
+  layoutMorph: TRANSITION_TOKENS.easing.smoothOut,
+  cameraMove: TRANSITION_TOKENS.easing.smoothOut,
   continuous: 'sine.inOut',
   cut: 'power2.in',
 };
@@ -88,7 +89,9 @@ export function planBeatTransition(request: BeatTransitionRequest): BeatTransiti
   return {
     kind,
     at: round(request.at),
-    duration: round(request.duration ?? (kind === 'cut' ? 0.001 : 0.8)),
+    duration: round(
+      request.duration ?? (kind === 'cut' ? 0.001 : TRANSITION_TOKENS.duration.emphasis)
+    ),
     ...(request.from ? { from: request.from } : {}),
     ...(request.to ? { to: request.to } : {}),
     easing: request.easing ?? DEFAULT_EASING[kind],
@@ -112,20 +115,20 @@ export function lowerBeatTransition(plan: BeatTransitionPlan, id: string): ASTNo
       type: 'Animation',
       target: plan.from,
       from: { opacity: 1, scale: 1 },
-      to: { opacity: 0, scale: 0.94 },
+      to: { opacity: 0, scale: TRANSITION_TOKENS.scale.modal },
       keyframes: [],
       delay: plan.at,
-      duration: round(plan.duration * 0.7),
+      duration: Math.min(plan.duration, TRANSITION_TOKENS.duration.medium),
       easing: plan.easing,
     };
     const incoming: AnimationNode = {
       type: 'Animation',
       target: plan.to,
-      from: { opacity: 0, scale: 1.06 },
+      from: { opacity: 0, scale: 1.04 },
       to: { opacity: 1, scale: 1 },
       keyframes: [],
-      delay: round(plan.at + plan.duration * 0.25),
-      duration: round(plan.duration * 0.75),
+      delay: round(plan.at + TRANSITION_TOKENS.duration.micro),
+      duration: Math.min(plan.duration, TRANSITION_TOKENS.duration.slow),
       easing: plan.easing,
     };
     return [outgoing, incoming];

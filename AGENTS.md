@@ -95,6 +95,28 @@ Quality rules the engine enforces. Full text: `docs/animation/motion-doctrine.md
 
 `npm run inspect:motion -- project.motion --strict` audits pacing, cascades, coverage, and geometry.
 
+## Scenes
+
+A project is a **storyboard**: an ordered list of scenes. Each scene owns its components, camera, background, timeline, audio, and duration. The top-level timeline shows the storyboard; selecting a scene opens that scene's timeline.
+
+```motion
+scene intro { label "Intro" duration 4s background #05060a }
+scene demo  { label "Demo"  duration 8s zoom 1.2 }
+
+text brandmark  { scene intro identity brand value "Motionly" center size 96 color #ffffff }
+text brandSmall { scene demo  identity brand value "Motionly" size 32 color #ffffff }
+```
+
+- Put every object in a scene with `scene NAME`. Timing inside a scene is scene-local.
+- Scenes run back to back unless given a `start`; a scene with no `duration` takes an even share of the canvas. Never author absolute scene times.
+- Scenes are **organizational boundaries, not animation boundaries.** Nothing is cleared at an edge. A scene root carries a `start` but no duration, so members persist across the cut; add `clear` to a scene only when you genuinely want it to close and take its contents with it.
+- Give a recurring component the same `identity NAME`. Motionly detects it as shared, and it moves and resizes across the boundary instead of disappearing and reappearing.
+- At each boundary every component is shared, exit, or enter. Only genuine exits animate out; only genuine arrivals animate in.
+- Boundary kinds: `sharedElement` (default when something is shared), `cameraMove` (default when the framing changes), `continuous`, `cut`. **There is no fade.**
+- Generate in this order: storyboard → scenes → scene contents → shared identities → boundaries → animation inside each scene.
+
+Implementation: `src/motion-system/scenes.ts` (model, participation, boundary planning), `src/semantic/storyboard-lowering.ts` (AST pass), `src/ui/storyboard.ts` (editor operations), `src/motion-system/scene-migration.ts` (lift a legacy flat project), `src/ai/storyboard-director.ts` (hierarchical direction). Scenes lower to the engine's existing `scene` element kind, so the renderer, evaluator, and `.motion` format are unchanged. See `docs/motion-language/scenes.mdx`.
+
 ## Motion System
 
 Select complete motion design ideas instead of placing primitives. Three block kinds sit above the existing engine and lower into ordinary elements:

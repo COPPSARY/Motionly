@@ -1,68 +1,82 @@
 ---
 name: transitions
-description: Choose and author Motionly scene and clip transitions. Use for scene changes, crossfades, wipes, iris reveals, dynamic slides, speed zooms, exits, continuity, and fixing abrupt cuts or stacked transition effects.
+description: Plan Motionly scene, beat, shared-element, object, layout, camera, cut, media, and text transitions. Use to fix stale layers, abrupt cuts, double exposure, uncovered frames, and repetitive fade/zoom behavior.
 ---
 
 # Transitions
 
-Use a transition to express a relationship between shots: continuity, replacement, reveal, escalation, or closure. A normal cut is valid when motion inside the shots already carries the change.
+Read [authoring-contract.md](../../references/authoring-contract.md) and
+[motion-catalog.md](../../references/motion-catalog.md).
 
-## Selection Map
+Choose the relationship before the effect:
 
-- `shapeWipe`: decisive replacement or brand-color scene change.
-- `irisWipe`: focus into/out of a circular subject.
-- `maskReveal`: media enters through a controlled edge.
-- `dynamicSlide`: supporting panel continues directional flow.
-- `speedZoom`: short escalation or product-to-detail cut, once.
-- `sceneSlide`: connected whole-scene push in `up|right|down|left`.
-- `sceneZoom`: whole-scene zoom-through into the next shot.
-- Clip `crossfade`: two touching media clips on the same track.
+- same identity changes position/scale: shared element/local transform;
+- one matched subject becomes another: `objectMorph` with `from` and `to`;
+- an arrangement reorganizes: `layoutMorph` with `from` and `to`;
+- persistent composition changes attention: `cameraMove`;
+- composition keeps evolving: `continuous`;
+- unrelated shot: `cut`;
+- touching media clips on one track: clip `crossfade`.
 
-## Connected Scene Transitions
+Scene/beat boundary kinds are `sharedElement`, `cameraMove`, `continuous`, and
+`cut`. Paired beat transition kinds `sharedElement`, `objectMorph`, and
+`layoutMorph` require both named endpoints. Scene syntax is:
 
 ```motion
-scene outgoing {
-  start 0s
-  duration 5.5s
-  transitionOut "sceneSlide(direction down duration .5s)"
-}
-
-scene incoming {
-  start 5s
+scene detail {
   duration 5s
-  transitionIn "sceneSlide(direction down duration .5s)"
+  transition sharedElement
+  transitionDuration 700ms
 }
 ```
 
-Pair both sides with the same name, direction, and duration. The direction is
-camera travel: `down` moves the outgoing scene up and brings the incoming scene
-from below. Because the scene root moves, every child layer travels with it.
-Use `sceneZoom` the same way for a zoom-through boundary.
+Prefer storyboard boundaries over manually paired scene-root presets. Explicit
+`transitionIn`/`transitionOut` remain available for overlapping scene roots;
+pair the same recipe, direction, and duration on both sides. Clip `transitionIn`
+and `transitionOut` only accept `crossfade`.
 
-## Clip Crossfade
+Give each boundary one owner: either the scene root carries the handoff or its
+subjects carry authored exits and entrances. Do not move both in competing
+directions. A text handoff starts the outgoing move first and overlaps the
+incoming move by roughly 20-35% of the exit; use `exitDirection` and
+`exitDistance` when its departure differs from its arrival. Calculate travel
+from the subject bounds: a wide headline may need more than one canvas width to
+leave the frame.
 
-```motion
-clip outgoing {
-  track hero
-  start 0s
-  duration 3s
-  transitionOut crossfade
-  transitionOutDuration 450ms
-}
+Use the shared transition scale unless the story requires a deliberate override:
 
-clip incoming {
-  track hero
-  start 3s
-  duration 3s
-  transitionIn crossfade
-  transitionInDuration 450ms
-}
-```
+| Intent | Duration | Travel | Scale | Blur |
+| --- | ---: | ---: | ---: | ---: |
+| micro feedback | `.08s` | `4px` | `.99` | `0-2` |
+| quick control/panel | `.15-.25s` | `6-12px` | `.96-.99` | `0-2` |
+| object or text handoff | `.35-.4s` | `12-30px` | `.96-1.04` | `0-3` |
+| scene emphasis | `.5s` | authored for frame coverage | `.96-1.06` | `0-3` |
 
-Pair both sides with the same duration. Do not use a crossfade to hide mismatched composition if a clean cut or purposeful wipe communicates better.
+The runtime uses `cubic-bezier(0.22, 1, 0.36, 1)` for planned transform
+handoffs; use `power4.out`/`power3.out` in authored preset calls. Close/exit
+motion is faster and quieter than open/enter motion. Keep a stagger wave below
+`.3s` total. Never use blur above `8`; ordinary transitions cap at `3`.
 
-## Timing
+Do not default to fade out/in. Transform, reframe, match cut, or cut with cause.
+Use `shapeWipe`/`irisWipe` only when a full-frame graphic wipe is the narrative;
+use `dynamicSlide`, `zoomThrough`, or `whipPan` only when the subject relationship
+supports it. One strong transition beats stacked blur, wipe, spin, and zoom.
 
-Do not animate individual exits before a paired scene transition; the transition is the exit. Keep most transitions between `350–700ms`. Inspect frames around every boundary for flashes, stale layers, blank gaps, and unreadable overlapping copy.
+Runtime defaults are intentionally restrained: `focusZoom 1.12`,
+`zoomThrough 1.25`, `dynamicSlide 30px`, `popover .96`, scene depth
+`.96 -> 1` or `1 -> 1.06`, and ordinary transition blur `3`.
 
-Prefer one strong transition per real scene change. Stacking a wipe, spin, zoom, and blur weakens the visual grammar.
+Inspect one frame before, during, and after every boundary for stale content,
+blank coverage, clipping, double exposure, and unreadable copy.
+
+Vary adjacent handoffs by relationship, not randomly: continue text through a
+word or directional carry; move UI into a demo with depth or matched framing;
+recompose persistent UI with camera movement; reserve a scale/tilt, tracking
+reveal, or clean cut for a distinct delivery/close beat. Background and focal
+content must travel as one composition unless the background itself is the wipe.
+
+For media boundaries, put backgrounds on a lower explicit track than video,
+keep opaque scene fills below the clip, and clear or move prior foreground
+content before playback begins. A clipped asset with `scene NAME` must inherit
+that scene's transforms. Verify the asset URL/codec, clip window, evaluated
+element, and final draw order before changing its animation.

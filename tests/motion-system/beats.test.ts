@@ -276,10 +276,10 @@ describe('beat transitions', () => {
 
   it('gives each kind a purposeful default curve', () => {
     expect(planBeatTransition({ kind: 'sharedElement', at: 0, focusChanged: true }).easing).toBe(
-      'power3.inOut'
+      'cubic-bezier(0.22, 1, 0.36, 1)'
     );
     expect(planBeatTransition({ kind: 'objectMorph', at: 0, focusChanged: true }).easing).toBe(
-      'power2.inOut'
+      'cubic-bezier(0.22, 1, 0.36, 1)'
     );
     expect(
       planBeatTransition({ kind: 'cameraMove', at: 0, focusChanged: true, easing: 'power1.out' })

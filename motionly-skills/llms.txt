@@ -1,8 +1,9 @@
 # Motionly Skills discovery index
 
-Load skills/motion-dsl/SKILL.md for any .motion authoring or repair task.
+Load skills/motion-dsl/SKILL.md for any .motion authoring or repair task. Load skills/scenes/SKILL.md before creating animations or storyboards.
 
 - skills/motion-dsl/SKILL.md — canvas, imports, elements, clips, tracks, audio, animations, keyframes, validation
+- skills/scenes/SKILL.md — storyboard scenes, scene ownership, shared identities, boundary participation, scene audit findings
 - skills/motion-system/SKILL.md — beats (pacing and focus), layouts (composition), showcases (product presentation), beat transitions, asset-kind driven selection
 - skills/components/SKILL.md — semantic component library: terminal, dashboard, browser, phone, pricing card, editor workspace; content props, dotted part overrides, clicks/reactsTo wiring
 - skills/svg/SKILL.md — logos, icons, diagrams, vector artwork, DrawSVG, fill/stroke, local zoom/pan, animated SVG
@@ -11,7 +12,7 @@ Load skills/motion-dsl/SKILL.md for any .motion authoring or repair task.
 - skills/camera/SKILL.md — global camera, local artwork focus, push, pull, pan, speed zoom
 - skills/composition/SKILL.md — hierarchy, spacing, color, branding, layouts, scene review
 - skills/typography/SKILL.md — titles, captions, kinetic type, narration timing, count-up
-- skills/transitions/SKILL.md — scene changes, wipes, crossfades, continuity
+- skills/transitions/SKILL.md — scene changes, shared-element handoffs, wipes, clip blends, continuity
 - skills/timeline/SKILL.md — tracks, clips, trim, retime, overlap, audio placement
 - skills/assets/SKILL.md — PNG/JPEG, SVG, GIF, MP4, WebM, MOV, Lottie, browser codecs
 - skills/rendering/SKILL.md — preview, scrub, export, inspection, renderer limitations

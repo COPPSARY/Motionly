@@ -1,5 +1,4 @@
 import {
-  BASE_SEMANTIC_COMPONENT_TYPES,
   publishedSemanticVectorDefinitions,
   semanticComponentMetadata,
   semanticVectorDefinitions,
@@ -9,6 +8,7 @@ import {
 import { layoutDefinitions } from '../motion-system/layout';
 import { showcaseDefinitions } from '../motion-system/showcase';
 import { parseTime } from '../core/units';
+import { TRANSITION_TOKENS } from '../motion-system/budget';
 
 export const MOTION_CATALOG_VERSION = 1;
 
@@ -133,6 +133,8 @@ const presetSchema = {
   exitAt: field('time', 'Optional exit start.'),
   exitDuration: field('time', 'Optional faster exit duration.'),
   exitEase: field('string', 'Exit easing curve.'),
+  exitDistance: field('number', 'Exit travel distance, independent of the entrance.'),
+  exitDirection: field('string', 'Exit direction, independent of the entrance.'),
   split: field('string', 'Text split mode.'),
   stagger: field('time', 'Sibling delay.'),
   direction: field('string', 'Entrance or transition direction.'),
@@ -174,6 +176,15 @@ const presetSchema = {
   separator: field('string', 'Count-up separator.'),
   role: field('string', 'Move role, such as focus or sibling.'),
   focusScale: field('number', 'Focal scale multiplier.'),
+  aspect: field('number', 'Source aspect ratio used to calculate a media focus path.'),
+  focusX: field('number', 'First normalized media focus X, 0-1.'),
+  focusY: field('number', 'First normalized media focus Y, 0-1.'),
+  focus2X: field('number', 'Second normalized media focus X, 0-1.'),
+  focus2Y: field('number', 'Second normalized media focus Y, 0-1.'),
+  focus2Scale: field('number', 'Second focal scale multiplier.'),
+  focus3X: field('number', 'Optional third normalized media focus X, 0-1.'),
+  focus3Y: field('number', 'Optional third normalized media focus Y, 0-1.'),
+  focus3Scale: field('number', 'Third focal scale multiplier.'),
   siblingScale: field('number', 'Sibling scale multiplier.'),
   siblingOpacity: field('number', 'Sibling opacity at the end of the move.'),
   pushX: field('number', 'Sibling horizontal parallax distance.'),
@@ -207,13 +218,129 @@ const BASE_MOVES: readonly CatalogEntry[] = [
   move('maskReveal', 'text transition', 'Clipped line or media reveal.'),
   move('gradientReveal', 'text', 'Accent-colored text reveal.'),
   move('countUp', 'text', 'Animate a numeric text value from zero.'),
+  move('fadeIn', 'text', 'Whole-line opacity entrance.', { duration: 0.62 }),
+  move('fadeOut', 'text', 'Whole-line opacity exit.', { duration: 0.46, ease: 'power2.in' }),
+  move('bounceOut', 'text', 'Compact text exit with a downward rebound.', {
+    duration: 0.5,
+    ease: 'power2.in',
+  }),
+  move('slideLeft', 'text', 'Text glides left into its resting position.', { duration: 0.62 }),
+  move('slideRight', 'text', 'Text glides right into its resting position.', { duration: 0.62 }),
+  move('slideUp', 'text', 'Text rises into its resting position.', { duration: 0.62 }),
+  move('slideDown', 'text', 'Text drops into its resting position.', { duration: 0.62 }),
+  move('zoomIn', 'text', 'Text scales cleanly into view.', { duration: 0.62 }),
+  move('zoomOut', 'text', 'Text scales away from view.', { duration: 0.5, ease: 'power2.in' }),
+  move('spinOut', 'text', 'Text rotates and contracts out of view.', {
+    duration: 0.5,
+    ease: 'power2.in',
+  }),
+  move('flicker', 'text loop', 'Finite seek-safe text flicker over the authored duration.', {
+    duration: 1.2,
+  }),
+  move('wave', 'text loop', 'Per-letter vertical wave.', { duration: 1.6, ease: 'sine.inOut' }),
+  move('jitter', 'text loop', 'Fast restrained per-letter shake.', {
+    duration: 0.8,
+    ease: 'linear',
+  }),
+  move('fallDown', 'text', 'Letters fall from above and settle.', { duration: 0.68 }),
+  move('riseUp', 'text', 'Letters rise decisively into place.', { duration: 0.68 }),
+  move('driftUp', 'text', 'Whole-line gentle upward entrance.', { duration: 0.8 }),
+  move('expand', 'text', 'Whole-line tracking expands into place.', { duration: 0.72 }),
+  move('concentrate', 'text', 'Wide tracking contracts into a precise lockup.', { duration: 0.72 }),
+  move('jigglyWobble', 'text loop', 'Finite per-letter wobble.', {
+    duration: 1.4,
+    ease: 'sine.inOut',
+  }),
+  move('rainbow', 'text loop', 'Cycles editable text color across a finite loop.', {
+    duration: 2,
+    ease: 'linear',
+  }),
+  move('fontShift', 'text loop', 'Cycles between bundled font families over time.', {
+    duration: 2,
+    ease: 'linear',
+  }),
+  move('roll', 'text', 'Text rolls vertically into place.', { duration: 0.68 }),
+  move('pendulumSwing', 'text loop', 'Whole-line pendulum motion.', {
+    duration: 1.8,
+    ease: 'sine.inOut',
+  }),
+  move('glitchTransition', 'text transition', 'Per-letter digital slice and settle.', {
+    duration: 0.62,
+  }),
+  move('blurPass', 'text transition', 'Directional blur travels across words.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('whiteFlash', 'text transition', 'Bright impact flash resolving to the text color.', {
+    duration: TRANSITION_TOKENS.duration.medium,
+  }),
+  move('blackSmoke', 'text transition', 'Dark blurred text dispersal.', {
+    duration: TRANSITION_TOKENS.duration.medium,
+    ease: 'power2.in',
+  }),
+  move('pullIn', 'text transition', 'Fast depth pull into the resting title.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('pullOut', 'text transition', 'Fast depth push away from the viewer.', {
+    duration: TRANSITION_TOKENS.duration.medium,
+    ease: 'power2.in',
+  }),
+  move('slideTransition', 'text transition', 'Directional old-to-new title slide recipe.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('splitMaskWipe', 'text transition', 'Text opens from the center as a split mask.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('revolvingChecker', 'text transition', 'Alternating glyph blocks revolve into view.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('fanOut', 'text transition', 'Words spread outward from one focal point.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('clockWipe', 'text transition', 'Radial-style ordered glyph reveal.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('zoomLens', 'text transition', 'Optical blur and scale snap into focus.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('pageCurl', 'text transition', 'Line segments turn in like a page.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('mosaicPixelate', 'text transition', 'Glyph blocks assemble from pixel-like pieces.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('neonGlowWipe', 'text transition', 'A bright glow sweeps across the title.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('verticalBlinds', 'text transition', 'Glyph slats open around the vertical axis.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('horizontalBlinds', 'text transition', 'Word slats open around the horizontal axis.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move('smoothScale', 'text transition', 'Fluid whole-line scale transition.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
+  move(
+    'doubleCrossShift',
+    'text transition',
+    'Alternating diagonal text slices cross and settle.',
+    {
+      duration: TRANSITION_TOKENS.duration.emphasis,
+    }
+  ),
+  move('waveWarp', 'text transition', 'Per-letter liquid wave resolves into a title.', {
+    duration: TRANSITION_TOKENS.duration.emphasis,
+  }),
   move('softReveal', 'object', 'Opacity, position, scale, and blur on offset timing.'),
   move('springIn', 'object', 'Soft spring entrance.', { ease: 'spring.soft' }),
   move('float', 'object', 'Slow sine-like idle motion.', { duration: 4 }),
-  move('pulse', 'object', 'Restrained emphasis loop.', { duration: 2 }),
+  move('pulse', 'text object', 'Restrained emphasis loop.', { duration: 2 }),
   move('heroLogo', 'object', 'Protected logo entrance without CTA-style overshoot.'),
   move('drawSVG', 'object', 'Draw a simple stroked SVG path.'),
-  move('scaleReveal', 'object', 'Small elastic scale entrance.'),
+  move('scaleReveal', 'object', 'Restrained scale entrance.', {
+    duration: 0.62,
+    ease: 'power4.out',
+  }),
   move('dynamicSlide', 'object transition', 'Directional slide with a settled arrival.'),
   move('shapeWipe', 'transition', 'Full-frame directional wipe.'),
   move('irisWipe', 'transition', 'Circular scene wipe.'),
@@ -228,13 +355,13 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object transition',
     'Focus mode scales and recenters the hero; sibling mode pushes surrounding layers outward with a coordinated fade.',
     {
-      duration: 0.9,
-      ease: 'power3.inOut',
+      duration: TRANSITION_TOKENS.duration.emphasis,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
       role: 'focus',
-      focusScale: 1.5,
-      siblingScale: 0.86,
-      siblingOpacity: 0.08,
-      pushX: 180,
+      focusScale: 1.12,
+      siblingScale: 0.96,
+      siblingOpacity: 0.55,
+      pushX: 30,
       pushY: 0,
     }
   ),
@@ -243,10 +370,10 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object transition',
     'Drive through the focal layer to reveal the next shot.',
     {
-      duration: 0.75,
-      ease: 'power2.in',
-      focusScale: 2.4,
-      blur: 10,
+      duration: TRANSITION_TOKENS.duration.slow,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      focusScale: 1.25,
+      blur: TRANSITION_TOKENS.blur.medium,
     }
   ),
   move(
@@ -254,11 +381,11 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object transition',
     'Fast directional travel with brief blur and a clean settle.',
     {
-      duration: 0.65,
-      ease: 'power3.out',
+      duration: TRANSITION_TOKENS.duration.medium,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
       direction: 'left',
-      distance: 220,
-      blur: 10,
+      distance: 96,
+      blur: TRANSITION_TOKENS.blur.medium,
     }
   ),
   move(
@@ -266,8 +393,8 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'scene transition',
     'Push the whole outgoing scene out while the incoming scene moves in from the same direction.',
     {
-      duration: 0.5,
-      ease: 'power3.inOut',
+      duration: TRANSITION_TOKENS.duration.emphasis,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
       direction: 'right',
     }
   ),
@@ -276,18 +403,54 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'scene transition',
     'Zoom the whole outgoing scene through camera while the incoming scene resolves from depth.',
     {
-      duration: 0.5,
-      ease: 'power3.inOut',
-      from: 0.55,
-      to: 2.4,
-      blur: 10,
+      duration: TRANSITION_TOKENS.duration.emphasis,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      from: TRANSITION_TOKENS.scale.modal,
+      to: 1.06,
+      blur: TRANSITION_TOKENS.blur.medium,
+    }
+  ),
+  move(
+    'sceneWhip',
+    'scene transition',
+    'Fast directional whole-scene travel with a short motion-blur bridge.',
+    {
+      duration: TRANSITION_TOKENS.duration.medium,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      direction: 'right',
+      distance: 480,
+      blur: TRANSITION_TOKENS.blur.medium,
+    }
+  ),
+  move(
+    'sceneFocus',
+    'scene transition',
+    'Depth handoff that keeps the frame covered while focus shifts between scenes.',
+    {
+      duration: TRANSITION_TOKENS.duration.slow,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      from: 1.02,
+      to: 1.02,
+      blur: TRANSITION_TOKENS.blur.medium,
+    }
+  ),
+  move(
+    'scenePivot',
+    'scene transition',
+    'Shallow whole-scene perspective pivot with restrained travel and blur.',
+    {
+      duration: TRANSITION_TOKENS.duration.slow,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      direction: 'right',
+      distance: 96,
+      blur: TRANSITION_TOKENS.blur.small,
     }
   ),
   move('rackFocus', 'object', 'Shift a soft secondary layer into sharp visual focus.', {
-    duration: 0.85,
-    ease: 'power3.out',
-    blur: 16,
-    from: 0.96,
+    duration: TRANSITION_TOKENS.duration.emphasis,
+    ease: TRANSITION_TOKENS.easing.smoothOut,
+    blur: TRANSITION_TOKENS.blur.medium,
+    from: TRANSITION_TOKENS.scale.modal,
     opacity: 0.35,
   }),
   move(
@@ -295,11 +458,11 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object transition',
     'Move a layer between background and foreground depth roles.',
     {
-      duration: 0.9,
-      ease: 'power3.inOut',
+      duration: TRANSITION_TOKENS.duration.emphasis,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
       role: 'foreground',
-      from: 0.84,
-      siblingOpacity: 0.3,
+      from: TRANSITION_TOKENS.scale.modal,
+      siblingOpacity: 0.55,
     }
   ),
   move(
@@ -318,9 +481,9 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object transition',
     'Reposition a UI layer with one directional overshoot and settle.',
     {
-      duration: 0.7,
-      ease: 'power3.out',
-      distance: 140,
+      duration: TRANSITION_TOKENS.duration.slow,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      distance: TRANSITION_TOKENS.distance.large,
     }
   ),
   move(
@@ -328,9 +491,9 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     'object',
     'Open a panel from its transform origin with a compact spring settle.',
     {
-      duration: 0.55,
-      ease: 'spring.soft',
-      from: 0.78,
+      duration: TRANSITION_TOKENS.duration.fast,
+      ease: TRANSITION_TOKENS.easing.smoothOut,
+      from: TRANSITION_TOKENS.scale.modal,
     }
   ),
   move('cursorTap', 'object', 'Compact press-and-release feedback for a cursor or control.', {
@@ -350,19 +513,31 @@ const BASE_MOVES: readonly CatalogEntry[] = [
     loop: true,
   }),
   move('sceneExit', 'object transition', 'Fast scene exit.', { duration: 0.5, ease: 'power2.in' }),
-  move('bounceIn', 'object', 'Compact bounce entrance.', { ease: 'spring' }),
+  move('bounceIn', 'text object', 'Compact bounce entrance.', { ease: 'spring' }),
   move('morph', 'object', 'Restrained matched-shape fallback.'),
-  move('spinIn', 'object', 'Single spin entrance.'),
+  move('spinIn', 'text object', 'Single spin entrance.'),
   move('rotateReveal', 'object', 'Rotation and opacity entrance.'),
   move('rotateOut', 'object', 'Rotation exit.', { duration: 0.5, ease: 'power2.in' }),
-  move('swing', 'object', 'Damped swing emphasis.'),
-  move('pendulum', 'object', 'Pendulum loop.'),
-  move('rollIn', 'object', 'Rolling entrance.'),
+  move('swing', 'text object', 'Damped swing emphasis.'),
+  move('pendulum', 'text object', 'Pendulum loop.'),
+  move('rollIn', 'text object', 'Rolling entrance.'),
   move('rotateScale', 'object', 'Rotation with restrained scale.'),
   move('logoSpinReveal', 'object', 'Protected logo spin reveal.'),
   move('spin', 'object', 'Continuous linear rotation.', { ease: 'linear' }),
   move('kenBurns', 'object', 'Slow media pan and scale.'),
   move('tiltReveal', 'object', 'Perspective-style media entrance.'),
+  move(
+    'mediaTour',
+    'object transition',
+    'Establish one real screenshot, then travel through two authored focus points without rebuilding the UI.',
+    {
+      duration: 0.76,
+      ease: 'power3.inOut',
+      aspect: 1.7778,
+      focusScale: 1.24,
+      focus2Scale: 1.3,
+    }
+  ),
   move('cardReveal', 'object', 'Card rise with surface elevation.'),
   move('buttonPop', 'object', 'Fast control entrance.', { duration: 0.45 }),
   move('progressFill', 'object', 'Left-anchored progress growth.'),
@@ -644,11 +819,16 @@ const showcaseSchema = {
   caption: field('string', 'Supporting caption.'),
   label: field('string', 'Step or category chip.'),
   width: field('number', 'Overall composition width.'),
-  behavior: field('list', 'Showcase behaviors: float, push, highlight, still.'),
+  aspect: field('number', 'Optional source aspect ratio for exact screenshot framing.'),
+  behavior: field('list', 'Showcase behaviors: perspective, tour, push, highlight, float, still.'),
   accent: field('string', 'Accent override.'),
   surface: field('string', 'Surface override.'),
   focusX: field('number', 'Highlight focus X inside the screen, 0-1.'),
   focusY: field('number', 'Highlight focus Y inside the screen, 0-1.'),
+  focusScale: field('number', 'Scale used for the first directed product focus.'),
+  focus2X: field('number', 'Optional second product focus X inside the screen, 0-1.'),
+  focus2Y: field('number', 'Optional second product focus Y inside the screen, 0-1.'),
+  focus2Scale: field('number', 'Scale used for the optional second product focus.'),
 } as const;
 
 /** Showcases expose the product-presentation compositions as catalog entries. */
@@ -852,9 +1032,9 @@ export function catalogPrompt(): string {
     section('Moves', MOVES),
     section(
       'Components',
-      componentRegistry().filter((entry) =>
-        (BASE_SEMANTIC_COMPONENT_TYPES as readonly string[]).includes(entry.name)
-      )
+      // Include specialized editorial components too. Filtering to the base
+      // vocabulary made the registry look rich in code but invisible to the AI.
+      componentRegistry()
     ),
     section('Showcases', showcaseRegistry()),
     section('Layouts', layoutRegistry()),

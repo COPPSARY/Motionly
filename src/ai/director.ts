@@ -21,10 +21,13 @@ import {
   doctrinePrompt,
   metadataPrompt,
   recommendPresentations,
+  scenePrompt,
   selectComponents,
   transitionPrompt,
   type AssetKind,
 } from '../motion-system';
+import { continuityPlan, sceneOutline, storyboardSkeleton } from './storyboard-director';
+import { motionPlanPrompt, planMotion } from './motion-planner';
 
 export interface BeatOutline {
   name: string;
@@ -98,6 +101,7 @@ export function directorBrief(
   assets: readonly Asset[],
   canvasDuration: number
 ): string {
+  const motionPlan = planMotion(request, assets, canvasDuration);
   const outline = beatOutline(canvasDuration, assets);
   const intent = request.trim().slice(0, 400);
   const requested = intent
@@ -120,12 +124,43 @@ export function directorBrief(
     )
     .join('\n');
 
+  const scenes = sceneOutline(canvasDuration, assets);
+  const sceneStoryboard = scenes
+    .map(
+      (scene, index) =>
+        `${index + 1}. scene ${scene.name} (${scene.duration}s) — ${scene.purpose}.${
+          scene.identities.length ? ` Carries identity: ${scene.identities.join(', ')}.` : ''
+        }`
+    )
+    .join('\n');
+  const continuity = [...continuityPlan(scenes)]
+    .map(
+      ([identity, names]) =>
+        `- identity ${identity} spans ${names.join(' → ')}: tag each of those objects \`identity ${identity}\` so it transforms across the boundary.`
+    )
+    .join('\n');
+
   return [
     'Creative director brief (plan first, then compile it to source):',
-    `Canvas duration: ${canvasDuration}s. Storyboard skeleton:`,
+    '',
+    motionPlanPrompt(motionPlan),
+    '',
+    'Structure comes before animation. Generate in this order:',
+    '1. Storyboard  2. Scenes  3. Scene contents  4. Shared identities  5. Boundaries  6. Animation inside each scene.',
+    '',
+    `Canvas duration: ${canvasDuration}s. Planned storyboard:`,
+    sceneStoryboard,
+    '',
+    'Start from exactly these scene blocks:',
+    storyboardSkeleton(scenes),
+    ...(continuity ? ['', 'Continuity spine:', continuity] : []),
+    '',
+    scenePrompt(),
+    '',
+    'Inside a scene, beats change the focus without clearing anything:',
     storyboard,
-    ...(groups ? ['Presentation plan from the real assets:', groups] : []),
-    ...(requested.length ? [`Blocks matching this request: ${requested.join(', ')}.`] : []),
+    ...(groups ? ['', 'Presentation plan from the real assets:', groups] : []),
+    ...(requested.length ? ['', `Blocks matching this request: ${requested.join(', ')}.`] : []),
     '',
     doctrinePrompt(),
     '',

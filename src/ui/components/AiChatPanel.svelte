@@ -565,7 +565,7 @@
     font-size: 11.5px;
     font-weight: 450;
     line-height: 1.45;
-    letter-spacing: -.01em;
+    letter-spacing: 0;
   }
   .composer textarea::placeholder { color: #777780; opacity: 1; }
   .composer .send-button {

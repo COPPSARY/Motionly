@@ -101,7 +101,7 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
       ? evaluateElement(
           sourceElement,
           prepared.animationsByTarget.get(sourceElement.id) ?? [],
-          time
+          time - globalStart(sourceElement)
         )
       : ({
           x: 0,
@@ -144,6 +144,9 @@ export function evaluateScene(scene: Scene, time: number): EvaluatedScene {
     elements.push(clipElement);
   }
 
+  // Clips are synthesized after regular elements, so resolve their authored
+  // scene/group parent now instead of leaving media detached from transitions.
+  resolveHierarchy(elements);
   resolveSemanticRelationships(elements);
   elements.sort(
     (left, right) => elementTrackRank(prepared, left) - elementTrackRank(prepared, right)
@@ -674,8 +677,14 @@ function animationStartValues(animation: Animation): PropertyMap {
     : animation.from;
 }
 
-function declaresHiddenStart(start: PropertyMap): boolean {
-  return start['opacity'] !== undefined && Number(start['opacity']) < 1;
+function declaresHiddenStart(animation: Animation): boolean {
+  const start = animationStartValues(animation);
+  const end =
+    animation.keyframes.length > 0 ? (animation.keyframes.at(-1)?.properties ?? {}) : animation.to;
+  const startOpacity = Number(start['opacity']);
+  return (
+    start['opacity'] !== undefined && startOpacity < 1 && Number(end['opacity'] ?? 1) > startOpacity
+  );
 }
 
 /**
@@ -694,7 +703,7 @@ function entranceState(animations: Animation[]): { delay: number; state: Propert
   let delay = Infinity;
   for (const animation of animations) {
     if (animation.repeat !== undefined) continue;
-    if (animation.delay < delay && declaresHiddenStart(animationStartValues(animation))) {
+    if (animation.delay < delay && declaresHiddenStart(animation)) {
       delay = animation.delay;
     }
   }
@@ -706,7 +715,7 @@ function entranceState(animations: Animation[]): { delay: number; state: Propert
       if (animation.repeat !== undefined) continue;
       if (animation.delay !== delay) continue;
       const start = animationStartValues(animation);
-      if (declaresHiddenStart(start)) Object.assign(state, start);
+      if (declaresHiddenStart(animation)) Object.assign(state, start);
     }
     entrance = { delay, state };
   }

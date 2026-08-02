@@ -41,7 +41,7 @@ showcase subject {
   headline "Show the real product"
   caption "Import your asset and set media to replace this frame."
   beat reveal
-  behavior push
+  behavior perspective
 }
 
 text hint {

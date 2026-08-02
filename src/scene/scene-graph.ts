@@ -222,6 +222,7 @@ export function buildSceneGraph(sourceAst: ProgramNode): Scene {
     clips,
     transitions,
     beats: semantic.beats,
+    storyboard: semantic.storyboard,
     audio: audioNode && 'path' in audioNode ? audioNode.path : undefined,
     audioStart: audioNode
       ? (normalizeProperty('start', audioNode.properties['start'] ?? 0) as number)

@@ -220,6 +220,57 @@ subtrees remain accurate locked `svgpart` leaves; animated SVGs stay as media.
 
 ## Scenes, Groups, Paths, And Continuity
 
+### Storyboard scenes
+
+A project is a storyboard: an ordered list of scenes forming one continuous
+animation. Declare the scenes, then put objects in them with `scene NAME`.
+
+```motion
+scene intro {
+  label "Intro"
+  duration 4s
+  background #05060a
+}
+
+scene demo {
+  label "Demo"
+  duration 8s
+  zoom 1.2
+  transition sharedElement
+  transitionDuration .8s
+}
+
+text brandmark  { scene intro identity brand value "Motionly" center size 96 color #ffffff }
+text brandSmall { scene demo  identity brand value "Motionly" size 32 color #ffffff }
+component board { scene demo  type dashboard headline "Live metrics" }
+```
+
+| Property | Meaning |
+| --- | --- |
+| `duration` | Scene length. Omit to take an even share of remaining canvas time. |
+| `start` | Pin to an absolute time. Omit to run back to back. |
+| `label` | Name in the storyboard strip; also signals storyboard intent. |
+| `background` | Scene background color. |
+| `zoom`, `cameraX`, `cameraY` | Scene framing, inherited from the previous scene when omitted. |
+| `transition` | Boundary **into** this scene: `sharedElement`, `cameraMove`, `continuous`, `cut`. There is no fade. |
+| `transitionDuration`, `easing` | Boundary timing. Omit to let Motionly infer. |
+
+- Membership: `scene NAME` on `text`, an image alias, `component`, `layout`, or
+  `showcase`. An object that already declares `parent` keeps it and the scene
+  becomes its ancestor. Referencing an undeclared scene is an error.
+- Timing inside a scene is scene-local. Minimum useful scene length is `0.5s`.
+- `identity NAME` marks a component that recurs across scenes. Two members
+  sharing an identity are one logical component, so the boundary becomes a
+  handoff instead of an exit plus a new entrance. Members with no `identity` fall
+  back to their element name, so reusing a name also pairs them.
+- At each boundary members are classified shared / enter / exit. Members that
+  already carry authored or preset motion are not given a second entrance.
+- Storyboard lowering is opt-in and engages only when the project declares
+  membership or storyboard intent (`label`, `transition`). Legacy hand-timed
+  top-level `scene` containers below still compile unchanged.
+
+### Hand-timed scenes, groups, and paths
+
 ```motion
 scene productShot {
   start 2s
@@ -444,23 +495,30 @@ Supported text presets:
 
 Text boxes support `width`, `height`, `textAlign left|center|right`,
 `verticalAlign top|middle|bottom`, `lineHeight`, and `wrap none|word|char`.
-Text presets accept `split lines|words|chars`, `rangeStart`, `rangeEnd`, and
+Text presets accept `split none|lines|words|chars`, `rangeStart`, `rangeEnd`, and
 `order forward|reverse|center`. Layout uses measured font metrics in preview
 and export; `maskReveal` uses a real clip.
 
-- `keynoteText`
-- `wordReveal`
-- `charReveal`
-- `splitReveal`
-- `blurReveal`
-- `fadeUp`
-- `slideIn`
-- `scaleText`
-- `typewriter`
-- `maskReveal`
-- `gradientReveal`
+- Entrances: `typewriter`, `fadeIn`, `bounceIn`, `slideLeft`, `slideRight`,
+  `slideUp`, `slideDown`, `zoomIn`, `spinIn`, `fallDown`, `riseUp`, `driftUp`,
+  `expand`, `concentrate`, `roll`, `keynoteText`, `wordReveal`, `charReveal`,
+  `splitReveal`, `blurReveal`, `fadeUp`, `slideIn`, `scaleText`, `maskReveal`,
+  `gradientReveal`.
+- Exits: `fadeOut`, `bounceOut`, `zoomOut`, `spinOut`, `blackSmoke`, `pullOut`.
+- Loops: `flicker`, `wave`, `jitter`, `pulse`, `jigglyWobble`, `rainbow`,
+  `fontShift`, `pendulumSwing`, `swing`.
+- Transitions: `glitchTransition`, `blurPass`, `whiteFlash`, `pullIn`,
+  `slideTransition`, `splitMaskWipe`, `revolvingChecker`, `fanOut`, `clockWipe`,
+  `zoomLens`, `pageCurl`, `mosaicPixelate`, `neonGlowWipe`, `verticalBlinds`,
+  `horizontalBlinds`, `smoothScale`, `doubleCrossShift`, `waveWarp`.
 
-Common options: `split`, `stagger`, `delay`, `duration`, `ease`, `exitAt`, `exitDuration`.
+Common options: `split`, `stagger`, `delay`, `duration`, `ease`, `exitAt`,
+`exitDuration`, `exitDistance`, `exitDirection`, `repeat`. Use `exitDistance`
+and `exitDirection` when an entrance and exit need different choreography.
+
+Whole-scene transitions use matched `transitionOut` / `transitionIn` calls on
+scene roots: `sceneSlide`, `sceneZoom`, `sceneWhip`, `sceneFocus`, and
+`scenePivot`.
 
 ## Image Layers And Vector Overlays
 
@@ -642,10 +700,10 @@ component toast {
   dialog/confirmation → `modal`; mobile navigation/dock → `navigation`;
   feature/KPI card → `card`.
 
-Scenes support `enter`/`exit` fade envelopes (`enter .35s`, `exit .5s`) so a
-whole composition enters and leaves cleanly instead of popping at the scene
-boundary. Text elements render animated count-ups with a numeric `value` plus
-`countDecimals`, `countSeparator`, `countPrefix`, and `countSuffix`.
+For scene boundaries, preserve recurring components with `identity NAME` and use
+shared-element, camera, continuous, or cut transitions. Text elements render
+animated count-ups with a numeric `value` plus `countDecimals`,
+`countSeparator`, `countPrefix`, and `countSuffix`.
 
 ## Raw UI Primitives
 
@@ -724,9 +782,9 @@ Preferred production set:
 - `shapeWipe`: directional full-scene transition.
 - `irisWipe`: circular full-scene transition.
 - `drawSVG`: path progress for simple stroked SVGs only.
-- `focusZoom`: whole-product to feature-detail transition. The focal layer uses `role focus`; surrounding layers can call the same move with `role sibling pushX ... pushY ...`.
-- `zoomThrough`: drive through a focal layer into the next shot.
-- `whipPan`: fast directional travel with a brief blur and clean settle.
+- `focusZoom`: restrained whole-product to feature-detail transition (default `focusScale 1.12`). The focal layer uses `role focus`; surrounding layers can call the same move with `role sibling pushX ... pushY ...`.
+- `zoomThrough`: short match-cut depth handoff (default `focusScale 1.25`, `blur 3`).
+- `whipPan`: fast directional travel with brief `blur 3`; reserve it for a directional cause.
 - `sceneSlide`: paired whole-scene push in four directions; all descendants move with the scene root.
 - `sceneZoom`: paired whole-scene zoom-through; tune outgoing `to`, incoming `from`, and optional `xTo`/`yTo` focus.
 - `rackFocus`: bring a soft secondary layer into sharp focus.
@@ -743,7 +801,7 @@ Preferred production set:
 image editorOverview {
   source editor
   center
-  animation "focusZoom(delay 3s duration .9s role focus focusScale 1.7 xTo 0 yTo 80 ease power3.inOut)"
+  animation "focusZoom(delay 3s duration .5s role focus focusScale 1.12 xTo 0 yTo 24 ease power3.out)"
 }
 
 component pointer {

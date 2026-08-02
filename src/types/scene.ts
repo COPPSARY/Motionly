@@ -342,6 +342,12 @@ export interface Scene {
   transitions: SharedTransition[];
   /** Storyboard beats, present when the project uses the beat system. */
   beats?: import('../motion-system').BeatPlan[];
+  /**
+   * Storyboard scenes: the project's organizational spine, in order, each with
+   * absolute timing, neighbours, members, and its boundary plan. Empty for a
+   * legacy flat project that declares no storyboard.
+   */
+  storyboard?: import('../motion-system').ScenePlan[];
   audio?: string; // Path to audio file
   audioStart: number;
 }

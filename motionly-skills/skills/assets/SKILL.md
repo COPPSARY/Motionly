@@ -1,45 +1,36 @@
 ---
 name: assets
-description: Import, inspect, place, animate, and troubleshoot Motionly media assets. Use for PNG/JPEG, static or animated SVG, GIF, MP4, WebM, MOV, Lottie, audio, data URLs, aspect ratios, codecs, browser decoding, trim timing, and preserving existing animation.
+description: Inventory, import, present, time, and troubleshoot Motionly image, SVG, GIF, MP4, WebM, MOV, Lottie, and audio assets without flattening or distorting their content.
 ---
 
 # Assets
 
-Inventory real files before authoring. Record filename, format, dimensions, aspect ratio, duration, and whether existing animation must be preserved.
+Inventory before composition: path, format, width, height, aspect ratio,
+duration, codec, transparency, and whether motion must be preserved. Use stable
+local paths and single-word aliases.
 
-## Format Behavior
-
-- PNG/JPEG: static browser images.
-- Static SVG: editable layer transforms; simple paths also support fill/stroke overrides and `drawSVG`.
-- Animated SVG: real-time Canvas SVG playback with common SMIL support; exact frame seeking is unavailable and CSS keyframes may differ from browser DOM playback.
-- GIF: frame-seeked through `ImageDecoder` when available; otherwise live playback with a visible warning.
-- MP4/WebM/MOV/M4V: native browser video decode and exact seek. Codec support follows the browser.
-- Lottie `.lottie`: official Canvas player with frame seeking for preview, scrub, and export.
-- Project audio: separate bottom track with persisted `start` and MP4 export.
-
-Never flatten animated media to a still or silently ignore its motion.
-
-## Import And Place
+| Asset | Motionly behavior |
+| --- | --- |
+| PNG/JPEG | static browser image |
+| static SVG | editable transform; simple paths support `drawSVG`/stroke/fill |
+| animated SVG | live Canvas playback; exact frame seeking and CSS parity are limited |
+| GIF | `ImageDecoder` seeking when available; otherwise live fallback |
+| MP4/WebM/MOV/M4V | native browser video decode; codec support is browser-dependent |
+| `.lottie` | Canvas player with preview/scrub/export frame seeking |
+| MP3/WAV/etc. | project audio on the bottom audio track |
 
 ```motion
-import "./assets/hero.mov" as hero
-import "./assets/loader.lottie" as loader
-import "./assets/animated-mark.svg" as mark
+import "./assets/product-ui.png" as productUI
+import "./assets/demo.mp4" as demo
 
-hero { center cover layer hero }
-loader { center width 320 layer supporting }
-mark { center width 260 layer text }
+image productUI { center width 1400 }
+clip demo { track product start 2s duration 5s trimIn 1s mute true }
 ```
 
-Set one of `width` or `height` to preserve aspect ratio. Use `cover` only when cropping is intended.
+Set one of `width` or `height` for media unless intentional cropping is needed;
+use `cover` only when cropping is the story. Use the asset itself inside a
+showcase or `mediaTour` for exact product proof. Do not redraw an existing UI.
 
-## Timeline Media
-
-Use clips for start, duration, and source trim. Video clip audio is muted; use project audio for synchronized sound. A single imported video decoder cannot show two source times simultaneously, so import a second alias when needed.
-
-## Troubleshoot Honestly
-
-- MOV failure usually means the current browser lacks the file's codec; report the decoder error and recommend H.264 MP4/WebM without calling MOV unsupported.
-- Animated SVG scrubbing shows the live Canvas runtime state; state the seeking and CSS-keyframe limitations when they matter.
-- Large embedded files increase `.motion` size; prefer stable local asset paths for production projects.
-- If loading fails, keep the project editable and identify the exact asset rather than hiding it.
+For missing media, preserve an honest editable placeholder and name the missing
+asset. For a blank video check browser codec/MIME, `loadedmetadata`, `seeked`,
+and the asset-loader diagnostic. Do not claim a still frame proves video works.

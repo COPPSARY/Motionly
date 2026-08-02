@@ -138,7 +138,7 @@ function showcaseMetadata(): MotionComponentMetadata[] {
     description: definition.description,
     useCases: definition.useCases,
     inputs: ['media', 'headline', 'caption', 'label'],
-    animations: ['softReveal', 'deviceFloat', 'cameraZoom', 'uiHighlight'],
+    animations: ['perspectiveReveal', 'directedFocusTour', 'deviceFloat', 'uiHighlight'],
     assetKinds: definition.assetKinds,
   }));
 }

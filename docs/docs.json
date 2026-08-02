@@ -43,6 +43,7 @@
             "pages": [
               "motion-language/overview",
               "motion-language/canvas-camera",
+              "motion-language/scenes",
               "motion-language/elements",
               "motion-language/motion-system",
               "motion-language/text",

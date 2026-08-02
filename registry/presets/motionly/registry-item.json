@@ -2,18 +2,21 @@
   "name": "motionly",
   "type": "motionly:preset",
   "title": "Motionly",
-  "description": "A concise introduction to Motionly and editable .motion projects.",
+  "description": "A 43.94-second editorial SaaS launch film with agent handoff, pixel-matched editor reconstruction, a full product demo, and precision export.",
   "tags": [
     "product",
     "editor",
-    "launch"
+    "launch",
+    "storyboard",
+    "scenes",
+    "saas"
   ],
   "version": 1,
   "dimensions": {
     "width": 1920,
     "height": 1080
   },
-  "duration": 32.1,
+  "duration": 43.94,
   "files": [
     {
       "path": "preset/motionly",
