@@ -187,6 +187,9 @@ describe('sequence hierarchy stagger', () => {
     );
     const animations = scene.animations.filter((item) => item.target === 'one');
     expect(animations[0]?.delay).toBeCloseTo(5, 5);
-    expect(animations[1]?.delay).toBeCloseTo(10, 5);
+    const exit = animations.find(
+      (animation) => animation.delay === 10 && animation.to.opacity === 0
+    );
+    expect(exit?.delay).toBeCloseTo(10, 5);
   });
 });

@@ -449,4 +449,42 @@ describe('structured semantic components', () => {
       expect(scene.elements.find((element) => element.id === id)!.properties['value']).toBe(value);
     }
   });
+
+  it('builds published UI controls as distinct editable structures', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 8s }
+        component side { type sidebar }
+        component records { type table }
+        component palette { type command-palette }
+        component search { type search-bar }
+        component person { type avatar label "Maya Chen" }
+        component status { type badge }
+        component steps { type stepper }
+        component logos { type logo-grid }
+        component quote { type testimonials }
+        component faq { type faq-accordion }
+      `)
+    );
+    for (const id of [
+      'side__brand',
+      'records__row0',
+      'palette__search',
+      'search__shortcut',
+      'person__initials',
+      'status__marker',
+      'steps__step0',
+      'logos__tile0',
+      'quote__quote',
+      'faq__rowAction0',
+    ]) {
+      expect(
+        scene.elements.some((element) => element.id === id),
+        id
+      ).toBe(true);
+    }
+    expect(
+      scene.animations.find((animation) => animation.target === 'search__surface')!.easing
+    ).toBe('power4.out');
+  });
 });

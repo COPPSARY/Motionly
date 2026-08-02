@@ -1,42 +1,31 @@
 ---
 name: composition
-description: Design clear professional Motionly compositions. Use for hierarchy, layout, spacing, branding, color, scene design, focal subjects, clutter, overlap, aspect ratios, product launch frames, diagrams, and visual review of generated animation.
+description: Design Motionly frames with clear hierarchy, spacing, typography, color, real product media, safe aspect ratios, and intentional SaaS launch composition. Use for visual review and fixing clutter, overlap, clipping, or stale layouts.
 ---
 
 # Composition
 
-Give each shot one focal subject and one communication job. Motion supports hierarchy; it cannot rescue a frame where everything competes.
+Read [authoring-contract.md](../../references/authoring-contract.md) and
+[production-checklist.md](../../references/production-checklist.md).
 
-## Frame Hierarchy
+Every shot has one job and one focal subject. A useful order is:
 
-1. Focal subject: largest contrast, clearest motion, strongest placement.
-2. Supporting proof: smaller and delayed.
-3. Context: quiet labels, grid, atmosphere, or brand cues.
-4. Exit path: leave spatial and temporal room for the next shot.
+1. subject: largest scale/contrast and most meaningful motion;
+2. proof: one UI asset, metric, or action that supports the subject;
+3. context: quiet background or brand cue;
+4. exit path: temporal and spatial room for the next shot.
 
-## Layout Patterns
+Use `centerLayout`/`heroLayout` for a promise, `splitLayout` for editorial
+feature proof, `dashboardLayout`/`bentoGrid` for structured product systems,
+`cardGrid` for repeated cards, and `screenshotPresentation`/`uiWalkthrough` for
+real media. Never hand-place random rectangles when a layout/component exists.
 
-- Promise: centered display type with restrained brand mark.
-- Feature: editorial split, copy on one side and product media on the other.
-- Proof: large product panel with one animated callout.
-- Comparison: aligned columns with shared baseline and minimal motion.
-- Close: centered logo/call-to-action with clean negative space.
+Use large intentional headlines. Supporting labels are optional; do not scatter
+small text around every icon. Preserve aspect ratio, keep padding consistent,
+and align to an 8px rhythm. Change background color when the story changes, not
+for every beat. Maintain contrast during motion, not only at rest.
 
-Use a repeatable spacing unit such as 24 or 32px. Keep titles away from media edges, preserve asset aspect ratio, and inspect actual bounds after animation settles.
-
-## Color
-
-- Use one dominant background, one primary text color, and one accent per shot.
-- Reserve the brightest accent for the focal subject or call to action.
-- Change scene color to mark a story shift, not on every beat.
-- Maintain readable contrast during transitions, not only on static holds.
-
-## Review At Representative Frames
-
-- First visible frame.
-- Entrance midpoint and completed hold.
-- One frame before/during/after each transition.
-- Exit boundary.
-- Final intended frame.
-
-Treat accidental overlap, stretched media, clipped type, unexplained blank frames, and stale layers as defects. Delete decorative layers that do not improve hierarchy.
+Review first frame, entrance midpoint, settled hold, pre/during/post boundary,
+exit, and final frame. Delete anything that does not improve hierarchy. Treat
+overlap, clipping, stretched media, stale layers, blank frames, and unexplained
+camera movement as bugs.

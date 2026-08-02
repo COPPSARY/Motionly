@@ -34,7 +34,7 @@
     <div class="me-stage-actions">
       <button type="button" class="me-meta-btn" on:click={onFit}>Fit</button>
       <span>{Math.round(zoom * 100)}%</span>
-      <button type="button" class="me-icon-btn" on:click={onToggleFullscreen} title="Fullscreen preview">
+      <button type="button" class="me-icon-btn" on:click={onToggleFullscreen} title="Fullscreen preview" aria-label="Fullscreen preview">
         <Maximize2 size={15} />
       </button>
     </div>

@@ -1,42 +1,39 @@
 ---
 name: typography
-description: Design and animate readable Motionly typography. Use for titles, captions, kinetic type, narration-synced copy, word/character reveals, typewriter effects, numeric callouts, hierarchy, line breaks, font sizing, tracking, and text timing.
+description: Design and animate Motionly display headlines, supporting copy, kinetic text, count-up values, typewriter moments, word/character/line splits, exits, readability, and narrative text transitions.
 ---
 
 # Typography
 
-Preserve exact supplied copy. Split text for layout or timing without paraphrasing unless the user permits edits.
+Read [authoring-contract.md](../../references/authoring-contract.md) and
+[motion-catalog.md](../../references/motion-catalog.md). Text can be the subject;
+do not surround a hero sentence with unnecessary small labels.
 
-## Choose The Reveal
+## Selection
 
-- Key promise: `keynoteText` or `wordReveal` with restrained word stagger.
-- Short energetic phrase: `charReveal`, `60–80ms` stagger.
-- Editorial headline: `splitReveal` or `maskReveal` by line.
-- Technical label: `fadeUp` or `softReveal`.
-- Typed interface moment: `typewriter`, used once.
-- Metric: `countUp` with a stable label and enough hold to read the result.
+- hero promise: `keynoteText` or `splitReveal`;
+- readable sentence: `wordReveal`;
+- short energetic phrase: `charReveal`;
+- product/code moment: one `typewriter`;
+- support copy: `fadeUp`, `riseUp`, or `slideUp`;
+- metric: `countUp` with a stable label;
+- title state change: one text transition such as `slideTransition`, `splitMaskWipe`, or `blurPass`.
 
 ```motion
-text title {
-  value "Build momentum, not busywork."
+text hero {
+  value "From brief to launch film."
   center
   y -80
-  size 92
+  size 112
   weight 760
-  tracking -1
   color #f8fafc
-  textAnimation "keynoteText(split words stagger 90ms duration 800ms delay 600ms ease power3.out exitAt 4.6s exitDuration 420ms)"
+  textAnimation "keynoteText(split words stagger 80ms duration 850ms delay 300ms ease power4.out exitAt 4.6s exitDuration 420ms)"
 }
 ```
 
-## Readability
-
-- Keep short headline holds at least one second after the full reveal.
-- Give narration-matched text time to remain visible through the spoken phrase.
-- Make exits faster than entrances and clear old copy before conflicting copy arrives.
-- Reduce size or split lines before allowing clipping or media overlap.
-- Use weight, scale, contrast, and timing for hierarchy before adding decorative motion.
-
-## Kinetic Type Pattern
-
-Reveal the decisive noun or verb last, with stronger scale or color, while the rest settles quietly. Do not animate every word differently; the audience should read a sentence, not decode an effect demo.
+Keep full reveal plus a one-second readable hold. Preserve exact copy and
+punctuation. Use width, wrap, lineHeight, weight, size, and tracking to solve
+layout before adding effects. Avoid animating every word differently; reveal the
+decisive word last only when it improves meaning. Finish exits before the next
+headline becomes dominant. Verify the text at its largest scale and at every
+transition boundary.

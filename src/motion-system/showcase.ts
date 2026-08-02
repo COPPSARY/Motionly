@@ -40,7 +40,14 @@ export type ShowcaseType = (typeof SHOWCASE_TYPES)[number];
  * a shot that relies on it reads as waiting. `push` — a camera move expressed on
  * the subject — is the default because it keeps the frame performing.
  */
-export const SHOWCASE_BEHAVIORS = ['float', 'push', 'highlight', 'still'] as const;
+export const SHOWCASE_BEHAVIORS = [
+  'float',
+  'push',
+  'perspective',
+  'tour',
+  'highlight',
+  'still',
+] as const;
 
 export interface ShowcaseDefinition {
   type: ShowcaseType;
@@ -101,7 +108,7 @@ const definitions: Record<ShowcaseType, ShowcaseDefinition> = {
     useCases: ['desktop app', 'tool demo', 'editor reveal'],
     assetKinds: ['ui', 'screenshot', 'video'],
     screenRatio: 16 / 9.6,
-    defaults: { width: 1120, behavior: 'push', duration: 0.68 },
+    defaults: { width: 1120, behavior: 'perspective', duration: 0.68 },
   },
   dashboardShowcase: {
     type: 'dashboardShowcase',
@@ -110,7 +117,7 @@ const definitions: Record<ShowcaseType, ShowcaseDefinition> = {
     useCases: ['saas launch', 'product demo', 'analytics explainer'],
     assetKinds: ['ui', 'chart', 'screenshot'],
     screenRatio: 16 / 9.6,
-    defaults: { width: 1240, behavior: 'push highlight', duration: 0.72 },
+    defaults: { width: 1240, behavior: 'tour highlight', duration: 0.72 },
   },
   screenshotPresentation: {
     type: 'screenshotPresentation',
@@ -119,7 +126,7 @@ const definitions: Record<ShowcaseType, ShowcaseDefinition> = {
     useCases: ['illustration', 'photography', 'flat asset reveal'],
     assetKinds: ['photo', 'illustration', 'screenshot', 'avatar', 'unknown'],
     screenRatio: 16 / 10,
-    defaults: { width: 1200, behavior: 'push', duration: 0.68 },
+    defaults: { width: 1200, behavior: 'perspective', duration: 0.68 },
   },
   uiWalkthrough: {
     type: 'uiWalkthrough',
@@ -128,7 +135,7 @@ const definitions: Record<ShowcaseType, ShowcaseDefinition> = {
     useCases: ['product walkthrough', 'onboarding step', 'feature demo'],
     assetKinds: ['ui', 'screenshot'],
     screenRatio: 16 / 9.6,
-    defaults: { width: 1180, behavior: 'push highlight', duration: 0.7 },
+    defaults: { width: 1180, behavior: 'tour highlight', duration: 0.7 },
   },
 };
 
@@ -153,6 +160,8 @@ export interface ShowcaseContext {
   y: number;
   /** Overall composition width; every part derives from it. */
   width: number;
+  /** Optional source aspect ratio override for exact screenshot framing. */
+  aspect?: number;
   /** Imported asset alias placed on the screen. */
   media?: string;
   headline?: string;
@@ -168,6 +177,11 @@ export interface ShowcaseContext {
   /** Focus point inside the screen, 0..1, used by the highlight ring. */
   focusX: number;
   focusY: number;
+  focusScale: number;
+  /** Optional second camera target for a directed screenshot walkthrough. */
+  focus2X?: number;
+  focus2Y?: number;
+  focus2Scale?: number;
 }
 
 export interface ShowcaseComposition {
@@ -277,20 +291,47 @@ export function buildShowcase(ctx: ShowcaseContext): ShowcaseComposition {
     },
   };
 
-  const geometry = deviceGeometry(ctx.type, width, definition.screenRatio);
+  const geometry = deviceGeometry(ctx.type, width, ctx.aspect ?? definition.screenRatio);
   const screenId = buildFrame(builder, ctx, geometry, theme);
   const mediaId = buildScreenContent(builder, ctx, geometry, screenId, theme);
   buildCopy(builder, ctx, geometry, theme);
 
-  // Entrance: the whole composition rises and settles once. Parts never
-  // animate independently on entry — that is what makes it read as one object.
-  builder.enter(
-    ctx.name,
-    0,
-    ctx.duration,
-    { opacity: 0, y: round(ctx.y + 56), scale: 0.94, blur: 6 },
-    { opacity: 1, y: round(ctx.y), scale: 1, blur: 0 }
-  );
+  // The whole composition arrives as one designed surface. Product media gets a
+  // perspective settle; ordinary showcases keep the restrained rise.
+  if (behaviors.has('perspective') || behaviors.has('tour')) {
+    builder.enter(
+      ctx.name,
+      0,
+      ctx.duration,
+      {
+        opacity: 0,
+        x: round(ctx.x + width * 0.055),
+        y: round(ctx.y + 54),
+        scale: 0.93,
+        rotationX: 4,
+        rotationY: -6,
+        blur: 5,
+      },
+      {
+        opacity: 1,
+        x: round(ctx.x),
+        y: round(ctx.y),
+        scale: 1,
+        rotationX: 0,
+        rotationY: 0,
+        blur: 0,
+      },
+      'power4.out'
+    );
+  } else {
+    builder.enter(
+      ctx.name,
+      0,
+      ctx.duration,
+      { opacity: 0, y: round(ctx.y + 56), scale: 0.94, blur: 6 },
+      { opacity: 1, y: round(ctx.y), scale: 1, blur: 0 }
+    );
+  }
   if (mediaId) {
     builder.enter(mediaId, 0.18, Math.max(0.4, ctx.duration * 0.8), { opacity: 0 }, { opacity: 1 });
   }
@@ -320,6 +361,28 @@ export function buildShowcase(ctx: ShowcaseContext): ShowcaseComposition {
     builder.enter(ctx.name, ctx.duration + 0.25, 2.6, { scale: 1 }, { scale: 1.06 }, 'sine.inOut');
   }
 
+  if (behaviors.has('tour') && !still) {
+    const first = focusTransform(ctx, geometry, ctx.focusX, ctx.focusY, ctx.focusScale);
+    builder.enter(
+      ctx.name,
+      ctx.duration + 0.48,
+      1.05,
+      { x: round(ctx.x), y: round(ctx.y), scale: 1, rotationX: 0, rotationY: 0 },
+      first,
+      'power3.inOut'
+    );
+    if (ctx.focus2X !== undefined && ctx.focus2Y !== undefined) {
+      builder.enter(
+        ctx.name,
+        ctx.duration + 1.88,
+        1.15,
+        first,
+        focusTransform(ctx, geometry, ctx.focus2X, ctx.focus2Y, ctx.focus2Scale ?? ctx.focusScale),
+        'power3.inOut'
+      );
+    }
+  }
+
   const focusRing = behaviors.has('highlight')
     ? buildHighlight(builder, ctx, geometry, screenId)
     : undefined;
@@ -331,6 +394,30 @@ export function buildShowcase(ctx: ShowcaseContext): ShowcaseComposition {
     childIds: builder.children.map((child) => child.name),
     screen: { width: geometry.screenWidth, height: geometry.screenHeight },
     focusId: focusRing ?? mediaId ?? screenId ?? ctx.name,
+  };
+}
+
+function focusTransform(
+  ctx: ShowcaseContext,
+  geometry: Geometry,
+  focusX: number,
+  focusY: number,
+  scale: number
+): Record<string, number> {
+  const resolvedScale = Math.max(1, Math.min(1.65, scale));
+  const xTravel = (Math.max(0, Math.min(1, focusX)) - 0.5) * geometry.screenWidth * resolvedScale;
+  const yTravel = (Math.max(0, Math.min(1, focusY)) - 0.5) * geometry.screenHeight * resolvedScale;
+  return {
+    x: round(
+      ctx.x - Math.max(-geometry.screenWidth * 0.36, Math.min(geometry.screenWidth * 0.36, xTravel))
+    ),
+    y: round(
+      ctx.y -
+        Math.max(-geometry.screenHeight * 0.32, Math.min(geometry.screenHeight * 0.32, yTravel))
+    ),
+    scale: round(resolvedScale),
+    rotationX: 0,
+    rotationY: 0,
   };
 }
 

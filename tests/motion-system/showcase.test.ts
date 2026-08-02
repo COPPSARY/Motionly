@@ -28,6 +28,7 @@ const context = (
   behaviors: [],
   focusX: 0.5,
   focusY: 0.45,
+  focusScale: 1.28,
   ...overrides,
 });
 
@@ -71,6 +72,13 @@ describe('product showcases', () => {
       expect(media.properties['height']).toBeUndefined();
       expect(media.properties['center']).toBe(true);
     }
+  });
+
+  it('honors an exact screenshot aspect ratio', () => {
+    const composition = buildShowcase(
+      context('screenshotPresentation', { media: 'shotAsset', width: 1600, aspect: 16 / 9 })
+    );
+    expect(composition.screen.width / composition.screen.height).toBeCloseTo(16 / 9, 3);
   });
 
   it('never uses canvas-relative cover inside a device screen', () => {
@@ -155,6 +163,28 @@ describe('product showcases', () => {
     const push = composition.animations.find((animation) => animation.to?.['scale'] === 1.06)!;
     expect(push.target).toBe('shot');
     expect(composition.animations.every((animation) => animation.target !== 'camera')).toBe(true);
+  });
+
+  it('directs one persistent screenshot through authored focus points', () => {
+    const composition = buildShowcase(
+      context('screenshotPresentation', {
+        media: 'a',
+        behaviors: ['tour'],
+        focusX: 0.2,
+        focusY: 0.3,
+        focusScale: 1.25,
+        focus2X: 0.8,
+        focus2Y: 0.7,
+        focus2Scale: 1.4,
+      })
+    );
+    const moves = composition.animations.filter(
+      (animation) => animation.target === 'shot' && Number(animation.to?.['scale']) > 1
+    );
+    expect(moves).toHaveLength(2);
+    expect(moves[0]!.to?.['x']).toBeGreaterThan(0);
+    expect(moves[1]!.to?.['x']).toBeLessThan(0);
+    expect(composition.children.filter((child) => child.name === 'shot__media')).toHaveLength(1);
   });
 
   it('draws a focus ring at the requested point and reports it as the focus target', () => {

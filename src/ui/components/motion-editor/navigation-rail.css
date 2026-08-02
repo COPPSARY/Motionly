@@ -18,7 +18,13 @@
   background: transparent;
   color: #6b7280;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .motion-editor-scope .me-nav-item:hover {

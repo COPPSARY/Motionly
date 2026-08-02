@@ -69,6 +69,38 @@ export {
 } from './beats';
 
 export {
+  MIN_SCENE_DURATION,
+  SCENE_TRANSITION_KINDS,
+  classifyParticipation,
+  isSceneTransitionKind,
+  lowerSceneRoots,
+  lowerSceneTransitions,
+  planSceneTransition,
+  planScenes,
+  sceneAt,
+  scenePrompt,
+  sceneStarts,
+  staticMembers,
+  storyboardDuration,
+  type SceneMember,
+  type SceneParticipation,
+  type ScenePlan,
+  type ScenePlanOptions,
+  type SceneSpec,
+  type SceneTransitionKind,
+  type SceneTransitionPlan,
+} from './scenes';
+
+export {
+  migrateToScenes,
+  segmentBoundaries,
+  suggestIdentities,
+  type MigrationOptions,
+  type MigrationStrategy,
+  type SceneMigration,
+} from './scene-migration';
+
+export {
   classifyAsset,
   classifyAssets,
   assetIntelligencePrompt,

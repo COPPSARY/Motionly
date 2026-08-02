@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Download, FileText, FolderOpen, LoaderCircle, Save, Star, X } from 'lucide-svelte';
+  import { Download, FileText, FolderOpen, LoaderCircle, Save, X } from 'lucide-svelte';
   import { appUrl } from '../app/routing';
   import MotionEditor from './components/MotionEditor.svelte';
   import type { ExportSupport, VideoExportSettings } from '../types/export';
 
   const logoUrl = appUrl('logo.svg');
-  const githubIconUrl = appUrl('github.svg');
   // ponytail: localStorage is enough for source drafts; move to IndexedDB if projects exceed its quota.
   const autoSaveKey = 'motionly:auto-save';
   const retiredBlueskySignatures = ['as phonePair', 'as phoneHero', 'as feedUi', 'as butterfly'];
@@ -109,11 +108,8 @@ animate title {
     quality: 'high',
     bitrateMbps: 10,
   };
-  let starCount: number | null = null;
-
   onMount(() => {
     void loadInitialProject();
-    void loadStarCount();
     return () => {
       if (saveTimer) clearTimeout(saveTimer);
       if (exportSuccessTimer) clearTimeout(exportSuccessTimer);
@@ -358,20 +354,6 @@ animate title {
     }
   }
 
-  async function loadStarCount() {
-    try {
-      const response = await fetch('https://api.github.com/repos/COPPSARY/Motionly');
-      if (!response.ok) return;
-      const data = (await response.json()) as { stargazers_count?: number };
-      if (typeof data.stargazers_count === 'number') starCount = data.stargazers_count;
-    } catch {
-      // The repository link still works if GitHub is unavailable.
-    }
-  }
-
-  function formatStarCount(value: number): string {
-    return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
-  }
 </script>
 
 <svelte:window on:keydown={handleWindowKeydown} />
@@ -384,20 +366,6 @@ animate title {
         <img src={logoUrl} alt="Motionly" class="logo" />
       </span>
       <h1>Motionly</h1>
-      <a
-        class="product-hunt-badge"
-        href="https://www.producthunt.com/products/motionly?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-motionly-2"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="View Motionly on Product Hunt"
-      >
-        <img
-          alt="Motionly - AI-native motion graphics editor | Product Hunt"
-          width="250"
-          height="54"
-          src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202670&amp;theme=dark&amp;t=1784818211382"
-        />
-      </a>
     </div>
 
     <div class="file-info">
@@ -429,38 +397,6 @@ animate title {
         {/if}
         <span class="action-label">{isExporting ? `Exporting ${Math.round(exportProgress * 100)}%` : 'Export'}</span>
       </button>
-      <a
-        class="btn github-btn"
-        href="https://github.com/COPPSARY/Motionly"
-        target="_blank"
-        rel="noreferrer"
-        title="Star Motionly on GitHub"
-        aria-label={starCount === null ? 'Star Motionly on GitHub' : `Star Motionly on GitHub, ${starCount} stars`}
-      >
-        <img src={githubIconUrl} alt="" />
-        <Star size={14} fill="currentColor" />
-        <span class="action-label">Star</span>
-        {#if starCount !== null}
-          <strong>{formatStarCount(starCount)}</strong>
-        {:else}
-          <img
-            class="star-count"
-            src="https://img.shields.io/github/stars/COPPSARY/Motionly?style=flat&label="
-            alt="Stars"
-          />
-        {/if}
-      </a>
-      <a
-        class="btn docs-btn"
-        href="https://motionly.mintlify.app/"
-        target="_blank"
-        rel="noreferrer"
-        title="View Documentation"
-        aria-label="View Documentation"
-      >
-        <FileText size={18} />
-        <span class="action-label">Documentation</span>
-      </a>
     </div>
   </div>
 
@@ -650,20 +586,6 @@ animate title {
     font-weight: 650;
     color: #f2f3f5;
     letter-spacing: 0;
-  }
-
-  .product-hunt-badge {
-    flex: 0 0 auto;
-    display: flex;
-    margin-left: 4px;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .product-hunt-badge img {
-    width: 125px;
-    height: 27px;
-    display: block;
   }
 
   .file-info {
@@ -993,47 +915,6 @@ animate title {
     color: #ffffff;
   }
 
-  .github-btn {
-    min-width: 92px;
-    justify-content: center;
-    padding: 8px 10px;
-    box-sizing: border-box;
-    text-decoration: none;
-  }
-
-  .docs-btn {
-    justify-content: center;
-    padding: 8px 10px;
-    box-sizing: border-box;
-    text-decoration: none;
-  }
-
-  .github-btn img {
-    width: 18px;
-    height: 18px;
-    display: block;
-  }
-
-  .github-btn strong {
-    padding-left: 7px;
-    border-left: 1px solid #34383e;
-    color: #ffffff;
-    font-size: 12px;
-  }
-
-  .github-btn .star-count {
-    width: auto;
-    height: 18px;
-    border-left: 1px solid #34383e;
-    padding-left: 7px;
-  }
-
-  @media (max-width: 1120px) {
-    .product-hunt-badge {
-      display: none;
-    }
-  }
-
   @media (max-width: 760px) {
     .file-info {
       display: none;
@@ -1064,12 +945,6 @@ animate title {
       padding: 0;
     }
 
-    .github-btn {
-      width: auto;
-      min-width: 58px;
-      padding: 0 8px;
-    }
-
     .export-settings-grid {
       grid-template-columns: 1fr;
     }
@@ -1087,14 +962,25 @@ animate title {
   /* Calm native-feeling app chrome. */
   .app { background: linear-gradient(180deg, #101012 0%, #0e0e10 34%, #0d0d0f 100%); }
   .top-bar {
-    min-height: 50px;
-    padding: 7px 14px;
+    min-height: 44px;
+    padding: 6px 12px;
     background: #141416;
     border-bottom-color: rgba(255,255,255,.08);
     backdrop-filter: none;
     box-shadow: none;
   }
-  .logo-shell { border-color: rgba(255,255,255,.08); border-radius: 8px; background: #19191c; box-shadow: none; }
+  .logo-shell {
+    width: 30px;
+    height: 30px;
+    border-color: rgba(255,255,255,.08);
+    border-radius: 7px;
+    background: #19191c;
+    box-shadow: none;
+  }
+  .brand .logo {
+    width: 22px;
+    height: 22px;
+  }
   .btn {
     height: 32px;
     padding: 0 10px;
@@ -1108,18 +994,6 @@ animate title {
   .btn:active { background: #151517; }
   .btn-primary { border-color: #0a84ff; background: #0a84ff; color: #fff; }
   .btn-primary:hover { border-color: #218df7; background: #218df7; color: #fff; }
-  .product-hunt-badge {
-    opacity: 1;
-    filter: none;
-    transition: opacity 0.16s ease;
-  }
-  .product-hunt-badge img {
-    width: 180px;
-    height: 39px;
-  }
-  .product-hunt-badge:hover { opacity: .9; }
-
-
   /* Subtly illuminated buttons with the Motionly logo palette. */
   .btn {
     border-color: rgba(255,255,255,.1);

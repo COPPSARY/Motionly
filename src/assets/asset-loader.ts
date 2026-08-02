@@ -168,7 +168,8 @@ export async function loadAssets(
   scene: Scene,
   baseUrl: string = document.baseURI,
   onError?: (name: string, error: unknown) => void,
-  previous: Map<string, LoadedAsset> = new Map()
+  previous: Map<string, LoadedAsset> = new Map(),
+  onLoad?: (name: string, asset: LoadedAsset) => void
 ): Promise<Map<string, LoadedAsset>> {
   const uploadedByFilename = new Map<string, string>();
   for (const asset of scene.imports) {
@@ -183,7 +184,9 @@ export async function loadAssets(
         if (existing?.motionlySource === resolveAssetUrl(path, baseUrl)) {
           return [asset.name, existing];
         }
-        return [asset.name, await loadAsset(path, baseUrl, asset.type)];
+        const loaded = await loadAsset(path, baseUrl, asset.type);
+        onLoad?.(asset.name, loaded);
+        return [asset.name, loaded];
       } catch (error) {
         console.warn(`Could not load asset ${asset.path}:`, error);
         onError?.(asset.name, error);

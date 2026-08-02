@@ -22,7 +22,8 @@ import {
   type MotionTheme,
 } from './catalog';
 import { lowerMotionSystem } from './motion-lowering';
-import type { BeatPlan } from '../motion-system';
+import { lowerStoryboard } from './storyboard-lowering';
+import type { BeatPlan, ScenePlan } from '../motion-system';
 
 export interface SemanticCompilation {
   program: ProgramNode;
@@ -31,6 +32,8 @@ export interface SemanticCompilation {
   theme: MotionTheme;
   /** Storyboard beats, kept for the editor, inspector, and tests. */
   beats: BeatPlan[];
+  /** Storyboard scenes: the project's organizational spine. Empty for legacy flat projects. */
+  storyboard: ScenePlan[];
 }
 
 const COMPILER_PROPERTIES = new Set([
@@ -78,16 +81,27 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
     (node): node is ElementNode => node.type === 'Element' && node.kind === 'theme'
   );
   const theme = resolveTheme(themeNode?.properties);
-  // Motion system first: beats set the pacing that layouts and showcases inherit,
+  // Storyboard first: scenes are the organizational spine, so membership and
+  // scene-relative timing are resolved before any block lowering runs.
+  const storyboarded = lowerStoryboard(program);
+  // Motion system next: beats set the pacing that layouts and showcases inherit,
   // and both lower to ordinary elements before archetypes and components run.
-  const motionSystem = lowerMotionSystem(program, theme);
+  const motionSystem = lowerMotionSystem(storyboarded.program, theme);
   const beats = motionSystem.beats;
+  const storyboard = storyboarded.storyboard;
   const loweredProgram = compileArchetypes(motionSystem.program, theme);
   const componentNodes = loweredProgram.body.filter(
     (node): node is ElementNode => node.type === 'Element' && node.kind === 'component'
   );
   if (!componentNodes.length) {
-    return { program: loweredProgram, components: [], relationships: [], theme, beats };
+    return {
+      program: loweredProgram,
+      components: [],
+      relationships: [],
+      theme,
+      beats,
+      storyboard,
+    };
   }
 
   const importNames = new Set(
@@ -203,6 +217,7 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
       layer,
       behaviors,
       iconAlias: resolvedSource,
+      ...(type === 'media-card' && sourceAlias ? { mediaAlias: sourceAlias } : {}),
       style: definition.style,
       strokeWidth: numberValue(
         node.properties['strokeWidth'],
@@ -220,7 +235,7 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
           ? numberValue(node.properties['countTo'], 0)
           : undefined,
       variant: stringValue(node.properties['variant']),
-      motionPreset: stringValue(node.properties['motionPreset']),
+      motionPreset: stringValue(node.properties['motionPreset']) ?? 'premium',
       clickAt: timing.clickAt,
       exitAt:
         node.properties['exitAt'] !== undefined
@@ -289,6 +304,7 @@ export function compileSemanticProgram(program: ProgramNode): SemanticCompilatio
     relationships,
     theme,
     beats,
+    storyboard,
   };
 }
 

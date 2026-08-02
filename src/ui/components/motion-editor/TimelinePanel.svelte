@@ -96,10 +96,10 @@
     ><span></span></button>
     <div class="me-timeline-toolbar">
       <div class="me-playback-controls">
-        <button on:click={onReset} class="me-control-btn" title="Go to start (Home)">
+        <button type="button" on:click={onReset} class="me-control-btn" title="Go to start (Home)" aria-label="Go to start">
           <SkipBack size={17} />
         </button>
-        <button on:click={isPlaying ? onPause : onPlay} class="me-control-btn me-play-btn" title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
+        <button type="button" on:click={isPlaying ? onPause : onPlay} class="me-control-btn me-play-btn" title={isPlaying ? 'Pause (Space)' : 'Play (Space)'} aria-label={isPlaying ? 'Pause' : 'Play'}>
           {#if isPlaying}<Pause size={19} />{:else}<Play size={19} />{/if}
         </button>
         <span class="me-timecode">{formatPreciseTime(currentTime)}</span>
@@ -116,15 +116,15 @@
         <button class="me-timeline-command" on:click={() => audioInput.click()} title="Import audio"><Upload size={14} /> Audio</button>
         {#if selectedElement || selectedClip}
           <button class="me-icon-btn" on:click={onDuplicateSelected} title="Duplicate selected layer (Ctrl/Cmd+D)" aria-label="Duplicate selected layer"><Copy size={14} /></button>
-          <button class="me-icon-btn me-danger-btn" on:click={onDeleteSelected} title="Delete selected layer (Delete)"><Trash2 size={14} /></button>
+          <button type="button" class="me-icon-btn me-danger-btn" on:click={onDeleteSelected} title="Delete selected layer (Delete)" aria-label="Delete selected layer"><Trash2 size={14} /></button>
         {/if}
-        <button class="me-icon-btn" on:click={onUndo} disabled={!editorCanUndo} title="Undo (Ctrl/Cmd+Z)"><Undo2 size={14} /></button>
-        <button class="me-icon-btn" on:click={onRedo} disabled={!editorCanRedo} title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={14} /></button>
-        <button class="me-icon-btn" on:click={onSplitSelectedClip} disabled={!((selectedClip && currentTime > selectedClip.start && currentTime < selectedClip.start + selectedClip.duration) || (selectedElement && currentTime > timelineRange(selectedElement.id).start && currentTime < timelineRange(selectedElement.id).end))} title="Split selected clip at playhead (S)"><Scissors size={14} /></button>
-        <button class="me-icon-btn" class:me-active={snapEnabled} on:click={onToggleSnap} title={snapEnabled ? 'Disable smart snapping' : 'Enable smart snapping'}><Magnet size={15} /></button>
-        <button on:click={() => onSetTimelineZoom(timelineZoom / 1.25)} class="me-icon-btn" title="Timeline zoom out"><Minus size={15} /></button>
+        <button type="button" class="me-icon-btn" on:click={onUndo} disabled={!editorCanUndo} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo"><Undo2 size={14} /></button>
+        <button type="button" class="me-icon-btn" on:click={onRedo} disabled={!editorCanRedo} title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo"><Redo2 size={14} /></button>
+        <button type="button" class="me-icon-btn" on:click={onSplitSelectedClip} disabled={!((selectedClip && currentTime > selectedClip.start && currentTime < selectedClip.start + selectedClip.duration) || (selectedElement && currentTime > timelineRange(selectedElement.id).start && currentTime < timelineRange(selectedElement.id).end))} title="Split selected clip at playhead (S)" aria-label="Split selected clip at playhead"><Scissors size={14} /></button>
+        <button type="button" class="me-icon-btn" class:me-active={snapEnabled} on:click={onToggleSnap} title={snapEnabled ? 'Disable smart snapping' : 'Enable smart snapping'} aria-label={snapEnabled ? 'Disable smart snapping' : 'Enable smart snapping'}><Magnet size={15} /></button>
+        <button type="button" on:click={() => onSetTimelineZoom(timelineZoom / 1.25)} class="me-icon-btn" title="Timeline zoom out" aria-label="Timeline zoom out"><Minus size={15} /></button>
         <span class="me-timeline-zoom-value">{Math.round(timelineZoom * 100)}%</span>
-        <button on:click={() => onSetTimelineZoom(timelineZoom * 1.25)} class="me-icon-btn" title="Timeline zoom in"><Plus size={15} /></button>
+        <button type="button" on:click={() => onSetTimelineZoom(timelineZoom * 1.25)} class="me-icon-btn" title="Timeline zoom in" aria-label="Timeline zoom in"><Plus size={15} /></button>
       </div>
     </div>
 

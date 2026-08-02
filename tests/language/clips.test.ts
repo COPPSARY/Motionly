@@ -98,6 +98,58 @@ describe('timeline clips', () => {
     });
   });
 
+  it('evaluates a clipped asset animation in its scene-local time', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 20s }
+        import "/video.mp4" as video
+        scene intro { duration 10s }
+        scene demo { duration 10s }
+        video {
+          scene demo
+          center
+        }
+        clip video {
+          track 1
+          start 10s
+          duration 8s
+        }
+        animate video {
+          from { opacity 1 }
+          to { opacity 0 }
+          delay 7s
+          duration 1s
+        }
+      `)
+    );
+
+    expect(evaluateScene(scene, 12).elements[0]?.render.opacity).toBe(1);
+    const exitingOpacity = Number(evaluateScene(scene, 17.5).elements[0]?.render.opacity);
+    expect(exitingOpacity).toBeGreaterThan(0);
+    expect(exitingOpacity).toBeLessThan(1);
+  });
+
+  it('applies scene transforms to clipped video elements', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 4s }
+        import "/video.mp4" as video
+        scene demo { duration 4s }
+        video { scene demo center }
+        clip video { track 2 start 0s duration 4s }
+        animate demo {
+          from { x 200 scale .9 }
+          to { x 0 scale 1 }
+          duration 1s
+        }
+      `)
+    );
+
+    const clip = evaluateScene(scene, 0).elements.find((element) => element.assetName === 'video');
+    expect(clip?.render.x).toBe(200);
+    expect(clip?.render.scale).toBeCloseTo(0.9, 5);
+  });
+
   it('round-trips paired crossfades and evaluates both sides of the cut', () => {
     const ast = parseMotion(`
       import "/outgoing.svg" as outgoing

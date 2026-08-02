@@ -14,7 +14,7 @@ export type PresetCategory = 'text' | 'logo' | 'camera' | 'object' | 'background
 /**
  * Text animation split modes
  */
-export type TextSplitMode = 'words' | 'characters' | 'lines';
+export type TextSplitMode = 'none' | 'words' | 'characters' | 'lines';
 
 /**
  * Preset options parsed from preset calls

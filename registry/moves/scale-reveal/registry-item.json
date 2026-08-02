@@ -2,7 +2,7 @@
   "name": "scaleReveal",
   "type": "motionly:move",
   "title": "Scale Reveal",
-  "description": "Small elastic scale entrance.",
+  "description": "Restrained scale entrance.",
   "tags": [
     "move",
     "object"
@@ -206,6 +206,42 @@
       "type": "number",
       "docs": "Focal scale multiplier."
     },
+    "aspect": {
+      "type": "number",
+      "docs": "Source aspect ratio used to calculate a media focus path."
+    },
+    "focusX": {
+      "type": "number",
+      "docs": "First normalized media focus X, 0-1."
+    },
+    "focusY": {
+      "type": "number",
+      "docs": "First normalized media focus Y, 0-1."
+    },
+    "focus2X": {
+      "type": "number",
+      "docs": "Second normalized media focus X, 0-1."
+    },
+    "focus2Y": {
+      "type": "number",
+      "docs": "Second normalized media focus Y, 0-1."
+    },
+    "focus2Scale": {
+      "type": "number",
+      "docs": "Second focal scale multiplier."
+    },
+    "focus3X": {
+      "type": "number",
+      "docs": "Optional third normalized media focus X, 0-1."
+    },
+    "focus3Y": {
+      "type": "number",
+      "docs": "Optional third normalized media focus Y, 0-1."
+    },
+    "focus3Scale": {
+      "type": "number",
+      "docs": "Third focal scale multiplier."
+    },
     "siblingScale": {
       "type": "number",
       "docs": "Sibling scale multiplier."
@@ -224,8 +260,8 @@
     }
   },
   "defaults": {
-    "duration": 1.2,
-    "ease": "power3.out"
+    "duration": 0.62,
+    "ease": "power4.out"
   },
   "manifest": "moves/scale-reveal/registry-item.json"
 }

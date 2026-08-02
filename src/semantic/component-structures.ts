@@ -5,7 +5,7 @@ import {
   type SemanticComponentType,
 } from './vector-registry';
 import { DEFAULT_THEME, type MotionTheme } from './catalog';
-import { MOTION_BUDGET } from '../motion-system/budget';
+import { MOTION_BUDGET, TRANSITION_TOKENS } from '../motion-system/budget';
 import { ARRIVAL } from '../motion-system/layout';
 
 /**
@@ -36,6 +36,7 @@ export interface StructureContext {
   layer: string;
   behaviors: string[];
   iconAlias: string;
+  mediaAlias?: string;
   style: 'filled' | 'outline';
   strokeWidth: number;
   label?: string;
@@ -211,11 +212,15 @@ export function buildComponentStructure(ctx: StructureContext): ComponentStructu
     b.animations.push({
       type: 'Animation',
       target: ctx.name,
-      from: { opacity: 1, y: ctx.y },
-      to: { opacity: 0, y: ctx.y - 26 },
+      from: { opacity: 1, y: ctx.y, blur: 0 },
+      to: {
+        opacity: 0,
+        y: ctx.y - TRANSITION_TOKENS.distance.medium,
+        blur: TRANSITION_TOKENS.blur.small,
+      },
       keyframes: [],
       delay: ctx.exitAt,
-      duration: ctx.exitDuration,
+      duration: Math.min(ctx.exitDuration, TRANSITION_TOKENS.duration.medium),
       easing: 'power2.in',
     });
   }
@@ -2540,13 +2545,15 @@ function cardStructure(ctx: StructureContext, b: Builder): string {
   const treatment = ctx.variant ?? ctx.type;
   const featured = [
     'featured',
+    'feature-card',
     'chroma-grid',
     'magic-bento',
     'pixel-card',
     'spotlight-card',
   ].includes(treatment);
-  const glass = ['fluid-glass', 'glass-surface'].includes(treatment);
-  const tilted = treatment === 'tilted-card' || treatment === 'decay-card';
+  const glass = ['fluid-glass', 'glass-surface', 'glass-card'].includes(treatment);
+  const tilted =
+    treatment === 'tilted-card' || treatment === 'decay-card' || treatment === 'floating-card';
   const surface = b.add('overlay', 'surface', {
     shape: 'rect',
     width: W,
@@ -3289,7 +3296,7 @@ function mediaCardStructure(ctx: StructureContext, b: Builder): string {
     { opacity: 1, y: 0, scale: 1 }
   );
   const media = b.add('image', 'media', {
-    source: ctx.iconAlias,
+    source: ctx.mediaAlias ?? ctx.iconAlias,
     center: true,
     y: -H * 0.15,
     width: W * 0.9,
@@ -3935,6 +3942,594 @@ function loaderStructure(ctx: StructureContext, b: Builder): string {
   return progressId;
 }
 
+function compactControlStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const kind = String(ctx.type);
+  if (kind === 'avatar') {
+    const size = W;
+    const halo = b.add('overlay', 'halo', {
+      shape: 'circle',
+      radius: size * 0.5,
+      fill: ctx.surface,
+      stroke: EDGE,
+      strokeWidth: 2,
+      shadow: 18,
+      opacity: 0,
+    });
+    const face = b.add('overlay', 'face', {
+      shape: 'circle',
+      radius: size * 0.42,
+      fill: ctx.accent,
+      opacity: 0,
+    });
+    const initials = b.add('text', 'initials', {
+      value: (ctx.label ?? 'MO')
+        .split(/\s+/)
+        .map((part) => part[0] ?? '')
+        .join('')
+        .slice(0, 2)
+        .toUpperCase(),
+      center: true,
+      width: size,
+      height: size,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: size * 0.28,
+      weight: 740,
+      color: ctx.theme.ink,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(halo, 0, 0.52, { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1 });
+    b.enter(face, 0.08, 0.48, { opacity: 0, scale: 0.72 }, { opacity: 1, scale: 1 });
+    b.enter(initials, 0.16, 0.38, { opacity: 0, y: 10 }, { opacity: 1, y: 0 });
+    return face;
+  }
+
+  const search = kind === 'search-bar';
+  const H = search ? Math.max(64, W * 0.13) : Math.max(42, W * 0.3);
+  const surface = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: search ? H * 0.22 : H / 2,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: search ? 18 : 10,
+    opacity: 0,
+  });
+  b.enter(surface, 0, 0.52, { opacity: 0, y: 22, scale: 0.96 }, { opacity: 1, y: 0, scale: 1 });
+
+  const marker = b.add('overlay', 'marker', {
+    shape: 'circle',
+    x: -W / 2 + H * 0.55,
+    radius: H * (search ? 0.13 : 0.1),
+    fill: search ? 'none' : ctx.accent,
+    stroke: search ? MUTED_TEXT : 'none',
+    strokeWidth: search ? 2.5 : 0,
+    opacity: 0,
+  });
+  const label = b.add('text', 'label', {
+    value:
+      ctx.label ?? (search ? 'Search projects and commands' : kind === 'badge' ? 'New' : 'Product'),
+    center: true,
+    x: search ? H * 0.28 : H * 0.18,
+    width: W - H * (search ? 1.8 : 1.25),
+    height: H,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: search ? H * 0.25 : H * 0.3,
+    weight: search ? 540 : 660,
+    color: search ? MUTED_TEXT : BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(marker, 0.12, 0.4, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1 });
+  b.enter(
+    label,
+    0.18,
+    0.44,
+    { opacity: 0, x: H * 0.5 },
+    { opacity: 1, x: search ? H * 0.28 : H * 0.18 }
+  );
+
+  if (search) {
+    const shortcut = b.add('text', 'shortcut', {
+      value: ctx.cta ?? 'CMD K',
+      center: true,
+      x: W / 2 - H * 0.72,
+      width: H * 1.05,
+      height: H * 0.5,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: H * 0.18,
+      weight: 650,
+      color: MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+      font: MONO_FONT,
+    });
+    b.enter(
+      shortcut,
+      0.24,
+      0.4,
+      { opacity: 0, x: W / 2 - H * 0.58 },
+      { opacity: 1, x: W / 2 - H * 0.72 }
+    );
+  }
+  return surface;
+}
+
+function listPanelStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const kind = String(ctx.type);
+  const table = kind === 'table';
+  const faq = kind === 'faq-accordion';
+  const H = table ? W * 0.58 : faq ? W * 0.62 : W * 0.68;
+  const panel = b.add('overlay', 'panel', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.035,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 28,
+    opacity: 0,
+  });
+  b.enter(panel, 0, 0.62, { opacity: 0, y: 34, scale: 0.96 }, { opacity: 1, y: 0, scale: 1 });
+
+  const title = b.add('text', 'title', {
+    value: ctx.label ?? (table ? 'Customers' : faq ? 'Frequently asked' : 'Quick actions'),
+    center: true,
+    x: -W * 0.34,
+    y: -H * 0.39,
+    width: W * 0.25,
+    height: H * 0.1,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: Math.max(18, W * 0.035),
+    weight: 720,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, title, 0.12, 0.46, 12, -H * 0.39);
+
+  if (!table && !faq) {
+    const search = b.add('overlay', 'search', {
+      shape: 'rect',
+      y: -H * 0.24,
+      width: W * 0.86,
+      height: H * 0.14,
+      radius: H * 0.025,
+      fill: RAISED,
+      stroke: EDGE,
+      strokeWidth: 1,
+      opacity: 0,
+    });
+    const query = b.add('text', 'query', {
+      value: ctx.detail ?? 'Type a command or search...',
+      center: true,
+      x: -W * 0.31,
+      y: -H * 0.24,
+      width: W * 0.55,
+      height: H * 0.14,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: Math.max(14, W * 0.026),
+      weight: 520,
+      color: MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(search, 0.18, 0.46, { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1 });
+    b.enter(query, 0.24, 0.38, { opacity: 0 }, { opacity: 1 });
+  }
+
+  const rows = table
+    ? (ctx.values ?? [
+        'Acme Inc.  Enterprise  Active',
+        'Northstar  Pro  Active',
+        'Fieldwork  Team  Trial',
+        'Studio  Pro  Active',
+      ])
+    : faq
+      ? (ctx.values ?? [
+          'What can I customize?',
+          'Can I use my own media?',
+          'Does every layer stay editable?',
+          'How does export work?',
+        ])
+      : (ctx.values ?? [
+          'Create new project',
+          'Open recent file',
+          'Import media',
+          'Export composition',
+        ]);
+  const rowTop = table ? -H * 0.24 : faq ? -H * 0.19 : -H * 0.06;
+  const rowStep = table ? H * 0.145 : faq ? H * 0.17 : H * 0.155;
+  rows.slice(0, 4).forEach((value, index) => {
+    const y = rowTop + rowStep * index;
+    const active = !faq && index === 0;
+    const row = b.add('overlay', `row${index}`, {
+      shape: 'rect',
+      y,
+      width: W * 0.86,
+      height: rowStep * 0.78,
+      radius: W * 0.015,
+      fill: active ? ctx.accent : RAISED,
+      opacity: 0,
+    });
+    const copy = b.add('text', `rowLabel${index}`, {
+      value,
+      center: true,
+      x: -W * 0.3,
+      y,
+      width: W * 0.58,
+      height: rowStep * 0.78,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: Math.max(13, W * 0.024),
+      weight: active ? 650 : 540,
+      color: active ? ctx.theme.ink : BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+      ...(table ? { font: MONO_FONT } : {}),
+    });
+    const action = b.add('text', `rowAction${index}`, {
+      value: faq ? '+' : table ? `${index + 1}`.padStart(2, '0') : index === 0 ? 'ENTER' : '',
+      center: true,
+      x: W * 0.36,
+      y,
+      width: W * 0.09,
+      height: rowStep * 0.78,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: Math.max(12, W * 0.02),
+      weight: 650,
+      color: active ? ctx.theme.ink : MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+      font: MONO_FONT,
+    });
+    b.enter(row, 0.3 + index * 0.08, 0.44, { opacity: 0, y: y + 18 }, { opacity: 1, y });
+    b.enter(
+      copy,
+      0.36 + index * 0.08,
+      0.4,
+      { opacity: 0, x: -W * 0.27 },
+      { opacity: 1, x: -W * 0.3 }
+    );
+    b.enter(action, 0.4 + index * 0.08, 0.36, { opacity: 0 }, { opacity: 1 });
+  });
+  return panel;
+}
+
+function navigationFlowStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const kind = String(ctx.type);
+  const vertical = kind === 'sidebar';
+  const footer = kind === 'footer';
+  const H = vertical ? W * 1.55 : footer ? W * 0.3 : W * 0.23;
+  const shell = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.028,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 20,
+    opacity: 0,
+  });
+  b.enter(shell, 0, 0.6, { opacity: 0, y: 28, scale: 0.97 }, { opacity: 1, y: 0, scale: 1 });
+
+  const labels = (
+    ctx.labels ??
+    (footer ? ['Product', 'Company', 'Resources'] : ['Discover', 'Design', 'Review', 'Ship'])
+  ).slice(0, 4);
+  if (vertical) {
+    const brand = b.add('text', 'brand', {
+      value: ctx.label ?? 'Motionly',
+      center: true,
+      x: -W * 0.28,
+      y: -H * 0.4,
+      width: W * 0.35,
+      height: H * 0.08,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: W * 0.1,
+      weight: 740,
+      color: BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(brand, 0.12, 0.42, { opacity: 0, x: -W * 0.2 }, { opacity: 1, x: -W * 0.28 });
+    labels.forEach((label, index) => {
+      const y = -H * 0.24 + index * H * 0.14;
+      const active = index === 0;
+      const row = b.add('overlay', `item${index}`, {
+        shape: 'rect',
+        y,
+        width: W * 0.78,
+        height: H * 0.095,
+        radius: W * 0.025,
+        fill: active ? ctx.accent : 'rgba(255,255,255,0)',
+        opacity: 0,
+      });
+      const copy = b.add('text', `label${index}`, {
+        value: label,
+        center: true,
+        x: -W * 0.19,
+        y,
+        width: W * 0.48,
+        height: H * 0.095,
+        textAlign: 'left',
+        verticalAlign: 'middle',
+        size: W * 0.065,
+        weight: active ? 680 : 560,
+        color: active ? ctx.theme.ink : MUTED_TEXT,
+        opacity: 0,
+        layer: 'text',
+      });
+      b.enter(row, 0.2 + index * 0.08, 0.42, { opacity: 0, x: -18 }, { opacity: 1, x: 0 });
+      b.enter(
+        copy,
+        0.25 + index * 0.08,
+        0.38,
+        { opacity: 0, x: -W * 0.15 },
+        { opacity: 1, x: -W * 0.19 }
+      );
+    });
+    return shell;
+  }
+
+  if (footer) {
+    const brand = b.add('text', 'brand', {
+      value: ctx.label ?? 'Motionly',
+      center: true,
+      x: -W * 0.34,
+      y: -H * 0.16,
+      width: W * 0.22,
+      height: H * 0.22,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: W * 0.045,
+      weight: 740,
+      color: BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(brand, 0.12, 0.44, { opacity: 0, y: -H * 0.08 }, { opacity: 1, y: -H * 0.16 });
+    labels.slice(0, 3).forEach((label, index) => {
+      const item = b.add('text', `column${index}`, {
+        value: label,
+        center: true,
+        x: -W * 0.05 + index * W * 0.18,
+        y: -H * 0.12,
+        width: W * 0.15,
+        height: H * 0.18,
+        textAlign: 'left',
+        verticalAlign: 'middle',
+        size: W * 0.023,
+        weight: 620,
+        color: BRIGHT_TEXT,
+        opacity: 0,
+        layer: 'text',
+      });
+      b.enter(
+        item,
+        0.2 + index * 0.08,
+        0.4,
+        { opacity: 0, y: -H * 0.04 },
+        { opacity: 1, y: -H * 0.12 }
+      );
+    });
+    const legal = b.add('text', 'legal', {
+      value: ctx.detail ?? 'Make motion feel designed.',
+      center: true,
+      x: -W * 0.25,
+      y: H * 0.27,
+      width: W * 0.4,
+      height: H * 0.14,
+      textAlign: 'left',
+      verticalAlign: 'middle',
+      size: W * 0.019,
+      weight: 520,
+      color: MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(legal, 0.42, 0.38, { opacity: 0 }, { opacity: 1 });
+    return shell;
+  }
+
+  const line = b.add('overlay', 'line', {
+    shape: 'line',
+    x: -W * 0.36,
+    y: -H * 0.08,
+    x2: W * 0.72,
+    y2: 0,
+    stroke: EDGE,
+    strokeWidth: 3,
+    opacity: 0,
+  });
+  b.enter(line, 0.12, 0.5, { opacity: 0 }, { opacity: 1 });
+  labels.forEach((label, index) => {
+    const x = -W * 0.36 + index * W * 0.24;
+    const active = index <= 1;
+    const dot = b.add('overlay', `step${index}`, {
+      shape: 'circle',
+      x,
+      y: -H * 0.08,
+      radius: W * 0.024,
+      fill: active ? ctx.accent : RAISED,
+      stroke: active ? ctx.accent : EDGE,
+      strokeWidth: 2,
+      opacity: 0,
+    });
+    const copy = b.add('text', `label${index}`, {
+      value: label,
+      center: true,
+      x,
+      y: H * 0.25,
+      width: W * 0.2,
+      height: H * 0.3,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: Math.max(12, W * 0.024),
+      weight: active ? 660 : 540,
+      color: active ? BRIGHT_TEXT : MUTED_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(dot, 0.2 + index * 0.08, 0.4, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1 });
+    b.enter(
+      copy,
+      0.26 + index * 0.08,
+      0.38,
+      { opacity: 0, y: H * 0.34 },
+      { opacity: 1, y: H * 0.25 }
+    );
+  });
+  return shell;
+}
+
+function logoGridStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.42;
+  const labels = (ctx.labels ?? ['ARC', 'NOVA', 'LINE', 'VOLT', 'FORM', 'BASE']).slice(0, 6);
+  const title = b.add('text', 'title', {
+    value: ctx.label ?? 'Trusted by teams shipping faster',
+    center: true,
+    y: -H * 0.36,
+    width: W,
+    height: H * 0.18,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    size: W * 0.04,
+    weight: 620,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, title, 0, 0.5, 14, -H * 0.36);
+  labels.forEach((label, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const x = (column - 1) * W * 0.29;
+    const y = -H * 0.05 + row * H * 0.38;
+    const tile = b.add('overlay', `tile${index}`, {
+      shape: 'rect',
+      x,
+      y,
+      width: W * 0.24,
+      height: H * 0.25,
+      radius: W * 0.018,
+      fill: ctx.surface,
+      stroke: EDGE,
+      strokeWidth: 1,
+      opacity: 0,
+    });
+    const mark = b.add('text', `logo${index}`, {
+      value: label,
+      center: true,
+      x,
+      y,
+      width: W * 0.2,
+      height: H * 0.22,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      size: W * 0.028,
+      weight: 720,
+      color: index === 0 ? ctx.accent : BRIGHT_TEXT,
+      opacity: 0,
+      layer: 'text',
+    });
+    b.enter(tile, 0.18 + index * 0.055, 0.44, { opacity: 0, y: y + 18 }, { opacity: 1, y });
+    b.enter(mark, 0.24 + index * 0.055, 0.38, { opacity: 0 }, { opacity: 1 });
+  });
+  return title;
+}
+
+function testimonialStructure(ctx: StructureContext, b: Builder): string {
+  const W = ctx.width;
+  const H = W * 0.64;
+  const panel = b.add('overlay', 'surface', {
+    shape: 'rect',
+    width: W,
+    height: H,
+    radius: W * 0.04,
+    fill: ctx.surface,
+    stroke: EDGE,
+    strokeWidth: 1.5,
+    shadow: 24,
+    opacity: 0,
+  });
+  b.enter(panel, 0, 0.6, { opacity: 0, y: 32, scale: 0.96 }, { opacity: 1, y: 0, scale: 1 });
+  const quote = b.add('text', 'quote', {
+    value: ctx.headline ?? '“The launch finally felt as polished as the product.”',
+    center: true,
+    y: -H * 0.12,
+    width: W * 0.78,
+    height: H * 0.42,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: W * 0.058,
+    weight: 620,
+    lineHeight: 1.18,
+    wrap: 'word',
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  fadeUp(b, quote, 0.14, 0.54, 18, -H * 0.12);
+  const avatar = b.add('overlay', 'avatar', {
+    shape: 'circle',
+    x: -W * 0.34,
+    y: H * 0.32,
+    radius: W * 0.045,
+    fill: ctx.accent,
+    opacity: 0,
+  });
+  const author = b.add('text', 'author', {
+    value: ctx.label ?? 'Maya Chen',
+    center: true,
+    x: -W * 0.16,
+    y: H * 0.285,
+    width: W * 0.25,
+    height: H * 0.1,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: W * 0.03,
+    weight: 680,
+    color: BRIGHT_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  const role = b.add('text', 'role', {
+    value: ctx.detail ?? 'Head of Product',
+    center: true,
+    x: -W * 0.12,
+    y: H * 0.37,
+    width: W * 0.33,
+    height: H * 0.08,
+    textAlign: 'left',
+    verticalAlign: 'middle',
+    size: W * 0.024,
+    weight: 520,
+    color: MUTED_TEXT,
+    opacity: 0,
+    layer: 'text',
+  });
+  b.enter(avatar, 0.34, 0.4, { opacity: 0, scale: 0.75 }, { opacity: 1, scale: 1 });
+  b.enter(author, 0.4, 0.38, { opacity: 0, x: -W * 0.12 }, { opacity: 1, x: -W * 0.16 });
+  b.enter(role, 0.46, 0.38, { opacity: 0 }, { opacity: 1 });
+  return panel;
+}
+
 const BASE_BUILDERS: Record<BaseSemanticComponentType, StructureBuilder> = {
   cloud: glyphStructure,
   database: glyphStructure,
@@ -3976,6 +4571,19 @@ const BUILDERS = {
   'spotlight-card': spotlightCardStructure,
   'metric-card': metricCardStructure,
   'media-card': mediaCardStructure,
+  sidebar: navigationFlowStructure,
+  table: listPanelStructure,
+  'command-palette': listPanelStructure,
+  'search-bar': compactControlStructure,
+  avatar: compactControlStructure,
+  badge: compactControlStructure,
+  tag: compactControlStructure,
+  timeline: navigationFlowStructure,
+  stepper: navigationFlowStructure,
+  footer: navigationFlowStructure,
+  'logo-grid': logoGridStructure,
+  testimonials: testimonialStructure,
+  'faq-accordion': listPanelStructure,
 } as Record<SemanticComponentType, StructureBuilder>;
 
 function seconds(value: number): string {

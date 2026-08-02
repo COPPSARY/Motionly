@@ -1,57 +1,38 @@
 ---
 name: timeline
-description: Organize, sequence, trim, and retime Motionly timelines. Use for tracks, clips, start/duration, trimIn/trimOut, overlaps, layer order, narration synchronization, audio placement, keyframe timing, clip transitions, and timeline troubleshooting.
+description: Organize Motionly tracks, clips, scene-local timing, trims, overlaps, exits, media sequences, and audio placement while preserving editable timing through serialization.
 ---
 
 # Timeline
 
-Treat visual tracks as simple persisted layers. Horizontal movement changes time; vertical movement selects a layer. Overlaps are allowed and never ripple neighboring clips automatically. Audio stays on the bottom audio track.
-
-## Build A Timing Map
-
-For each shot record purpose, focal subject, entrance, readable hold, exit, and transition. Derive exact media and audio duration from the files when available.
-
-```text
-0.0–2.8  Promise: title enters, holds, exits
-2.6–6.4  Product proof: video clip + one callout
-6.2–8.0  Brand close: logo resolve + CTA
-```
-
-Small overlaps are deliberate transition handles; unexplained overlaps are bugs.
-
-## Tracks And Clips
+Scenes and beats are the story timeline. Tracks and clips are media timing. An
+element animation's `delay` is not a clip start.
 
 ```motion
-track product {
-  label "Product"
-  role main
-  content video
-  order 0
-}
-
-track callouts {
-  label "Callouts"
-  role overlay
-  content mixed
-  order 1
-}
-
+track product { label "Product" role main content video order 0 }
+track overlay { label "Callouts" role overlay content mixed order 1 }
 clip demo {
   track product
-  start 2.6s
-  duration 3.8s
+  start 2.4s
+  duration 4s
   trimIn 1.2s
-  trimOut 0s
+  transitionIn crossfade
+  transitionInDuration 350ms
 }
 ```
 
-## Retime Safely
+Horizontal movement changes time; vertical movement selects the explicit layer.
+Overlaps are allowed only when visual ordering makes the overlap intentional.
+Keep audio on the bottom audio track. `transitionIn`/`transitionOut` and their
+durations are clip-only and currently support `crossfade`; scene transitions use
+scene `transition` or beat transition kinds instead.
 
-- Move a whole layer when its keyframes should move with it.
-- Trim visibility without silently rescaling animation keyframes.
-- Change `duration` when pacing changes; verify percentage keyframes after the edit.
-- Keep narration-aligned entrances on their spoken phrase.
-- Preserve audio `start` through save/reload and export.
-- Import the same video under two aliases if simultaneous clips need different source times.
+Retiming rules:
 
-After changes, scrub cut boundaries, transitions, clip starts/ends, and the final frame. Confirm track assignments and timing survive parse/serialize/parse.
+- move a layer when its keyframes should move with it;
+- trim media visibility without silently retiming authored animation;
+- preserve `start`, `duration`, `trimIn`, `trimOut`, track, and mute state;
+- import the same video under two aliases for simultaneous source times;
+- leave transition handles and readable holds at boundaries.
+
+Validate strict inspection and parse/serialize/parse after every retime.

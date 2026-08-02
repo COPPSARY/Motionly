@@ -1,82 +1,57 @@
 ---
 name: animation
-description: Choreograph polished Motionly object animation and sequences. Use for entrances, holds, exits, keyframes, stagger, presets, scene beats, motion hierarchy, product reveals, logo stings, UI demonstrations, and replacing repetitive fade-only motion.
+description: Choreograph readable Motionly entrances, holds, exits, UI life, staggered groups, camera paths, text presets, and editable keyframes with professional timing and non-repetitive motion.
 ---
 
 # Animation
 
-Design motion around attention and story beats. One focal subject moves first; supporting detail follows; the completed composition holds; exits clear space for the next idea.
+Read [authoring-contract.md](../../references/authoring-contract.md), then
+[motion-catalog.md](../../references/motion-catalog.md). Animation comes after
+story, layout, component selection, and continuity.
 
-## Build A Beat
+## Choreography
 
-1. Anticipate with a small offset, mask, or contrast change.
-2. Enter the focal subject over roughly `650ms–1s`.
-3. Stagger support by `80–180ms`.
-4. Hold long enough to read or understand.
-5. Exit in `350–550ms`, usually faster than the entrance.
-6. Transition only when the story actually changes.
+- one focal subject per shot;
+- binary arrival: motion carries the reveal, not a long opacity fade;
+- one entrance is at most 800ms;
+- group arrivals are a wave with shrinking gaps, not a queue;
+- focal travel is about 64px/620ms; support travel about 40px/460ms;
+- keep the complete cascade inside about 500ms;
+- reserve 300-750ms of stillness between a major action and its result;
+- add a readable hold after text/UI settles;
+- animate genuine exits so old content cannot stack under new content;
+- every long beat needs staged reveals, UI life, sequence, cursor action, camera intent, or deliberate hold.
 
-## Production Entrance
+For editorial copy, choreograph a handoff rather than independent title cards:
+the outgoing line begins leaving, the replacement enters during that travel,
+and both complete before the next boundary. Keep entrance and exit directions
+independent when the story calls for it. Do not repeat the same slide, zoom, or
+split treatment on adjacent beats.
 
-```motion
-animate panel {
-  keyframes {
-    0% { opacity 0 y 90 scale .94 blur 10 }
-    72% { opacity 1 y -6 scale 1.01 blur 0 }
-    100% { opacity 1 y 0 scale 1 blur 0 }
-  }
-  duration 900ms
-  delay 1.2s
-  easing power3.out
-}
-```
+Use `power4.out` for arrivals and `power3.out` to settle. Use spring/bounce only
+for a deliberately playful product moment. Do not apply the same preset to every
+layer or make every asset zoom/pan.
 
-The small overshoot makes the settle visible without looking bouncy. Remove it for sober enterprise brands.
+## Presets
 
-## Sequence Related Elements
+Text entrances/exits and transitions are listed in [motion-catalog.md](../../references/motion-catalog.md).
+Object moves include `softReveal`, `scaleReveal`, `cardReveal`, `productPanel`,
+`drawSVG`, `cascadeIn`, `snapMove`, `popover`, `cursorTap`, `shakeReject`,
+`rackFocus`, `depthSwap`, `mediaTour`, `zoomThrough`, and `whipPan`.
 
-```motion
-sequence benefits {
-  items icon title body
-  delay 2s
-  gap 120ms
-}
+Use `animation "NAME(options)"` on objects and `textAnimation "NAME(options)"`
+on text. Use explicit `animate TARGET { from ... to ... duration ... easing ... }`
+when a preset cannot communicate the actual authored path.
 
-animate icon {
-  from { opacity 0 scale .8 rotation -8 }
-  to { opacity 1 scale 1 rotation 0 }
-  duration 700ms
-  easing power3.out
-  sequence benefits
-}
-```
+An exit needs `exitAt`/`exitDuration` in a preset or a separate explicit exit.
+Use `exitDirection`/`exitDistance` when a transition must leave differently
+from how it arrived. Travel must clear the element's full bounds, not merely
+reach the canvas edge.
+Do not leave opacity at zero in a hidden layer and then author a later animation
+from opacity one; inspect the evaluated first frame of every animation.
 
-Use a sequence for a semantic group, not every object in the project. Reveal logos with their labels and diagram nodes with their connecting lines.
-
-## Preset Selection
-
-- `softReveal`: quiet supporting content.
-- `maskReveal`: hero image/video or product panel.
-- `dynamicSlide`: directional support and UI cards.
-- `drawSVG`: simple stroked vector hero.
-- `shapeWipe`/`irisWipe`: real scene change.
-- `sceneExit`: deliberate cleanup.
-- `focusZoom`: move from the whole product into one feature; use `role sibling` on surrounding layers for coordinated outward parallax.
-- `zoomThrough`/`whipPan`: fast, motivated shot transitions.
-- Paired `sceneSlide`/`sceneZoom`: animate scene roots so backgrounds, media, text, and effects travel together through the handoff.
-- `rackFocus`/`depthSwap`: transfer attention without cutting.
-- `cascadeIn`: staggered related media or cards.
-- `snapMove`: show a drag or reposition action.
-- `popover`: open an inspector, menu, or floating panel.
-- `cursorTap`/`shakeReject`: click feedback and blocked-action feedback.
-- `orbitDrift`: deterministic elliptical motion when orbit is the subject.
-
-## Avoid Generic Motion
-
-- Do not fade every object from opacity zero.
-- Do not apply the same entrance duration/direction to every layer.
-- Do not keep objects moving after the audience should read them.
-- Do not stack scale, spin, blur, and bounce without a story reason.
-- Do not leave stale layers visible under the next scene.
-
-For a software launch, alternate full-frame promise, product proof, focused feature detail, and brand close. Reuse motion language, not identical choreography.
+Inspect real media before directing it. Establish the full screenshot first,
+then choose focus points from its actual composition; use restrained perspective
+and pan only when they reveal a meaningful region. Do not apply the same generic
+zoom path to every image or video. Sample the first frame, settled hold, each
+focus point, and every boundary start/middle/end.

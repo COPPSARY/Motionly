@@ -2,6 +2,15 @@
 .motion-editor-scope .me-motion-editor {
   --accent: #0a84ff;
   --hairline: rgba(255, 255, 255, 0.08);
+  --editor-bg: #0e0e10;
+  --editor-surface: #151517;
+  --editor-surface-raised: #111113;
+  --editor-surface-hover: rgba(255, 255, 255, 0.06);
+  --editor-border: rgba(255, 255, 255, 0.08);
+  --editor-border-strong: rgba(255, 255, 255, 0.16);
+  --editor-text-muted: #85858d;
+  --editor-accent: var(--accent);
+  --editor-accent-soft: rgba(10, 132, 255, 0.12);
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial,
     sans-serif;
@@ -14,17 +23,17 @@
 }
 
 .motion-editor-scope .me-workbench {
-  grid-template-columns: 60px var(--content-panel-width, 260px) 50px minmax(0, 1fr) 300px;
+  grid-template-columns: 52px var(--content-panel-width, 236px) 42px minmax(0, 1fr) 272px;
 }
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px var(--content-panel-width, 260px) 324px minmax(0, 1fr) 300px;
+  grid-template-columns: 52px var(--content-panel-width, 236px) 300px minmax(0, 1fr) 272px;
 }
 
 .motion-editor-scope .me-nav-rail {
   position: relative;
   z-index: 30;
-  width: 60px;
-  padding: 10px;
+  width: 52px;
+  padding: 8px 6px;
   gap: 6px;
   background: rgba(18, 18, 20, 0.96);
   border-right: 1px solid var(--hairline);
@@ -32,9 +41,9 @@
 
 .motion-editor-scope .me-nav-item {
   position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
 }
 .motion-editor-scope .me-nav-item:hover {
   color: #fff;
@@ -392,20 +401,20 @@
 /* Final matte refinement and strict rail/panel containment. */
 .motion-editor-scope .me-workbench,
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px var(--content-panel-width, 260px) 50px minmax(0, 1fr) 300px;
+  grid-template-columns: 52px var(--content-panel-width, 236px) 42px minmax(0, 1fr) 272px;
   overflow: hidden;
   isolation: isolate;
   background: #0e0e10;
 }
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px var(--content-panel-width, 260px) 324px minmax(0, 1fr) 300px;
+  grid-template-columns: 52px var(--content-panel-width, 236px) 300px minmax(0, 1fr) 272px;
 }
 .motion-editor-scope .me-nav-rail {
   grid-column: 1;
   box-sizing: border-box;
-  width: 60px;
-  min-width: 60px;
-  max-width: 60px;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
   overflow: visible;
   background: #111113;
   border-right: 1px solid var(--hairline);
@@ -758,7 +767,7 @@
   color: #e0e0e4;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 .motion-editor-scope .me-library-empty-state > span:not(.me-library-empty-icon) {
   max-width: 205px;
@@ -794,7 +803,7 @@
 }
 
 .motion-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 60px var(--content-panel-width, 260px) 360px minmax(0, 1fr) 300px;
+  grid-template-columns: 52px var(--content-panel-width, 236px) 300px minmax(0, 1fr) 272px;
 }
 
 /* Quiet workspace grid, refined property controls, and logo-gradient interactions. */
@@ -993,4 +1002,18 @@
 }
 .motion-editor-scope .me-rotation-property {
   padding-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .motion-editor-scope .me-workbench,
+  .motion-editor-scope .me-workbench.me-chat-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .motion-editor-scope .me-nav-rail,
+  .motion-editor-scope .me-content-panel,
+  .motion-editor-scope .me-chat-drawer,
+  .motion-editor-scope .me-properties-panel {
+    display: none;
+  }
 }

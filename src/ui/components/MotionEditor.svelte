@@ -64,7 +64,18 @@
   import ContentPanel from './motion-editor/ContentPanel.svelte';
   import PropertiesInspector from './motion-editor/PropertiesInspector.svelte';
   import TimelinePanel from './motion-editor/TimelinePanel.svelte';
+  import StoryboardStrip from './motion-editor/StoryboardStrip.svelte';
   import {
+    createScene as createStoryboardScene,
+    deleteScene as deleteStoryboardScene,
+    duplicateScene as duplicateStoryboardScene,
+    readStoryboard,
+    reorderScene as reorderStoryboardScene,
+    setSceneLabel as setStoryboardSceneLabel,
+    setSceneTransition as setStoryboardSceneTransition,
+  } from '../storyboard';
+  import { SCENE_TRANSITION_KINDS, type SceneTransitionKind } from '../../motion-system/scenes';
+  import { migrateToScenes } from '../../motion-system/scene-migration';  import {
     assetPreviewSource,
     ensureAnimationNode,
     mergeAssets,
@@ -189,6 +200,9 @@
   let dropTargetTime: number | null = null;
   let dropTargetTrack: number | string = '';
   let editorHistory = createEditorHistory(code);
+  // The scene whose timeline is open. '' shows the whole storyboard, which is also
+  // the only state a legacy flat project can be in.
+  let activeSceneName = '';
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
   let timelineViewportWidth = 0;
@@ -669,7 +683,12 @@
           const message = error instanceof Error ? error.message : String(error);
           failures.push(`${name}: ${message}`);
         },
-        previousAssets
+        previousAssets,
+        (name, asset) => {
+          if (loadId !== assetLoadId) return;
+          assets = new Map(assets).set(name, asset);
+          if (asset.motionlyType !== 'audio') void renderFrame(currentTime, true);
+        }
       );
       if (loadId !== assetLoadId) {
         disposeAssets(
@@ -993,6 +1012,99 @@
     pause();
     editorHistory = recordEditorSource(editorHistory, source);
     code = source;
+  }
+
+  // --- Storyboard -----------------------------------------------------------
+  //
+  // Every operation is a pure AST → AST function from `ui/storyboard.ts`. Writing
+  // the result back through `code` reuses the existing parse → build → render and
+  // undo path, so a storyboard edit is one readable source diff and one undo step.
+
+  $: storyboardPlans = scene?.storyboard ?? [];
+  $: storyboardEntries = ast ? readStoryboard(ast) : [];
+  $: if (activeSceneName && !storyboardEntries.some((entry) => entry.name === activeSceneName)) {
+    activeSceneName = '';
+  }
+
+  function applyStoryboardEdit(next: ProgramNode) {
+    ast = next;
+    code = serializeProgram(ast);
+  }
+
+  function selectStoryboardScene(name: string) {
+    activeSceneName = name;
+    if (!name) return;
+    const plan = storyboardPlans.find((candidate) => candidate.name === name);
+    if (plan) {
+      pause();
+      currentTime = plan.start;
+      renderFrame(currentTime);
+    }
+    selectedElementId = name;
+  }
+
+  function createStoryboardSceneAfter(after: string) {
+    if (!ast) return;
+    const before = new Set(readStoryboard(ast).map((entry) => entry.name));
+    const next = createStoryboardScene(ast, after ? { after } : {});
+    applyStoryboardEdit(next);
+    const created = readStoryboard(next).find((entry) => !before.has(entry.name));
+    if (created) activeSceneName = created.name;
+  }
+
+  function duplicateStoryboardSceneByName(name: string) {
+    if (!ast) return;
+    const before = new Set(readStoryboard(ast).map((entry) => entry.name));
+    const next = duplicateStoryboardScene(ast, name);
+    applyStoryboardEdit(next);
+    const created = readStoryboard(next).find((entry) => !before.has(entry.name));
+    if (created) activeSceneName = created.name;
+  }
+
+  function deleteStoryboardSceneByName(name: string) {
+    if (!ast) return;
+    applyStoryboardEdit(deleteStoryboardScene(ast, name));
+    activeSceneName = '';
+    selectedElementId = '';
+  }
+
+  function reorderStoryboardSceneTo(name: string, toIndex: number) {
+    if (!ast) return;
+    applyStoryboardEdit(reorderStoryboardScene(ast, name, toIndex));
+  }
+
+  function renameStoryboardSceneLabel(name: string, label: string) {
+    if (!ast) return;
+    applyStoryboardEdit(setStoryboardSceneLabel(ast, name, label));
+  }
+
+  /**
+   * Step a boundary through the available kinds, ending on "inferred".
+   *
+   * Inference is usually the right answer — the storyboard already knows whether
+   * something is shared — so the cycle always offers a way back to it.
+   */
+  function cycleStoryboardTransition(name: string) {
+    if (!ast) return;
+    // Start from what the strip is showing, not from "unset" — otherwise the first
+    // click on an inferred boundary would appear to do nothing.
+    const authored = readStoryboard(ast).find((entry) => entry.name === name)?.transition;
+    const shown =
+      authored ??
+      storyboardPlans.find((plan) => plan.name === name)?.transition?.kind ??
+      undefined;
+    const order: Array<SceneTransitionKind | undefined> = [...SCENE_TRANSITION_KINDS, undefined];
+    const index = order.indexOf(shown);
+    const next = order[(index + 1) % order.length];
+    applyStoryboardEdit(setStoryboardSceneTransition(ast, name, next));
+  }
+
+  function organizeIntoScenes() {
+    if (!ast) return;
+    const migration = migrateToScenes(ast);
+    if (migration.strategy === 'none') return;
+    applyStoryboardEdit(migration.program);
+    activeSceneName = migration.scenes[0] ?? '';
   }
 
   function duplicateSelected() {
@@ -3254,6 +3366,20 @@
       onSplitSelectedClip={splitSelectedClip}
     />
   </div>
+
+  <StoryboardStrip
+    storyboard={storyboardPlans}
+    entries={storyboardEntries}
+    activeScene={activeSceneName}
+    onSelectScene={selectStoryboardScene}
+    onCreateScene={createStoryboardSceneAfter}
+    onDuplicateScene={duplicateStoryboardSceneByName}
+    onDeleteScene={deleteStoryboardSceneByName}
+    onReorderScene={reorderStoryboardSceneTo}
+    onRenameScene={renameStoryboardSceneLabel}
+    onCycleTransition={cycleStoryboardTransition}
+    onOrganizeIntoScenes={storyboardEntries.length ? null : organizeIntoScenes}
+  />
 
   <TimelinePanel
     bind:timelineScroll

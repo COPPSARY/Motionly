@@ -205,8 +205,16 @@ const PROPERTY_NAMES = new Set([
   'from',
   'to',
   'easing',
-  // Motion system: layouts, showcases, and beats.
+  // Motion system: layouts, showcases, beats, and storyboard scenes.
   'beat',
+  // Storyboard membership: `scene NAME` puts an object inside that scene.
+  'scene',
+  // Persistent component id, so the same component can be recognized across scenes.
+  'identity',
+  // Opt-in hard clear: the scene closes and removes whatever is still inside it.
+  'clear',
+  // Scene boundary kind: sharedElement, cameraMove, continuous, cut.
+  'transition',
   'columns',
   'itemWidth',
   'itemHeight',
@@ -453,6 +461,7 @@ class Parser {
           'muted',
           'locked',
           'guide',
+          'clear',
         ].includes(key) &&
         (this.check('Newline') || this.check('RightBrace'))
       ) {

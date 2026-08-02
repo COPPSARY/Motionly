@@ -2,8 +2,9 @@
 
 Use [`llms.txt`](llms.txt) as the discovery index. Load only skills relevant to the request instead of reading the entire library.
 
-Always load `skills/motion-dsl/SKILL.md` before creating or repairing `.motion` syntax. Then load focused skills by intent:
+Always load `skills/motion-dsl/SKILL.md` before creating or repairing `.motion` syntax. Load `skills/scenes/SKILL.md` before creating animations or storyboards. Then load focused skills by intent:
 
+- scene-first planning, scene membership, shared identities, boundaries: `scenes`
 - storyboarding a whole film, pacing, focus changes, composition placement, product presentation: `motion-system`
 - interfaces, dashboards, terminals, devices, pricing, the Motionly workspace: `components`
 - vector/logo/icon/diagram work: `svg`
@@ -17,6 +18,6 @@ Always load `skills/motion-dsl/SKILL.md` before creating or repairing `.motion` 
 - preview/export diagnosis: `rendering`
 - a new brief or storyboard: `templates`
 
-Preserve existing user work, exact copy, real asset paths, and editable timeline structure. Prefer native SVG/vector animation for logos, icons, illustrations, diagrams, badges, and UI graphics unless the user explicitly wants to preserve an imported animation. Never flatten or silently ignore animated media.
+Preserve existing user work, exact copy, real asset paths, scene membership, shared identities, and editable timeline structure. Prefer native SVG/vector animation for logos, icons, illustrations, diagrams, badges, and UI graphics unless the user explicitly wants to preserve an imported animation. Never flatten or silently ignore animated media.
 
 Validate against the Motionly repository's current parser, evaluator, renderer, and serializer when available. Report real browser/renderer limitations plainly.

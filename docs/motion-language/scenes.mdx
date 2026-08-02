@@ -1,0 +1,243 @@
+---
+title: "Scenes"
+description: "Scenes are how a Motionly project is organized: a storyboard of connected compositions instead of one long timeline."
+---
+
+A Motionly project is a **storyboard** — an ordered list of scenes. Each scene owns
+its components, its camera, its background, its own timeline, its audio, and its
+duration. The top-level timeline shows the storyboard and nothing else, so it stays
+readable whether the project has five objects or five hundred.
+
+```
+[ Intro ] → [ Prompt ] → [ Demo ] → [ Editing ] → [ Outro ]
+```
+
+Selecting a scene opens that scene's timeline. Detailed animation lives inside a
+scene; the storyboard above it is about structure.
+
+## Scenes are organizational boundaries, not animation boundaries
+
+This is the rule that separates a motion graphic from a slideshow.
+
+Nothing is cleared at a scene edge. A component that exists on both sides of a
+boundary keeps its identity and **transforms across it**. Only components that are
+genuinely leaving get an exit, and only genuinely new ones get an entrance.
+
+```
+Logo                       Logo disappears
+  ↓ move                     ↓
+  ↓ resize        NOT       Logo appears again
+  ↓ continue
+```
+
+## Writing a storyboard
+
+Declare the scenes, then put objects in them.
+
+```motion
+canvas {
+  size 1920x1080
+  fps 60
+  duration 12s
+  background #020308
+}
+
+scene intro {
+  label "Intro"
+  duration 4s
+  background #05060a
+}
+
+scene demo {
+  label "Demo"
+  duration 8s
+  zoom 1.2
+}
+
+text brandmark {
+  scene intro
+  identity brand
+  value "Motionly"
+  center
+  size 96
+  color #ffffff
+  animation heroLogo
+}
+
+text tagline {
+  scene intro
+  value "Effortless animation"
+  size 32
+  color #9aa3b2
+  animation fadeUp
+}
+
+text brandSmall {
+  scene demo
+  identity brand
+  value "Motionly"
+  size 32
+  color #ffffff
+}
+
+component board {
+  scene demo
+  type dashboard
+  headline "Live metrics"
+}
+```
+
+Scenes run **back to back** unless you give a `start`, and a scene with no
+`duration` takes an even share of whatever canvas time is left. You never author
+absolute time: reordering two scenes is a list move, not a retiming pass over
+hundreds of delays.
+
+If the storyboard is longer than the canvas, the canvas is extended to fit it.
+
+### Scene properties
+
+| Property | Meaning |
+| --- | --- |
+| `duration` | Scene length. Omit to take an even share of the canvas. |
+| `start` | Pin the scene to an absolute time. Omit to run back to back. |
+| `label` | Name shown in the storyboard strip. |
+| `background` | Scene background color. |
+| `zoom`, `cameraX`, `cameraY` | The scene's camera framing. Inherited from the previous scene when omitted. |
+| `transition` | How the boundary **into** this scene is crossed. Omit to let Motionly infer it. |
+| `clear` | Opt in to a hard clear: the scene closes at its edge and takes whatever is still inside it. Off by default. |
+
+### Why a scene has no window by default
+
+A scene root is given a `start` — the time origin its children are measured
+against — and deliberately **not** a duration. The engine culls a child once its
+ancestor's window closes, so writing the scene length onto the element would clear
+the composition at every edge and put the slideshow back.
+
+The length still exists; it lives on the storyboard, where the strip, the pacing,
+and the boundary planner read it. It just is not a cage. Components that genuinely
+leave are animated out at the boundary; components that persist simply persist. Add
+`clear` when you actually want the old behavior.
+
+### Membership
+
+`scene NAME` on any object — `text`, `image`, `component`, `layout`, `showcase` —
+puts it in that scene. An object that already declares a `parent` (a layout slot, a
+group, a showcase part) keeps it; the scene is then its ancestor.
+
+Timing inside a scene is **scene-local**. A delay of `0s` on a member of the third
+scene means the start of the third scene, not the start of the film.
+
+## Shared components
+
+Give a component that recurs the same `identity`:
+
+```motion
+text brandmark  { scene intro identity brand ... }
+text brandSmall { scene demo  identity brand ... }
+```
+
+Motionly then detects the two as one logical component and the boundary between
+their scenes becomes a handoff. Reusing the same element name across scenes works
+too — `identity` exists so a component can change name, size, and role and still be
+recognized.
+
+## Scene relationships
+
+Every scene knows its `previous` and `next`. That is what lets Motionly plan a
+boundary from both sides, and it is why continuity does not need to be hand-wired.
+
+## Boundaries and participation
+
+At every boundary each component is classified:
+
+```
+Scene A            →  Transition  →  Scene B
+  Logo                  shared: Logo
+  Hero                  exit:   Hero, CTA
+  CTA                   enter:  Dashboard, Sidebar
+```
+
+Shared components hand off, exits move out, arrivals move in as a wave. A component
+that already carries its own motion is never given a second entrance.
+
+### Transition kinds
+
+| Kind | Meaning |
+| --- | --- |
+| `sharedElement` | Shared components hand off. Default when anything is shared. |
+| `cameraMove` | The camera reframes across the boundary. Default when the framing changes. |
+| `continuous` | Nothing is marked; the composition keeps evolving. |
+| `cut` | An explicit hard change. Use rarely. |
+
+There is no `fade`. Fading the frame is what makes generated video feel like a
+slideshow, and the doctrine forbids it: transform between shots, never dissolve.
+
+Inference is usually right, because the storyboard already knows whether something
+is shared. Override only when it is wrong.
+
+## Beats inside a scene
+
+Scenes organize; [beats](/motion-language/motion-system) change focus. A scene long
+enough to hold several turns of attention can carry beats inside it — the camera
+reframes the persistent composition without clearing anything.
+
+## AI generation order
+
+The AI is directed to build structure before animation:
+
+1. **Storyboard** — how many scenes, what each is for, how long
+2. **Scenes** — one `scene` block per storyboard entry
+3. **Contents** — the components in each scene
+4. **Shared identity** — which components recur
+5. **Boundaries** — how each cut is crossed, derived from step 4
+6. **Animation** — only now, and only inside a scene
+
+`src/ai/storyboard-director.ts` derives steps 1-5 deterministically from the
+project's duration and assets and hands the model compilable `scene` blocks, so the
+two things it gets wrong most often — absolute timing and membership — are removed
+from its job.
+
+## Migrating an old project
+
+A project written before scenes existed is one long composition. `migrateToScenes`
+lifts it into a storyboard without touching a single animation:
+
+| Strategy | When |
+| --- | --- |
+| `beats` | The project already storyboards with `beat` blocks. Each becomes a scene. |
+| `segment` | No beats, but entrance times cluster. Splits where the composition goes quiet. |
+| `single` | Wraps everything in one scene. Always correct, never clever. |
+
+`auto` picks beats, then segment, then single. The migration is idempotent and
+returns an AST, so the user reviews an ordinary `.motion` diff.
+
+Old projects still compile untouched: the storyboard pass only engages for a project
+that declares scene membership or storyboard intent.
+
+## Auditing a storyboard
+
+`npm run inspect:motion` reports structural problems at the level they now live at:
+
+| Finding | Meaning |
+| --- | --- |
+| `scene-orphan` | An object belongs to no scene. |
+| `scene-gap` | Dead air between two scenes. |
+| `scene-overlap` | Two scenes claim the same time. |
+| `scene-still` | A member never moves and never arrives. |
+| `scene-discontinuity` | A boundary with nothing shared and no reframe — a jump cut. |
+
+## Where the code lives
+
+| Concern | File |
+| --- | --- |
+| Storyboard model, participation, boundary planning | `src/motion-system/scenes.ts` |
+| Migration from flat projects and beats | `src/motion-system/scene-migration.ts` |
+| AST lowering pass | `src/semantic/storyboard-lowering.ts` |
+| Editor operations | `src/ui/storyboard.ts` |
+| AI direction | `src/ai/storyboard-director.ts` |
+| Structural audit | `src/inspection/motion-audit.ts` |
+
+Scenes lower to the engine's existing `scene` element kind, which already owns a
+background, a per-scene camera with depth parallax, an enter/exit envelope, and
+parent-local time evaluation. The renderer, the evaluator, and the `.motion` format
+are unchanged.

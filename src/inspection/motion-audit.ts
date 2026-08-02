@@ -13,6 +13,7 @@
 import { evaluateScene } from '../animation/evaluator';
 import { ARRIVAL } from '../motion-system/layout';
 import { MOTION_BUDGET } from '../motion-system/budget';
+import { staticMembers } from '../motion-system/scenes';
 import type { Animation, Scene } from '../types/scene';
 
 export const MOTION_FINDING_KINDS = [
@@ -34,6 +35,16 @@ export const MOTION_FINDING_KINDS = [
   'stagger-window',
   /** A group cascade has arbitrary gaps instead of an accelerating wave. */
   'uneven-stagger',
+  /** An object exists outside every scene in a storyboard project. */
+  'scene-orphan',
+  /** Dead air between two scenes. */
+  'scene-gap',
+  /** Two scenes claim the same time. */
+  'scene-overlap',
+  /** A scene holds a member that never moves and never arrives. */
+  'scene-still',
+  /** A boundary crossed with nothing shared and no reframe — a jump cut. */
+  'scene-discontinuity',
 ] as const;
 
 export type MotionFindingKind = (typeof MOTION_FINDING_KINDS)[number];
@@ -85,6 +96,7 @@ export function auditScene(scene: Scene): MotionAudit {
     ...auditCascades(authored),
     ...auditCoverage(scene),
     ...auditGeometry(scene),
+    ...auditStoryboard(scene),
   ];
   const counts: Record<string, number> = {};
   for (const finding of findings) counts[finding.kind] = (counts[finding.kind] ?? 0) + 1;
@@ -244,6 +256,108 @@ function cascadeGroup(target: string): string {
   const fragment = /^(.*)__(?:words|chars|lines)_\d+$/.exec(target);
   if (fragment) return fragment[1]!;
   return target.includes('__') ? target.split('__')[0]! : '';
+}
+
+/**
+ * Audit the storyboard itself.
+ *
+ * The structural failures scenes were introduced to prevent, checked at the level
+ * they now live at. A project with no storyboard produces no findings, so a legacy
+ * flat project audits exactly as it did before.
+ *
+ * - orphan: an object outside every scene has no owner, no scene-local time, and
+ *   no participation in any boundary. It is the thing that used to be normal.
+ * - gap / overlap: scenes are meant to be contiguous; a hole is dead air on
+ *   screen and an overlap means two scenes both claim the frame.
+ * - still: a member that never moves and never arrives will sit frozen for the
+ *   whole scene.
+ * - discontinuity: a boundary with nothing shared and no reframe is a jump cut.
+ *   Sometimes intended, usually a missed `identity`.
+ */
+export function auditStoryboard(scene: Scene): MotionFinding[] {
+  const storyboard = scene.storyboard ?? [];
+  if (!storyboard.length) return [];
+
+  const findings: MotionFinding[] = [];
+  const sceneIds = new Set(storyboard.map((plan) => plan.name));
+  const ancestorScene = (id: string): string => {
+    const seen = new Set<string>();
+    let cursor = id;
+    for (let depth = 0; depth < 64; depth += 1) {
+      if (sceneIds.has(cursor)) return cursor;
+      if (seen.has(cursor)) return '';
+      seen.add(cursor);
+      const element = scene.elements.find((candidate) => candidate.id === cursor);
+      const parent = String(element?.properties.parent ?? '');
+      if (!parent) return '';
+      cursor = parent;
+    }
+    return '';
+  };
+
+  for (const element of scene.elements) {
+    if (sceneIds.has(element.id)) continue;
+    if (element.kind === 'effect' || element.kind === 'group') continue;
+    if (String(element.properties.layer ?? 'content') === 'background') continue;
+    if (ancestorScene(element.id)) continue;
+    findings.push({
+      kind: 'scene-orphan',
+      severity: 'warn',
+      target: element.id,
+      detail: `"${element.id}" belongs to no scene. Put it in one with: scene NAME.`,
+    });
+  }
+
+  for (const [index, plan] of storyboard.entries()) {
+    const previous = storyboard[index - 1];
+    if (previous) {
+      const gap = Number((plan.start - previous.end).toFixed(3));
+      if (gap > 0.001) {
+        findings.push({
+          kind: 'scene-gap',
+          severity: 'warn',
+          target: plan.name,
+          at: previous.end,
+          detail: `${gap}s of dead air between "${previous.name}" and "${plan.name}".`,
+        });
+      }
+      if (gap < -0.001) {
+        findings.push({
+          kind: 'scene-overlap',
+          severity: 'error',
+          target: plan.name,
+          at: plan.start,
+          detail: `"${plan.name}" starts ${Math.abs(gap)}s before "${previous.name}" ends.`,
+        });
+      }
+      const transition = plan.transition;
+      if (
+        transition &&
+        transition.kind !== 'cut' &&
+        !transition.participation.shared.length &&
+        transition.kind !== 'cameraMove'
+      ) {
+        findings.push({
+          kind: 'scene-discontinuity',
+          severity: 'warn',
+          target: plan.name,
+          at: plan.start,
+          detail: `Nothing carries from "${previous.name}" into "${plan.name}". Give a recurring component the same identity, or reframe the camera.`,
+        });
+      }
+    }
+  }
+
+  for (const id of staticMembers(storyboard)) {
+    findings.push({
+      kind: 'scene-still',
+      severity: 'warn',
+      target: id,
+      detail: `"${id}" never moves and never arrives; it will sit frozen inside its scene.`,
+    });
+  }
+
+  return findings;
 }
 
 function auditCoverage(scene: Scene): MotionFinding[] {

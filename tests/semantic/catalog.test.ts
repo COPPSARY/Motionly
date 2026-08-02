@@ -5,12 +5,40 @@ import { serializeProgram } from '../../src/language/serializer';
 import { buildSceneGraph } from '../../src/scene/scene-graph';
 import {
   archetypeRegistry,
+  catalogPrompt,
   componentRegistry,
   effectRegistry,
   moveRegistry,
 } from '../../src/semantic/catalog';
 
 describe('motion catalog and archetypes', () => {
+  it('exposes specialized editorial components to the AI catalog', () => {
+    const prompt = catalogPrompt();
+    expect(prompt).toContain('metric-card');
+    expect(prompt).toContain('media-card');
+    expect(prompt).toContain('spotlight-card');
+    expect(prompt).toContain('command-palette');
+    expect(prompt).toContain('search-bar');
+    expect(prompt).toContain('mac-window');
+  });
+
+  it('keeps a media-card source attached to its imported image asset', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 2s }
+        import "/preset/motionly/assets/motion-source-screenshot.png" as capture
+        component preview {
+          type media-card
+          source capture
+          headline "Project"
+        }
+      `)
+    );
+    expect(scene.elements.find((element) => element.id === 'preview__media')?.assetName).toBe(
+      'capture'
+    );
+  });
+
   it('keeps every runtime registry entry self-describing and versioned', () => {
     for (const registry of [
       effectRegistry(),

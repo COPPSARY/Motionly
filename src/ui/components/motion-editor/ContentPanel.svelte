@@ -396,7 +396,7 @@
                 <Trash2 size={14} />
               </button>
             {/if}
-            <button type="button" class="me-header-icon-btn" on:click={onAddTextElement} title="Add text">
+            <button type="button" class="me-header-icon-btn" on:click={onAddTextElement} title="Add text" aria-label="Add text">
               <Plus size={16} />
             </button>
           </div>
