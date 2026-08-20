@@ -1,20 +1,23 @@
 <div align="center">
-  <img src="public/logo.svg" alt="Motionly Logo" width="100">
+  <h1>
+    <img src="public/logo.svg" alt="Motionly Logo" width="48" height="48" valign="middle">
+    <span valign="middle">Motionly</span>
+  </h1>
 
-  # Motionly
-
-  **AI-native motion graphics editor**
-</div>
+  <p>
+    <strong>AI-native motion graphics editor</strong><br>
+    Create editable animations with AI, then refine every detail visually.
+  </p>
 
 <p align="center">
-  <em>Create editable animations with AI, then refine every detail visually.</em>
-</p>
-
-<p align="center">
-  <a href="https://www.producthunt.com/products/motionly">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202670&theme=dark" alt="Motionly on Product Hunt" height="54" />
+  <img src="https://img.shields.io/badge/Supported_by-ff4b4b?style=for-the-badge" alt="Supported by" valign="middle">
+  <a href="https://www.kiritts.com/">
+    <img src="https://www.kiritts.com/logo.svg" alt="KiriTTS Logo" width="28" height="28" valign="middle">
+    <font size="5" valign="middle"><b>KiriTTS</b></font>
   </a>
 </p>
+</div>
+
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@coppsary/motionly">
