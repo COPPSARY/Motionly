@@ -9,6 +9,7 @@ import { LAYOUT_TYPES } from '../../src/motion-system/layout';
 import { SHOWCASE_TYPES } from '../../src/motion-system/showcase';
 
 const examples = registryExamples();
+const normalizeLineEndings = (source: string) => source.replaceAll('\r\n', '\n');
 
 describe('registry example compositions', () => {
   it('ships installable examples for every layout, showcase, and featured component recipe', () => {
@@ -74,7 +75,9 @@ describe('registry example compositions', () => {
       expect(existsSync(resolve(file.path)), file.path).toBe(true);
       expect(file.target).toBe(`compositions/${example.slug}.motion`);
       // The generated registry copy must match the source of truth.
-      expect(readFileSync(resolve(file.path), 'utf8')).toBe(example.source);
+      expect(normalizeLineEndings(readFileSync(resolve(file.path), 'utf8'))).toBe(
+        normalizeLineEndings(example.source)
+      );
     }
   });
 

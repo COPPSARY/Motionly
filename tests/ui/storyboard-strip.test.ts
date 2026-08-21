@@ -128,10 +128,12 @@ describe('storyboard strip in the editor', () => {
         ?.textContent
     ).toBe('Demo');
 
-    const tools = host.querySelectorAll('.storyboard-strip__tools .storyboard-icon-button');
-    click(tools[2]);
+    const back = host.querySelector('[aria-label="Back to all scenes"]');
+    expect(back?.textContent).toContain('All scenes');
+    click(back);
     await tick();
     expect(host.querySelector('.storyboard-scene[aria-current="true"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Back to all scenes"]')).toBeNull();
     await unmount(instance);
   });
 
@@ -151,8 +153,7 @@ describe('storyboard strip in the editor', () => {
     const { host, instance, source } = await editor(storyboardSource);
     click(host.querySelectorAll('.storyboard-scene')[1]);
     await tick();
-    const tools = host.querySelectorAll('.storyboard-strip__tools .storyboard-icon-button');
-    click(tools[3]);
+    click(host.querySelector('[aria-label="Delete the selected scene and its contents"]'));
     await tick();
     expect(scenes(host)).toEqual(['Intro']);
     expect(source()).not.toContain('panel');

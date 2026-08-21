@@ -8,7 +8,7 @@
   import type { ClipTransitionBoundary } from '../../clip-transitions';
   import ColorPicker from '../ColorPicker.svelte';
   import RotationDial from '../RotationDial.svelte';
-  import { ADJUSTMENT_CONTROLS, KEYFRAME_EASINGS } from './constants';
+  import { ADJUSTMENT_CONTROLS, KEYFRAME_EASINGS, TEXT_EFFECT_CONTROLS } from './constants';
   import { assetPreviewSource, elementDetail, numericProperty, propertiesOf, stringProperty } from './helpers';
   import { gainToDecibels, maximumFade } from '../../audio-clips';
 
@@ -232,6 +232,46 @@
                 </select>
               </div>
             </div>
+            <div class="me-section-title">Text Effects</div>
+            {#each TEXT_EFFECT_CONTROLS as control}
+              <div class="me-property-group">
+                <div class="me-property-label-row">
+                  <div class="me-property-label">{control.label}</div>
+                  <button
+                    type="button"
+                    class="me-property-keyframe"
+                    class:me-animated-property={isPropertyAnimated([control.property])}
+                    class:me-keyframe-at-playhead={hasPropertyKeyframeAtPlayhead([control.property])}
+                    on:click={() => onTogglePropertyKeyframe([control.property])}
+                    title={`Toggle text ${control.label.toLowerCase()} keyframe at playhead`}
+                    aria-label={`Toggle text ${control.label.toLowerCase()} keyframe at playhead`}
+                    aria-pressed={hasPropertyKeyframeAtPlayhead([control.property])}
+                  ><Diamond size={11} fill="currentColor" /></button>
+                </div>
+                <div class="me-slider-control">
+                  <input
+                    class="me-custom-slider"
+                    type="range"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={selectedVisualProperty(control.property, control.fallback)}
+                    on:input={(event) => onUpdateElementProperty(control.property, Number(event.currentTarget.value))}
+                    aria-label={`Text ${control.label.toLowerCase()}`}
+                  />
+                  <input
+                    class="me-slider-value-input"
+                    type="number"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={selectedVisualProperty(control.property, control.fallback)}
+                    on:input={(event) => onUpdateElementProperty(control.property, Number(event.currentTarget.value))}
+                    aria-label={`Text ${control.label.toLowerCase()} value`}
+                  />
+                </div>
+              </div>
+            {/each}
           {/if}
           <div class="me-property-group">
             <div class="me-property-label-row">

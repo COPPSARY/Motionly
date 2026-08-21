@@ -3,6 +3,7 @@ import { buildSceneGraph } from '../../src/scene/scene-graph';
 import { parseMotion } from '../../src/language/parser';
 import { serializeProgram } from '../../src/language/serializer';
 import { moveRegistry } from '../../src/semantic/catalog';
+import { evaluateScene } from '../../src/animation/evaluator';
 
 function animationFor(source: string, target: string) {
   return buildSceneGraph(parseMotion(source)).animations.find((item) => item.target === target);
@@ -303,5 +304,37 @@ describe('text motion vocabulary', () => {
       return JSON.stringify(animation.keyframes);
     });
     expect(new Set(signatures).size).toBe(transitions.length);
+  });
+});
+
+describe('text preset composition with authored keyframes', () => {
+  it('preserves fragment spacing while applying source-level position keyframes', () => {
+    const scene = buildSceneGraph(
+      parseMotion(`
+        canvas { duration 2s }
+        text title {
+          value "AB"
+          center
+          x 20
+          size 64
+          textAnimation "charReveal(duration 600ms)"
+        }
+        animate title {
+          keyframes {
+            0% { x -80 blur 0 }
+            100% { x 120 blur 12 }
+          }
+          duration 2s
+          easing linear
+        }
+      `)
+    );
+
+    const fragments = evaluateScene(scene, 1).elements.filter(
+      (element) => element.properties.textGroup === 'title'
+    );
+    expect(fragments).toHaveLength(2);
+    expect(Number(fragments[1]?.render.x) - Number(fragments[0]?.render.x)).toBeGreaterThan(1);
+    expect(fragments.every((fragment) => Number(fragment.render.blur) === 6)).toBe(true);
   });
 });

@@ -115,6 +115,7 @@ The right panel edits the selected layer without requiring source changes.
 - **Rotation dial** — drag the dial to rotate the selected layer. The dial snaps to the nearest 45° when the pointer is within a few degrees, and the flip button rotates the layer by 180°. With the dial focused, arrow keys nudge rotation by 1°, `Shift` + arrow nudges by 45°, and `Home` resets rotation to 0°.
 - SVG fill and stroke overrides for simple path artwork
 - Text content, font size, and color
+- Text blur, tracking, shadow, and glow controls, each with a keyframe diamond. Custom text-effect keyframes are saved on the source text layer and continue to affect generated word/character fragments without removing the selected text animation preset.
 - Scene background color
 - Animation preset, duration, delay, and easing
 
@@ -122,6 +123,7 @@ The right panel edits the selected layer without requiring source changes.
 
 The lower panel contains playback and layer-based clip editing.
 
+- Storyboard projects initially show one clip per scene. Click a scene card to open that scene's member timeline with scene-local time starting at `0:00`; use the clearly labeled **All scenes** back button to return to the whole storyboard. Text and effects added while a scene is open automatically belong to that scene.
 - Every visual track behaves as a simple layer. Existing role/content metadata remains compatible but does not change drag behavior.
 - Overlaps are allowed and remain visible for the user to arrange.
 - Audio behaves like any other clip. Importing a sound only adds it to the library; drag it onto the timeline to place it, and drag it again to place a second copy. Music, dialogue and effects can run on separate audio tracks at the same time.

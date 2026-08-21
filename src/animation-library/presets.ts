@@ -81,17 +81,27 @@ export function applyAnimationPresets(scene: Scene): Scene {
 
       const generated = expandTextPreset(element, textPreset as string);
       const seqOffset = elementSequenceOffset(scene.sequences, props['sequence'], element.id);
+      const authoredAnimations = scene.animations.filter(
+        (animation) => animation.target === element.id
+      );
+      const authoredProperties = new Set(
+        authoredAnimations.flatMap((animation) => [
+          ...Object.keys(animation.from),
+          ...Object.keys(animation.to),
+          ...animation.keyframes.flatMap((keyframe) => Object.keys(keyframe.properties)),
+        ])
+      );
       sourceElements.push(hideElement(element));
       generatedElements.push(...generated.elements);
       generatedAnimations.push(
-        ...offsetDelays(generated.animations, seqOffset, generated.elements.length)
+        ...offsetDelays(generated.animations, seqOffset, generated.elements.length).map(
+          (animation) => withoutAnimationProperties(animation, authoredProperties)
+        )
       );
       generatedAnimations.push(
-        ...scene.animations
-          .filter((animation) => animation.target === element.id)
-          .flatMap((animation) =>
-            generated.elements.map((part) => ({ ...animation, target: part.id }))
-          )
+        ...authoredAnimations.flatMap((animation) =>
+          generated.elements.map((part) => textGroupAnimationForPart(animation, element, part))
+        )
       );
       continue;
     }
@@ -164,6 +174,55 @@ export function applyAnimationPresets(scene: Scene): Scene {
     ...scene,
     elements: [...sourceElements, ...generatedElements],
     animations: [...generatedAnimations, ...scene.animations],
+  };
+}
+
+/**
+ * Source text position keyframes describe the whole text run. Generated
+ * fragments need the same displacement while retaining their own layout
+ * offset; copying an absolute x value to every fragment collapses the run.
+ */
+function textGroupAnimationForPart(
+  animation: Animation,
+  source: Element,
+  part: Element
+): Animation {
+  const sourceX = finiteNumber(source.properties.x, 0);
+  const partOffsetX = finiteNumber(part.properties.x, sourceX) - sourceX;
+  const translate = (properties: PropertyMap): PropertyMap => {
+    const translated = { ...properties };
+    if (properties['x'] !== undefined) {
+      translated['x'] = finiteNumber(properties['x'], sourceX) + partOffsetX;
+    }
+    return translated;
+  };
+  return {
+    ...animation,
+    target: part.id,
+    from: translate(animation.from),
+    to: translate(animation.to),
+    keyframes: animation.keyframes.map((keyframe) => ({
+      ...keyframe,
+      properties: translate(keyframe.properties),
+    })),
+  };
+}
+
+function withoutAnimationProperties(
+  animation: Animation,
+  properties: ReadonlySet<string>
+): Animation {
+  if (properties.size === 0) return animation;
+  const omit = (values: PropertyMap): PropertyMap =>
+    Object.fromEntries(Object.entries(values).filter(([key]) => !properties.has(key)));
+  return {
+    ...animation,
+    from: omit(animation.from),
+    to: omit(animation.to),
+    keyframes: animation.keyframes.map((keyframe) => ({
+      ...keyframe,
+      properties: omit(keyframe.properties),
+    })),
   };
 }
 
@@ -2602,7 +2661,7 @@ function backgroundEffect(element: Element): { elements: Element[]; animations: 
     properties: {
       ...element.properties,
       ...options,
-      layer: 'background',
+      layer: props['layer'] ?? 'background',
       effect: name,
       opacity,
       offset: 0,
