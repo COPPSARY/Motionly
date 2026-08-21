@@ -14,6 +14,13 @@ export const ADJUSTMENT_CONTROLS = [
   { property: 'invert', label: 'Invert', min: 0, max: 1, step: 0.01, fallback: 0 },
 ] as const;
 
+export const TEXT_EFFECT_CONTROLS = [
+  { property: 'blur', label: 'Blur', min: 0, max: 40, step: 0.5, fallback: 0 },
+  { property: 'tracking', label: 'Tracking', min: -50, max: 100, step: 0.5, fallback: 0 },
+  { property: 'shadow', label: 'Shadow', min: 0, max: 80, step: 0.5, fallback: 0 },
+  { property: 'glow', label: 'Glow', min: 0, max: 80, step: 0.5, fallback: 0 },
+] as const;
+
 export const ANIMATION_PRESETS: AnimationPresetDef[] = moveRegistry().flatMap((entry) =>
   entry.category
     .split(' ')
@@ -23,11 +30,20 @@ export const ANIMATION_PRESETS: AnimationPresetDef[] = moveRegistry().flatMap((e
     .map((category) => ({ name: entry.name, description: entry.docs, category }))
 );
 
-export const EFFECT_PRESETS: AnimationPresetDef[] = effectRegistry().map((entry) => ({
-  name: entry.name,
-  description: entry.docs,
-  category: entry.category as AnimationPresetDef['category'],
-}));
+const EFFECT_CATEGORIES = new Set<AnimationPresetDef['category']>([
+  'background',
+  'atmosphere',
+  'surface',
+]);
+
+export const EFFECT_PRESETS: AnimationPresetDef[] = effectRegistry().flatMap((entry) => {
+  const category = entry.category
+    .split(' ')
+    .find((candidate): candidate is AnimationPresetDef['category'] =>
+      EFFECT_CATEGORIES.has(candidate as AnimationPresetDef['category'])
+    );
+  return category ? [{ name: entry.name, description: entry.docs, category }] : [];
+});
 
 export const AVAILABLE_PRESETS = PRESET_CATALOG.map((preset) => ({
   name: preset.title,

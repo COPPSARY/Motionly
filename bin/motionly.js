@@ -312,7 +312,7 @@ async function selectSkillOptions(terminal, providers, scope) {
 }
 
 function skillBase(scope, projectBase) {
-  return scope === 'global' ? homedir() : projectBase;
+  return scope === 'global' ? resolve(process.env.HOME?.trim() || homedir()) : projectBase;
 }
 
 function parseSkillOptions(argv) {
@@ -553,6 +553,19 @@ async function serveEditor(argv, projectFolder = null) {
       return;
     }
     throw error;
+  });
+
+  const shutdown = () => {
+    server.close(() => {
+      process.exitCode = 0;
+    });
+    server.closeAllConnections?.();
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  server.once('close', () => {
+    process.removeListener('SIGINT', shutdown);
+    process.removeListener('SIGTERM', shutdown);
   });
 }
 

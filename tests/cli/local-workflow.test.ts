@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -23,7 +24,10 @@ async function availablePort(): Promise<number> {
 }
 
 afterEach(async () => {
-  if (workspace) await rm(workspace, { recursive: true, force: true });
+  if (workspace) {
+    await rm(workspace, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    workspace = '';
+  }
 });
 
 describe('local CLI workflow', () => {
@@ -183,7 +187,13 @@ describe('local CLI workflow', () => {
         'value "Saved"'
       );
     } finally {
-      child.kill();
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+        await Promise.race([
+          once(child, 'exit'),
+          new Promise((resolve) => setTimeout(resolve, 2_000)),
+        ]);
+      }
     }
   });
 });

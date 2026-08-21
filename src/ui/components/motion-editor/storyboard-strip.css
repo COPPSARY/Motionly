@@ -34,6 +34,34 @@
   color: var(--editor-text-muted, rgba(255, 255, 255, 0.55));
 }
 
+.storyboard-strip__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 2px 6px 2px 3px;
+  color: var(--editor-accent, #6366f1);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.storyboard-strip__back:hover {
+  color: inherit;
+  background: var(--editor-surface-hover, rgba(255, 255, 255, 0.08));
+}
+
+.storyboard-strip__back:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--editor-bg, #0b0d12),
+    0 0 0 4px var(--editor-accent, #6366f1);
+}
+
 .storyboard-strip__meta {
   font-size: 11px;
   color: var(--editor-text-muted, rgba(255, 255, 255, 0.45));

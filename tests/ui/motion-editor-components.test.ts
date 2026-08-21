@@ -2,11 +2,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mount, tick, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { evaluateScene } from '../../src/animation/evaluator';
+import { parseMotion } from '../../src/language/parser';
+import { buildSceneGraph } from '../../src/scene/scene-graph';
 import MotionlyApp from '../../src/ui/MotionlyApp.svelte';
 import MotionEditor from '../../src/ui/components/MotionEditor.svelte';
 import EditorFeedback from '../../src/ui/components/motion-editor/EditorFeedback.svelte';
 import NavigationRail from '../../src/ui/components/motion-editor/NavigationRail.svelte';
 import MotionEditorBindingsHarness from './fixtures/MotionEditorBindingsHarness.svelte';
+import { EFFECT_PRESETS } from '../../src/ui/components/motion-editor/constants';
 
 const contentPanelCss = readFileSync(
   resolve(process.cwd(), 'src/ui/components/motion-editor/content-panel.css'),
@@ -32,6 +36,7 @@ function canvasContext(): CanvasRenderingContext2D {
   const methods = new Map<PropertyKey, unknown>([
     ['measureText', () => ({ width: 0 })],
     ['createLinearGradient', () => ({ addColorStop: () => undefined })],
+    ['createRadialGradient', () => ({ addColorStop: () => undefined })],
     ['getImageData', () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })],
   ]);
   return new Proxy({} as CanvasRenderingContext2D, {
@@ -42,6 +47,21 @@ function canvasContext(): CanvasRenderingContext2D {
       return true;
     },
   });
+}
+
+function prepareMotionEditorRuntime(
+  requestFrame: (callback: FrameRequestCallback) => number = () => 1,
+  cancelFrame: (id: number) => void = () => undefined
+): void {
+  class ResizeObserverStub {
+    observe(): void {}
+    disconnect(): void {}
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  vi.stubGlobal('requestAnimationFrame', requestFrame);
+  vi.stubGlobal('cancelAnimationFrame', cancelFrame);
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
 }
 
 afterEach(() => {
@@ -815,6 +835,261 @@ text title { value "Title" x 0 y 0 }`,
     await unmount(instance);
   });
 
+  it('keyframes text-effect properties without removing the text animation preset', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title {
+  value "Title"
+  center
+  scale 1
+  blur 0
+  textAnimation "fadeIn(duration 800ms ease power3.out)"
+}`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('.me-element-clip .me-clip-select'));
+    await tick();
+    expect(host.querySelectorAll('.me-keyframe-marker')).toHaveLength(2);
+    click(host.querySelector('[aria-label="Toggle text blur keyframe at playhead"]'));
+    await tick();
+
+    const scrubber = host.querySelector<HTMLInputElement>('.me-timeline-scrubber');
+    if (!scrubber) throw new Error('Timeline scrubber missing');
+    scrubber.value = '1';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    const blurInput = host.querySelector<HTMLInputElement>('[aria-label="Text blur value"]');
+    if (!blurInput) throw new Error('Text blur input missing');
+    blurInput.value = '12';
+    blurInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).toContain('textAnimation "fadeIn(duration 800ms ease power3.out)"');
+    expect(source).toMatch(/animate title \{[\s\S]*0% \{[\s\S]*blur 0[\s\S]*50% \{[\s\S]*blur 12/);
+
+    const frame = evaluateScene(buildSceneGraph(parseMotion(source)), 1);
+    const generatedText = frame.elements.find(
+      (element) => element.properties.textGroup === 'title'
+    );
+    expect(generatedText?.render.blur).toBeCloseTo(12);
+
+    await unmount(instance);
+  });
+
+  it('retimes a pure text-preset marker without collapsing its generated fragments', async () => {
+    prepareMotionEditorRuntime();
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title {
+  value "AB"
+  center
+  x 20
+  size 64
+  textAnimation "charReveal(duration 800ms ease power3.out)"
+}`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('.me-element-clip .me-clip-select'));
+    await tick();
+    const marker = host.querySelector<HTMLElement>('.me-keyframe-marker');
+    const lane = marker?.closest<HTMLElement>('.me-track-lane');
+    if (!marker || !lane) throw new Error('Text preset marker missing');
+    lane.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 1000,
+        bottom: 40,
+        width: 1000,
+        height: 40,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    marker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 0 }));
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 100 }));
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).toContain('textAnimation "charReveal(duration 800ms ease power3.out)"');
+    expect(source).toMatch(/animate title \{[\s\S]*keyframes/);
+    const fragments = evaluateScene(buildSceneGraph(parseMotion(source)), 1).elements.filter(
+      (element) => element.properties.textGroup === 'title'
+    );
+    expect(fragments).toHaveLength(2);
+    expect(Number(fragments[1]?.render.x) - Number(fragments[0]?.render.x)).toBeGreaterThan(1);
+
+    await unmount(instance);
+  });
+
+  it('applies a split text effect without collapsing existing position keyframes', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 2s background #000000 }
+text title { value "AB" center x 20 size 64 }
+animate title {
+  keyframes {
+    0% { x -80 blur 0 }
+    100% { x 120 blur 12 }
+  }
+  duration 2s
+  easing linear
+}`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('.me-element-clip .me-clip-select'));
+    click(host.querySelector('[aria-label="Effects"]'));
+    await tick();
+    const charReveal = [...host.querySelectorAll<HTMLButtonElement>('.me-effect-item')].find(
+      (candidate) => candidate.textContent?.trim() === 'charReveal'
+    );
+    if (!charReveal) throw new Error('Missing charReveal effect button');
+    click(charReveal);
+    await tick();
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    expect(source).toContain('textAnimation "charReveal(duration 800ms ease power3.out)"');
+    expect(source).toMatch(/animate title \{[\s\S]*0% \{[\s\S]*x -80[\s\S]*100% \{[\s\S]*x 120/);
+    const fragments = evaluateScene(buildSceneGraph(parseMotion(source)), 1).elements.filter(
+      (element) => element.properties.textGroup === 'title'
+    );
+    expect(fragments).toHaveLength(2);
+    expect(Number(fragments[1]?.render.x) - Number(fragments[0]?.render.x)).toBeGreaterThan(1);
+    expect(fragments.every((fragment) => Number(fragment.render.blur) === 6)).toBe(true);
+
+    await unmount(instance);
+  });
+
+  it('adds visible background, atmosphere, and surface effects on their intended layers', async () => {
+    class ResizeObserverStub {
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+    vi.stubGlobal('requestAnimationFrame', (_callback: FrameRequestCallback) => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => canvasContext());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
+    expect(
+      EFFECT_PRESETS.every((preset) =>
+        ['background', 'atmosphere', 'surface'].includes(preset.category)
+      )
+    ).toBe(true);
+    expect(
+      EFFECT_PRESETS.some((preset) => preset.name === 'beams' && preset.category === 'background')
+    ).toBe(true);
+
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: 'canvas { size 320x180 fps 30 duration 4s background #000000 }',
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('[aria-label="Effects"]'));
+    await tick();
+    const apply = (name: string) => {
+      const button = [...host.querySelectorAll<HTMLButtonElement>('.me-effect-item')].find(
+        (candidate) => candidate.textContent?.trim() === name
+      );
+      if (!button) throw new Error(`Missing ${name} effect button`);
+      click(button);
+    };
+    apply('gradientMotion');
+    await tick();
+    apply('vignette');
+    await tick();
+    apply('glass');
+    await tick();
+
+    const opacity = host.querySelector<HTMLInputElement>('[aria-label="Opacity"]');
+    if (!opacity) throw new Error('Effect opacity control missing');
+    expect(Number(opacity.value)).toBeGreaterThan(0);
+    opacity.value = '0.37';
+    opacity.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    const effectNodes = parseMotion(source).body.filter(
+      (node) => node.type === 'Element' && typeof node.properties['backgroundEffect'] === 'string'
+    );
+    expect(effectNodes).toHaveLength(3);
+    expect(effectNodes.map((node) => node.properties['layer'])).toEqual([
+      'background',
+      'effects',
+      'content',
+    ]);
+    expect(effectNodes.every((node) => Number(node.properties['opacity']) === 0)).toBe(true);
+    expect(String(effectNodes[2]?.properties['backgroundEffect'])).toContain('opacity 0.37');
+
+    const frame = evaluateScene(buildSceneGraph(parseMotion(source)), 0.5);
+    const renderedEffects = frame.elements.filter((element) => element.kind === 'effect');
+    expect(renderedEffects).toHaveLength(3);
+    expect(renderedEffects.map((element) => element.render.layer)).toEqual([
+      'background',
+      'content',
+      'effects',
+    ]);
+    expect(renderedEffects.every((element) => Number(element.render.opacity) > 0)).toBe(true);
+    expect(renderedEffects.find((element) => element.id.includes('__glass'))?.render.opacity).toBe(
+      0.37
+    );
+
+    await unmount(instance);
+  });
+
   it('scales the timeline width to the project duration', async () => {
     class ResizeObserverStub {
       observe(): void {}
@@ -1128,5 +1403,114 @@ animate title {
     expect(host.querySelector<HTMLInputElement>('[aria-label="Scale value"]')?.value).toBe('1.50');
 
     await unmount(instance);
+  });
+
+  it('opens scene-local timelines and assigns new visual layers to the active scene', async () => {
+    prepareMotionEditorRuntime();
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: `canvas { size 320x180 fps 30 duration 8s background #000000 }
+scene intro { label "Intro" duration 3s }
+scene demo { label "Demo" duration 5s }
+text authored__name { scene intro value "Intro" duration 2s }
+text demoTitle {
+  scene demo
+  value "A generated text group with many fragments"
+  duration 2s
+  textAnimation "charReveal(duration 800ms)"
+}`,
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    expect(host.querySelectorAll('.me-element-clip')).toHaveLength(2);
+    click(
+      [...host.querySelectorAll<HTMLButtonElement>('.storyboard-scene')].find((button) =>
+        button.textContent?.includes('Intro')
+      ) ?? null
+    );
+    await tick();
+    expect(host.querySelector('[aria-label="Select or move authored__name"]')).not.toBeNull();
+    expect(host.querySelector('.me-timecode')?.textContent).toBe('0:00.0');
+
+    // The explicit back control returns to the storyboard roots.
+    const allScenesButton = host.querySelector('[aria-label="Back to all scenes"]');
+    expect(allScenesButton?.textContent).toContain('All scenes');
+    click(allScenesButton);
+    await tick();
+    expect(host.querySelectorAll('.me-element-clip')).toHaveLength(2);
+
+    click(
+      [...host.querySelectorAll<HTMLButtonElement>('.storyboard-scene')].find((button) =>
+        button.textContent?.includes('Demo')
+      ) ?? null
+    );
+    await tick();
+    expect(host.querySelector('[aria-label="Select or move demoTitle"]')).not.toBeNull();
+    expect(host.querySelectorAll('.me-element-clip')).toHaveLength(1);
+    expect(host.querySelector('.me-timecode')?.textContent).toBe('0:00.0');
+    const sceneScrubber = host.querySelector<HTMLInputElement>('.me-timeline-scrubber');
+    if (!sceneScrubber) throw new Error('Scene timeline scrubber missing');
+    sceneScrubber.value = '1';
+    sceneScrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+    expect(host.querySelector('.me-framecode')?.textContent).toContain('30');
+    click(host.querySelector('[aria-label="Go to start"]'));
+    await tick();
+    expect(host.querySelector('.me-timecode')?.textContent).toBe('0:00.0');
+
+    click(host.querySelector('[aria-label="Text"]'));
+    await tick();
+    click(host.querySelector('[title="Add text"]'));
+    await tick();
+    click(host.querySelector('[aria-label="Effects"]'));
+    await tick();
+    const gradient = [...host.querySelectorAll<HTMLButtonElement>('.me-effect-item')].find(
+      (button) => button.textContent?.trim() === 'gradientMotion'
+    );
+    click(gradient ?? null);
+    await tick();
+
+    click(host.querySelector('.me-source-toggle'));
+    await tick();
+    const source = host.querySelector<HTMLTextAreaElement>('.me-code-textarea')?.value ?? '';
+    const program = parseMotion(source);
+    const addedText = program.body.find(
+      (node) =>
+        node.type === 'Element' && node.kind === 'text' && node.properties['value'] === 'New text'
+    );
+    const addedEffect = program.body.find(
+      (node) => node.type === 'Element' && typeof node.properties['backgroundEffect'] === 'string'
+    );
+    expect(addedText).toMatchObject({ properties: { scene: 'demo', start: '0s' } });
+    expect(
+      Number(addedText && 'properties' in addedText ? addedText.properties['y'] : NaN)
+    ).toBeLessThanOrEqual(10);
+    expect(addedEffect).toMatchObject({ properties: { scene: 'demo' } });
+
+    await unmount(instance);
+  });
+
+  it('cancels active playback when the editor is unmounted', async () => {
+    const cancelFrame = vi.fn();
+    prepareMotionEditorRuntime(() => 42, cancelFrame);
+    const host = target();
+    const instance = mount(MotionEditor, {
+      target: host,
+      props: {
+        code: 'canvas { size 320x180 fps 30 duration 2s background #000000 }',
+        onSave: () => undefined,
+      },
+    });
+    await tick();
+
+    click(host.querySelector('[aria-label="Play"]'));
+    await tick();
+    await unmount(instance);
+
+    expect(cancelFrame).toHaveBeenCalledWith(42);
   });
 });

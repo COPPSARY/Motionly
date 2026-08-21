@@ -45,7 +45,13 @@
     removedClipTransitionProperties,
     type ClipTransitionBoundary,
   } from '../clip-transitions';
-  import { elementWindowProperties, moveElementClip, splitElementClip } from '../element-clips';
+  import {
+    elementTimelineParentStart,
+    elementTimelineRange,
+    elementWindowProperties,
+    moveElementClip,
+    splitElementClip,
+  } from '../element-clips';
   import { restoreEmbeddedAssetPaths } from '../../ai/chat';
   import { createEditorHistory, recordEditorSource, redoEditorSource, undoEditorSource } from '../editor-history';
   import { editorShortcut, shortcutContext } from '../editor-shortcuts';
@@ -84,6 +90,16 @@
     readFileDataUrl,
     stringProperty,
   } from './motion-editor/helpers';
+  import { upsertPresetCallOption } from '../preset-call-editing';
+  import {
+    authoredEditorElements,
+    elementsForStoryboardTimeline,
+    localizeTimelineRange,
+    projectTimeFromTimeline,
+    storyboardTimelineWindow,
+    timelineTimeFromProject,
+    type StoryboardTimelineWindow,
+  } from '../storyboard-timeline';
   import type { AnimationPresetDef, AssetPreview, EditorNavTab } from './motion-editor/types';
   import './motion-editor/editor-shell.css';
   import './motion-editor/editor-theme.css';
@@ -203,6 +219,9 @@
   // The scene whose timeline is open. '' shows the whole storyboard, which is also
   // the only state a legacy flat project can be in.
   let activeSceneName = '';
+  let timelineWindow: StoryboardTimelineWindow = { origin: 0, duration: totalDuration, end: totalDuration };
+  let timelineCurrentTime = 0;
+  let selectedEffectElement: Element | null = null;
   let timelineScroll: HTMLDivElement;
   let timelineZoom = 1;
   let timelineViewportWidth = 0;
@@ -309,6 +328,7 @@
     window.addEventListener('keydown', handleKeyDown);
     
     return () => {
+      pause();
       observer.disconnect();
       timelineObserver.disconnect();
       disposeAssets(assets);
@@ -465,9 +485,13 @@
       currentFrame?.elements.find((element) => element.id === selectedClip?.id) ??
       null
     : null;
-  $: selectedAnimationTargetId = selectedElement?.id ?? selectedClip?.assetName ?? '';
+  $: selectedEffectElement = generatedEffectForSource(selectedElement);
+  $: selectedAnimationTargetId =
+    selectedEffectElement?.id ?? selectedElement?.id ?? selectedClip?.assetName ?? '';
   $: selectedAnimation =
-    scene?.animations.find((animation) => animation.target === selectedAnimationTargetId) ?? null;
+    scene?.animations.find((animation) => animation.target === selectedAnimationTargetId) ??
+    generatedTextAnimationForSource(selectedElement) ??
+    null;
   $: animatedPropertyNames =
     code && selectedAnimationTargetId ? selectedAnimatedProperties() : [];
   $: selectedKeyframeMarkerList =
@@ -476,8 +500,18 @@
     clipDrag?.kind === 'element' && clipDrag.id === selectedElementId
       ? clipDrag.ghostStart - timelineRange(clipDrag.id).start
       : 0;
-  $: sourceElements = scene?.elements.filter((element) => !element.id.includes('__')) ?? [];
-  $: timelineElements = sourceElements.filter(
+  $: timelineWindow = storyboardTimelineWindow(
+    scene?.storyboard ?? [],
+    activeSceneName,
+    totalDuration
+  );
+  $: timelineCurrentTime = timelineTimeFromProject(currentTime, timelineWindow);
+  $: sourceElements = authoredEditorElements(ast, scene?.elements ?? []);
+  $: timelineElements = elementsForStoryboardTimeline(
+    sourceElements,
+    scene?.storyboard ?? [],
+    activeSceneName
+  ).filter(
     (element) =>
       element.kind !== 'asset' ||
       !element.assetName ||
@@ -485,7 +519,7 @@
   );
   $: allTimelineRows = packTimelineLanes(timelineElements, timelineRange);
   $: combinedTimelineRows = combinePersistentTrackRows(
-    packClipTrackLanes(scene?.clips ?? [], scene?.tracks ?? []),
+    packClipTrackLanes(activeSceneName ? [] : (scene?.clips ?? []), scene?.tracks ?? []),
     allTimelineRows
   );
   $: timelineRows = combinedTimelineRows.elementLanes;
@@ -505,7 +539,7 @@
     audioEngine.sync(audioCuesAt(audioClipTimings, currentTime), isPlaying);
   }
   $: transitionBoundaries = adjacentClipBoundaries(
-    scene?.clips ?? [],
+    activeSceneName ? [] : (scene?.clips ?? []),
     1 / (scene?.canvas.fps ?? 60)
   );
   $: selectedTransition = selectedTransitionIds
@@ -517,7 +551,7 @@
       ) ?? null
     : null;
   $: timelineTicks = Array.from({ length: 7 }, (_, index) => (timelineVisibleDuration * index) / 6);
-  $: displayFrame = Math.round(currentTime * (scene?.canvas.fps ?? 60));
+  $: displayFrame = Math.round(timelineCurrentTime * (scene?.canvas.fps ?? 60));
   $: assistantAssets = mergeAssets(scene?.imports ?? [], embeddedAssets).map((asset) => {
     const loaded = assets.get(asset.name);
     const svg = loaded?.motionlySvg;
@@ -554,10 +588,10 @@
   // extends a fixed tail past it so clips can be dragged/extended into the gap.
   $: timelineContentEnd = (() => {
     const ends = [
-      ...(scene?.clips ?? []).map((clip) => clip.start + clip.duration),
-      ...(scene?.elements ?? []).map((element) => timelineRange(element.id).end),
+      ...(activeSceneName ? [] : (scene?.clips ?? [])).map((clip) => clip.start + clip.duration),
+      ...timelineElements.map((element) => timelineRange(element.id).end),
     ].filter((value) => Number.isFinite(value));
-    return ends.length ? Math.max(0, ...ends) : Math.max(0, totalDuration);
+    return ends.length ? Math.max(0, ...ends) : Math.max(0, timelineWindow.duration);
   })();
   // Fixed pixels-per-second scale (× zoom): a clip is drawn at duration × scale,
   // so short clips look short. The ruler/drag extent is the content end plus a
@@ -732,6 +766,8 @@
 
   function play() {
     if (!scene || isPlaying) return;
+    const playbackEnd = timelineWindow.end;
+    if (currentTime >= playbackEnd) currentTime = timelineWindow.origin;
     isPlaying = true;
     playbackTime = currentTime;
 
@@ -746,8 +782,10 @@
 
       // The wall clock drives playback. Audio clips follow it, which keeps
       // timing identical whether or not the project has any sound.
-      const nextTime = quantizeTimelineTime(
-        playbackTimeFromClock(clockTime, clockStartedAt, now, totalDuration)
+      const nextTime = quantizeFrameTime(
+        playbackTimeFromClock(clockTime, clockStartedAt, now, playbackEnd),
+        playbackEnd,
+        fps
       );
       playbackTime = nextTime;
 
@@ -760,11 +798,11 @@
           return;
         }
       }
-      if (now - lastUiUpdate >= 1000 / 30 || nextTime >= totalDuration) {
+      if (now - lastUiUpdate >= 1000 / 30 || nextTime >= playbackEnd) {
         currentTime = nextTime;
         lastUiUpdate = now;
       }
-      if (nextTime >= totalDuration) {
+      if (nextTime >= playbackEnd) {
         pause();
         return;
       }
@@ -789,7 +827,7 @@
 
   function reset() {
     pause();
-    currentTime = 0;
+    currentTime = timelineWindow.origin;
     renderFrame(currentTime, true);
   }
 
@@ -800,13 +838,16 @@
 
   function seek(event: Event) {
     pause();
-    currentTime = quantizeTimelineTime(Number((event.currentTarget as HTMLInputElement).value));
+    const timelineTime = quantizeTimelineTime(
+      Number((event.currentTarget as HTMLInputElement).value)
+    );
+    currentTime = projectTimeFromTimeline(timelineTime, timelineWindow);
     renderFrame(currentTime, true);
   }
 
   function setTime(time: number) {
     pause();
-    currentTime = quantizeTimelineTime(time);
+    currentTime = projectTimeFromTimeline(quantizeTimelineTime(time), timelineWindow);
     renderFrame(currentTime, true);
   }
 
@@ -875,47 +916,20 @@
 
 
 
-  function timelineRange(id: string): { start: number; end: number } {
+  function projectTimelineRange(id: string): { start: number; end: number } {
     if (!scene) return { start: 0, end: totalDuration };
-    const targets = new Set(scene.elements
-      .filter((element) => element.id === id || propertiesOf(element)['textGroup'] === id)
-      .map((element) => element.id));
-    const entries: number[] = [];
-    const exits: number[] = [];
-    const source = scene.elements.find((element) => element.id === id);
-    const sourceProperties = source ? propertiesOf(source) : {};
-    if (
-      typeof sourceProperties['start'] === 'number' &&
-      typeof sourceProperties['duration'] === 'number'
-    ) {
-      const start = Math.max(0, sourceProperties['start']);
-      return {
-        start,
-        end: Math.min(totalDuration, start + Math.max(0, sourceProperties['duration'])),
-      };
-    }
-    if (source && numericProperty(source, 'opacity', 1) > 0) entries.push(0);
+    const storyboardScene = scene.storyboard?.find((plan) => plan.name === id);
+    if (storyboardScene) return { start: storyboardScene.start, end: storyboardScene.end };
+    return elementTimelineRange(scene, id, totalDuration);
+  }
 
-    for (const animation of scene.animations.filter((item) => targets.has(item.target))) {
-      if (animation.keyframes.length) {
-        const visible = animation.keyframes.filter((frame) => Number(frame.properties['opacity'] ?? 0) > 0);
-        if (visible[0]) entries.push(animation.delay + visible[0].offset * animation.duration);
-        const lastVisible = visible.at(-1);
-        const nextHidden = lastVisible && animation.keyframes.find(
-          (frame) => frame.offset > lastVisible.offset && Number(frame.properties['opacity'] ?? 1) <= 0
-        );
-        if (nextHidden) exits.push(animation.delay + nextHidden.offset * animation.duration);
-        continue;
-      }
-      const fromOpacity = Number(animation.from['opacity'] ?? numericProperty(source ?? null, 'opacity', 1));
-      const toOpacity = Number(animation.to['opacity'] ?? fromOpacity);
-      if (toOpacity > 0) entries.push(animation.delay);
-      if (fromOpacity > 0 && toOpacity <= 0) exits.push(animation.delay + animation.duration);
-    }
+  function timelineRange(id: string): { start: number; end: number } {
+    return localizeTimelineRange(projectTimelineRange(id), timelineWindow);
+  }
 
-    const start = entries.length ? Math.min(...entries) : 0;
-    const end = exits.length ? Math.max(start, ...exits) : totalDuration;
-    return { start: Math.max(0, start), end: Math.min(totalDuration, end) };
+  function projectTimeForTimelineEdit(time: number): number {
+    const timelineTime = activeSceneName ? Math.min(time, timelineWindow.duration) : time;
+    return projectTimeFromTimeline(timelineTime, timelineWindow);
   }
 
   // Reactive so clip/tick/playhead positions recompute when the visible
@@ -1032,15 +1046,21 @@
   }
 
   function selectStoryboardScene(name: string) {
-    activeSceneName = name;
-    if (!name) return;
-    const plan = storyboardPlans.find((candidate) => candidate.name === name);
+    const nextName = activeSceneName === name ? '' : name;
+    activeSceneName = nextName;
+    if (!nextName) {
+      selectedElementId = '';
+      currentTime = 0;
+      renderFrame(currentTime);
+      return;
+    }
+    const plan = storyboardPlans.find((candidate) => candidate.name === nextName);
     if (plan) {
       pause();
       currentTime = plan.start;
       renderFrame(currentTime);
     }
-    selectedElementId = name;
+    selectedElementId = nextName;
   }
 
   function createStoryboardSceneAfter(after: string) {
@@ -1206,16 +1226,23 @@
   }
 
   function setClipBoundary(id: string, edge: 'start' | 'end', time: number) {
-    if (!ast) return;
-    const range = timelineRange(id);
+    if (!ast || !scene) return;
+    const range = projectTimelineRange(id);
+    const projectTime = projectTimeForTimelineEdit(time);
     const element = ast.body.find(
       (node): node is ElementNode => node.type === 'Element' && node.name === id
     );
     if (!element) return;
-    const minimum = 1 / (scene?.canvas.fps ?? 60);
-    const start = edge === 'start' ? Math.min(time, range.end - minimum) : range.start;
-    const end = edge === 'end' ? Math.max(time, range.start + minimum) : range.end;
-    element.properties = elementWindowProperties(element.properties, start, end, minimum);
+    const minimum = 1 / scene.canvas.fps;
+    const start = edge === 'start' ? Math.min(projectTime, range.end - minimum) : range.start;
+    const end = edge === 'end' ? Math.max(projectTime, range.start + minimum) : range.end;
+    const parentStart = elementTimelineParentStart(scene, id);
+    element.properties = elementWindowProperties(
+      element.properties,
+      Math.max(0, start - parentStart),
+      Math.max(0, end - parentStart),
+      minimum
+    );
     extendProjectDuration(end);
     code = serializeProgram(ast);
   }
@@ -1226,9 +1253,29 @@
     return selectedAnimationTargetId;
   }
 
+  function generatedEffectForSource(source: Element | null): Element | null {
+    if (!source || !propertiesOf(source)['backgroundEffect']) return null;
+    return currentFrame?.elements.find(
+      (element) => element.kind === 'effect' && element.id.startsWith(`${source.id}__`)
+    ) ?? scene?.elements.find(
+      (element) => element.kind === 'effect' && element.id.startsWith(`${source.id}__`)
+    ) ?? null;
+  }
+
+  function generatedTextAnimationForSource(source: Element | null) {
+    if (!scene || source?.kind !== 'text' || !propertiesOf(source)['textAnimation']) return null;
+    const fragmentIds = new Set(
+      scene.elements
+        .filter((element) => propertiesOf(element)['textGroup'] === source.id)
+        .map((element) => element.id)
+    );
+    return scene.animations.find((animation) => fragmentIds.has(animation.target)) ?? null;
+  }
+
   function selectedEvaluatedElement(): EvaluatedElement | Element | null {
     const id = selectedClip?.id ?? selectedElement?.id;
-    return currentFrame?.elements.find((element) => element.id === id) ??
+    return selectedEffectElement ??
+      currentFrame?.elements.find((element) => element.id === id) ??
       selectedElement ??
       selectedClipElement;
   }
@@ -1256,7 +1303,9 @@
     updates: Record<string, string | number | boolean>
   ) {
     if (!ast) return;
-    const element = ensureAssetElement(elementId);
+    const sourceElementId =
+      selectedEffectElement?.id === elementId && selectedElement ? selectedElement.id : elementId;
+    const element = ensureAssetElement(sourceElementId);
     if (!element) return;
     const animated = Object.fromEntries(
       Object.entries(updates).filter(([key]) => isPropertyAnimated([key]))
@@ -1264,6 +1313,21 @@
     const staticUpdates = Object.fromEntries(
       Object.entries(updates).filter(([key]) => !(key in animated))
     );
+    if (
+      selectedEffectElement &&
+      selectedElement?.id === element.name &&
+      typeof staticUpdates['opacity'] === 'number'
+    ) {
+      element.properties = {
+        ...element.properties,
+        backgroundEffect: upsertPresetCallOption(
+          element.properties['backgroundEffect'],
+          'opacity',
+          staticUpdates['opacity']
+        ),
+      };
+      delete staticUpdates['opacity'];
+    }
     if (Object.keys(staticUpdates).length) {
       element.properties = { ...element.properties, ...staticUpdates };
     }
@@ -1349,7 +1413,7 @@
       type: 'Element',
       kind: 'asset',
       name: assetName,
-      properties: { center: true },
+      properties: { center: true, ...(activeSceneName ? { scene: activeSceneName } : {}) },
     };
     ast.body.push(node);
     return node;
@@ -2418,14 +2482,24 @@
     if (!node) return;
     const targetTrack = ensureLayerTrack(trackId);
     beginHistoryGesture();
-    const previousStart = timelineRange(id).start;
+    const previousStart = projectTimelineRange(id).start;
+    const projectStart = projectTimeForTimelineEdit(start);
+    const projectEnd = projectTimeForTimelineEdit(end);
     if (selectedElement?.id === id) materializeSelectedAnimation();
-    moveElementClip(ast, id, start, end, previousStart, 1 / scene.canvas.fps);
+    const parentStart = elementTimelineParentStart(scene, id);
+    moveElementClip(
+      ast,
+      id,
+      Math.max(0, projectStart - parentStart),
+      Math.max(0, projectEnd - parentStart),
+      Math.max(0, previousStart - parentStart),
+      1 / scene.canvas.fps
+    );
     node.properties = {
       ...node.properties,
       track: targetTrack.id,
     };
-    extendProjectDuration(end);
+    extendProjectDuration(projectEnd);
     code = serializeProgram(ast);
     endHistoryGesture();
   }
@@ -2556,18 +2630,19 @@
     }
 
     if (!selectedElement) return;
-    const range = timelineRange(selectedElement.id);
+    const range = projectTimelineRange(selectedElement.id);
     let rightId = `${selectedElement.id}_split`;
     let suffix = 2;
     const names = new Set(
       ast.body.filter((node): node is ElementNode => node.type === 'Element').map((node) => node.name)
     );
     while (names.has(rightId)) rightId = `${selectedElement.id}_split_${suffix++}`;
+    const parentStart = elementTimelineParentStart(scene, selectedElement.id);
     const result = splitElementClip(
       ast,
       selectedElement.id,
-      currentTime,
-      range,
+      currentTime - parentStart,
+      { start: range.start - parentStart, end: range.end - parentStart },
       rightId,
       1 / scene.canvas.fps
     );
@@ -2582,7 +2657,12 @@
     return snapTimelineTime(raw, rect.width);
   }
 
-  function snapTimelineTime(raw: number, width: number, excludeClipId = '', maxTime = totalDuration): number {
+  function snapTimelineTime(
+    raw: number,
+    width: number,
+    excludeClipId = '',
+    maxTime = timelineWindow.duration
+  ): number {
     const clamped = Math.max(0, Math.min(maxTime, raw));
     const fps = scene?.canvas.fps ?? 60;
     const frameTime = Math.round(clamped * fps) / fps;
@@ -2590,8 +2670,8 @@
       timelineSnapGuide = null;
       return frameTime;
     }
-    const candidates = [0, totalDuration, currentTime];
-    for (const clip of scene?.clips ?? []) {
+    const candidates = [0, timelineWindow.duration, timelineCurrentTime];
+    for (const clip of activeSceneName ? [] : (scene?.clips ?? [])) {
       if (clip.id === excludeClipId) continue;
       candidates.push(clip.start, clip.start + clip.duration);
     }
@@ -2762,14 +2842,28 @@
     if (existing) return existing;
     const compiled = selectedAnimation;
     if (!compiled) return null;
+    const compiledElement = scene?.elements.find((element) => element.id === compiled.target);
+    const textFragmentOffset =
+      selectedElement?.kind === 'text' &&
+      compiledElement &&
+      propertiesOf(compiledElement)['textGroup'] === selectedElement.id
+        ? numericProperty(compiledElement, 'x', 0) - numericProperty(selectedElement, 'x', 0)
+        : 0;
+    const sourceProperties = (properties: Record<string, unknown>) => {
+      const next = { ...properties };
+      if (textFragmentOffset && typeof next['x'] === 'number') {
+        next['x'] = next['x'] - textFragmentOffset;
+      }
+      return next;
+    };
     const created: AnimationNode = {
       type: 'Animation',
       target,
-      from: { ...(compiled.from ?? {}) },
-      to: { ...(compiled.to ?? {}) },
+      from: sourceProperties(compiled.from ?? {}),
+      to: sourceProperties(compiled.to ?? {}),
       keyframes: (compiled.keyframes ?? []).map((frame) => ({
         offset: frame.offset,
-        properties: { ...frame.properties },
+        properties: sourceProperties(frame.properties),
         ...(frame.easing ? { easing: frame.easing } : {}),
       })),
       delay: compiled.delay ?? 0,
@@ -2783,7 +2877,10 @@
     if (elementNode) {
       const props = { ...elementNode.properties };
       delete props['animation'];
-      delete props['textAnimation'];
+      // Split text remains split after marker editing. The explicit source
+      // animation takes ownership of its properties and lowering mirrors it to
+      // every fragment without collapsing the group back into one text node.
+      if (elementNode.kind !== 'text') delete props['textAnimation'];
       elementNode.properties = props;
     }
     ast.body.push(created);
@@ -2821,7 +2918,7 @@
 
   function selectedAnimationOffset(node: AnimationNode): number {
     const timing = selectedAnimationTiming(node);
-    return keyframeOffsetAtTime(currentTime, timing.delay, timing.duration);
+    return keyframeOffsetAtTime(timelineCurrentTime, timing.delay, timing.duration);
   }
 
   function selectedKeyframeTolerance(node: AnimationNode): number {
@@ -2987,7 +3084,9 @@
 
   function togglePropertyKeyframe(properties: string[]) {
     if (!ast || !selectedAnimationTarget()) return;
-    const node = materializeSelectedAnimation() ?? createSelectedAnimation();
+    // A property diamond supplements a preset instead of replacing it. Preset
+    // motion is materialized only when the user edits one of its own markers.
+    const node = selectedAnimationAst() ?? createSelectedAnimation();
     if (!node) return;
     ensureSeededKeyframes(node);
     const offset = selectedAnimationOffset(node);
@@ -3062,7 +3161,10 @@
       frame.offset = nextOffset;
       node.keyframes = [...(node.keyframes ?? [])].sort((left, right) => left.offset - right.offset);
       selectedKeyframeOffset = nextOffset;
-      currentTime = quantizeTimelineTime(timing.delay + nextOffset * timing.duration);
+      currentTime = projectTimeFromTimeline(
+        quantizeTimelineTime(timing.delay + nextOffset * timing.duration),
+        timelineWindow
+      );
     };
     const stop = () => {
       window.removeEventListener('pointermove', move);
@@ -3101,8 +3203,15 @@
     // rather than the whole project, and only shorten it on a tiny timeline.
     const duration = Math.max(
       1 / (scene?.canvas.fps ?? 60),
-      Math.min(DEFAULT_STATIC_DURATION, totalDuration)
+      Math.min(DEFAULT_STATIC_DURATION, timelineWindow.duration)
     );
+    const peerTextCount = ast.body.filter(
+      (node): node is ElementNode =>
+        node.type === 'Element' &&
+        node.kind === 'text' &&
+        String(node.properties['scene'] ?? '') === activeSceneName
+    ).length;
+    const maximumOffset = Math.max(0, canvasHeight / 2 - 80);
     ast.body.push({
       type: 'Element',
       kind: 'text',
@@ -3110,13 +3219,14 @@
       properties: {
         value: 'New text',
         center: true,
-        y: (scene?.elements.length ?? 0) * 80,
+        y: Math.min(peerTextCount * 80, maximumOffset),
         size: 64,
         color: '#ffffff',
         opacity: 1,
         start: '0s',
         duration: `${duration.toFixed(3)}s`,
         track: defaultMainTrack,
+        ...(activeSceneName ? { scene: activeSceneName } : {}),
       },
     });
     selectedElementId = name;
@@ -3181,19 +3291,28 @@
     if (!ast || !canApplyLibraryPreset(preset)) return;
     if (['background', 'atmosphere', 'surface'].includes(preset.category)) {
       const name = nextElementName('effect');
+      const layer =
+        preset.category === 'background'
+          ? 'background'
+          : preset.category === 'atmosphere'
+            ? 'effects'
+            : 'content';
       ast.body.push({
         type: 'Element',
         kind: 'overlay',
         name,
         properties: {
-          layer: preset.category === 'surface' ? 'content' : 'background',
+          layer,
           width: preset.category === 'surface' ? 760 : canvasWidth,
           height: preset.category === 'surface' ? 420 : canvasHeight,
           radius: preset.category === 'surface' ? 24 : 0,
           gradientFrom: scene?.theme.surface ?? '#12161D',
           gradientTo: scene?.theme.edge ?? '#2A313C',
+          // The authored overlay is an editor handle; preset lowering creates
+          // the visible effect at its catalog opacity.
           opacity: 0,
-          backgroundEffect: `${preset.name}(duration ${preset.category === 'surface' ? '1s' : `${Math.max(4, totalDuration)}s`})`,
+          backgroundEffect: `${preset.name}(duration ${preset.category === 'surface' ? '1s' : `${Math.max(4, timelineWindow.duration)}s`})`,
+          ...(activeSceneName ? { scene: activeSceneName } : {}),
         },
       });
       selectedElementId = name;
@@ -3385,7 +3504,7 @@
     bind:timelineScroll
     bind:audioInput
     {isPlaying}
-    {currentTime}
+    currentTime={timelineCurrentTime}
     {displayFrame}
     {selectedElement}
     {selectedClip}

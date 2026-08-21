@@ -13,10 +13,10 @@
    */
   import './storyboard-strip.css';
   import {
+    ArrowLeft,
     ArrowLeftRight,
     ArrowRight,
     Copy,
-    Film,
     Layers,
     Plus,
     Scissors,
@@ -66,6 +66,7 @@
   };
 
   $: planByName = new Map(storyboard.map((plan) => [plan.name, plan]));
+  $: activeEntry = entries.find((entry) => entry.name === activeScene);
   $: total = storyboard.reduce((longest, plan) => Math.max(longest, plan.end), 0);
 
   function boundaryBefore(name: string): Boundary | null {
@@ -162,10 +163,24 @@
 {:else}
   <div class="storyboard-strip" role="group" aria-label="Storyboard">
     <div class="storyboard-strip__head">
-      <span class="storyboard-strip__title">Storyboard</span>
-      <span class="storyboard-strip__meta">
-        {entries.length} scene{entries.length === 1 ? '' : 's'} · {seconds(total)}
-      </span>
+      {#if activeEntry}
+        <button
+          class="storyboard-strip__back"
+          type="button"
+          aria-label="Back to all scenes"
+          title="Back to the whole storyboard"
+          on:click={() => onSelectScene('')}
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          All scenes
+        </button>
+        <span class="storyboard-strip__meta">{activeEntry.label} timeline</span>
+      {:else}
+        <span class="storyboard-strip__title">Storyboard</span>
+        <span class="storyboard-strip__meta">
+          {entries.length} scene{entries.length === 1 ? '' : 's'} · {seconds(total)}
+        </span>
+      {/if}
     </div>
 
     <ol class="storyboard-strip__scenes">
@@ -255,16 +270,6 @@
         on:click={() => activeScene && onDuplicateScene(activeScene)}
       >
         <Copy size={16} aria-hidden="true" />
-      </button>
-      <button
-        class="storyboard-icon-button"
-        type="button"
-        disabled={!activeScene}
-        aria-label="Show the whole storyboard"
-        title="Show the whole storyboard"
-        on:click={() => onSelectScene('')}
-      >
-        <Film size={16} aria-hidden="true" />
       </button>
       <button
         class="storyboard-icon-button"
