@@ -26,7 +26,7 @@
   import { downloadBlob, exportPng } from "../composition/exporter";
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
-  import { demoComposition } from "../compositions/demo";
+  import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
   import "./styles/content-panel.css";
@@ -52,36 +52,30 @@
 
   const sceneTracks: Record<string, readonly SceneTrack[]> = {
     brand: [
-      { id: "brand-index", label: "Scene label", kind: "Text" },
-      { id: "manifesto-design", label: "Design", kind: "Text" },
-      { id: "manifesto-motion", label: "Motion", kind: "Text" },
-      { id: "manifesto-code", label: "In code", kind: "Text" },
-      { id: "brand-note", label: "Description", kind: "Text" },
-      { id: "brand-orbit", label: "Logo orbit", kind: "Element" },
+      { id: "manifesto-design", label: "Everything", kind: "Text" },
+      { id: "manifesto-motion", label: "One place", kind: "Text" },
+      { id: "manifesto-web-line", label: "Write with the web", kind: "Text" },
+      { id: "manifesto-direct", label: "Direct every frame", kind: "Text" },
+      { id: "manifesto-stack-line", label: "HTML CSS GSAP", kind: "Text" },
+      { id: "manifesto-timeline", label: "Editable timeline", kind: "Text" },
     ],
     code: [
-      { id: "code-index", label: "Scene label", kind: "Text" },
-      { id: "code-card", label: "TypeScript card", kind: "Element" },
+      { id: "code-card", label: "HTML source", kind: "Element" },
       { id: "live-card", label: "Live output", kind: "Element" },
       { id: "visual-title", label: "Launch", kind: "Text" },
       { id: "visual-subtitle", label: "With rhythm", kind: "Text" },
       { id: "metric-fps", label: "FPS metric", kind: "Element" },
       { id: "metric-timeline", label: "Timeline metric", kind: "Element" },
       { id: "metric-dom", label: "DOM metric", kind: "Element" },
+      { id: "manifesto-code", label: "Speed statement", kind: "Text" },
     ],
     studio: [
-      { id: "studio-index", label: "Scene label", kind: "Text" },
-      { id: "studio-window", label: "Editor window", kind: "Element" },
-      { id: "scene-thumb-1", label: "Manifesto scene", kind: "Element" },
-      { id: "scene-thumb-2", label: "Product scene", kind: "Element" },
-      { id: "scene-thumb-3", label: "Finish scene", kind: "Element" },
-      { id: "artboard-headline", label: "Artboard headline", kind: "Text" },
-      { id: "artboard-card", label: "Duration card", kind: "Element" },
-      { id: "mini-timeline", label: "Mini timeline", kind: "Element" },
+      { id: "studio-window", label: "Fullscreen stage", kind: "Element" },
+      { id: "artboard-headline", label: "Editable statement", kind: "Text" },
+      { id: "editable-proof", label: "Editable controls", kind: "Element" },
     ],
     lab: [
-      { id: "lab-index", label: "Scene label", kind: "Text" },
-      { id: "lab-one", label: "One", kind: "Text" },
+      { id: "lab-one", label: "Every layer", kind: "Text" },
       { id: "lab-timeline", label: "Timeline", kind: "Text" },
       { id: "signal-path", label: "Motion curve", kind: "SVG" },
       { id: "layer-type", label: "Type layer", kind: "Element" },
@@ -240,6 +234,47 @@
     );
   }
 
+  function isSvgSelected(): boolean {
+    if (!runtime || !selectedId) return false;
+    return runtime.elements.get(selectedId) instanceof SVGElement;
+  }
+
+  type ColorProperty = "color" | "backgroundColor" | "fill" | "stroke";
+
+  function normalizedColor(value: string, fallback: string): string {
+    const hex = /^#([\da-f]{6})$/i.exec(value.trim());
+    if (hex) return `#${hex[1]}`;
+    const rgb = /^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?\s*\)$/i.exec(
+      value,
+    );
+    if (!rgb || (rgb[4] !== undefined && Number(rgb[4]) === 0)) return fallback;
+    return `#${[rgb[1], rgb[2], rgb[3]]
+      .map((channel) => Number(channel).toString(16).padStart(2, "0"))
+      .join("")}`;
+  }
+
+  function colorValue(property: ColorProperty, fallback: string): string {
+    const override = currentOverride()[property];
+    if (typeof override === "string")
+      return normalizedColor(override, fallback);
+    const element = selectedId ? runtime?.elements.get(selectedId) : undefined;
+    if (!element) return fallback;
+    const style = getComputedStyle(element);
+    return normalizedColor(style[property], fallback);
+  }
+
+  function numericStyleValue(
+    property: "fontSize" | "borderRadius",
+    fallback: number,
+  ): number {
+    const override = currentOverride()[property];
+    if (typeof override === "number") return override;
+    const element = selectedId ? runtime?.elements.get(selectedId) : undefined;
+    if (!element) return fallback;
+    const parsed = Number.parseFloat(getComputedStyle(element)[property]);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
   function setNumber(property: keyof ElementOverride, event: Event): void {
     if (!runtime || !selectedId) return;
     runtime.setOverride(selectedId, {
@@ -252,6 +287,18 @@
     runtime.setOverride(selectedId, {
       text: (event.currentTarget as HTMLInputElement).value,
     });
+  }
+
+  function setColor(property: ColorProperty, event: Event): void {
+    if (!runtime || !selectedId) return;
+    runtime.setOverride(selectedId, {
+      [property]: (event.currentTarget as HTMLInputElement).value,
+    });
+  }
+
+  function clearBackground(): void {
+    if (!runtime || !selectedId) return;
+    runtime.setOverride(selectedId, { backgroundColor: "transparent" });
   }
 
   function timecode(time: number): string {
@@ -270,7 +317,7 @@
   function openTimelineSource(): void {
     activeTab = "text";
     timelineDetailsOpen = false;
-    showNotice("Opened the TypeScript source for the active GSAP timeline.");
+    showNotice("Opened the HTML source for the active GSAP composition.");
   }
 
   function submitAssistant(event: SubmitEvent): void {
@@ -282,7 +329,7 @@
       { role: "user", text: prompt },
       {
         role: "assistant",
-        text: "Request captured. Connect a web AI provider to turn it into source edits; generated changes must target TypeScript, semantic HTML/SVG, and the caller-owned GSAP timeline.",
+        text: "Request captured. Connect a web AI provider to turn it into source edits; generated changes must target semantic HTML/SVG, CSS, and the caller-owned GSAP timeline.",
       },
     ];
     assistantDraft = "";
@@ -290,17 +337,17 @@
 
   function saveSource(): void {
     downloadBlob(
-      new Blob([demoComposition.sourcePreview], { type: "text/typescript" }),
-      "product-demo.ts",
+      new Blob([demoComposition.sourcePreview], { type: "text/html" }),
+      "motionly-product-promo.html",
     );
-    showNotice("Saved the TypeScript composition source.");
+    showNotice("Saved the HTML composition source.");
   }
 
   function handleOpenFile(event: Event): void {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (file)
       showNotice(
-        `${file.name} selected. Add it to src/compositions to run it through Vite.`,
+        `${file.name} selected. Add it to src/compositions/presets to preview it.`,
       );
     fileInput.value = "";
   }
@@ -439,7 +486,7 @@
             {#if activeTab === "text"}
               <h3 class="me-category-title">Composition source</h3>
               <div class="source-heading">
-                <Braces size={15} /> src/compositions/demo.ts
+                <Braces size={15} /> presets/motionly-promo/composition.html
               </div>
               <pre class="source-code">{demoComposition.sourcePreview}</pre>
             {:else if activeTab === "scenes"}
@@ -473,7 +520,7 @@
                   <span class="me-preset-info"
                     ><strong class="me-preset-name"
                       >Continuous Product Film</strong
-                    ><small>27s · TypeScript + GSAP</small></span
+                    ><small>27s · HTML/CSS + GSAP</small></span
                   >
                 </button>
               </div>
@@ -487,7 +534,7 @@
                 <div class="me-asset-card-wrap">
                   <button
                     class="me-asset-card"
-                    on:click={() => (selectedId = "brand-orbit")}
+                    on:click={() => (selectedId = "brand-token")}
                   >
                     <span class="me-asset-thumbnail project-asset-thumbnail"
                       ><img src="/logo.svg" alt="Motionly logo" /></span
@@ -641,6 +688,23 @@
                     on:input={setText}
                   ></textarea>
                 </div>
+                <div class="me-property-group">
+                  <label class="me-property-label" for="property-font-size"
+                    >Font size</label
+                  >
+                  <div class="me-number-input-wrapper">
+                    <input
+                      id="property-font-size"
+                      class="me-number-input"
+                      aria-label="Font size"
+                      type="number"
+                      min="1"
+                      value={numericStyleValue("fontSize", 16)}
+                      on:input={(event) => setNumber("fontSize", event)}
+                    />
+                    <span class="me-input-suffix">px</span>
+                  </div>
+                </div>
               {/if}
               <div class="me-property-row">
                 <label class="me-property-group"
@@ -698,6 +762,83 @@
                   on:input={(event) => setNumber("opacity", event)}
                 />
               </div>
+              <div class="me-section-title me-appearance-title">Appearance</div>
+              {#if isSvgSelected()}
+                <label class="me-property-group">
+                  <span class="me-property-label">Stroke color</span>
+                  <span class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label="Stroke color"
+                      type="color"
+                      value={colorValue("stroke", "#5eead4")}
+                      on:input={(event) => setColor("stroke", event)}
+                    />
+                    <output>{colorValue("stroke", "#5eead4")}</output>
+                  </span>
+                </label>
+              {:else}
+                <label class="me-property-group">
+                  <span class="me-property-label"
+                    >{isTextEditable()
+                      ? "Text color"
+                      : "Foreground color"}</span
+                  >
+                  <span class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label={isTextEditable()
+                        ? "Text color"
+                        : "Foreground color"}
+                      type="color"
+                      value={colorValue("color", "#f7f5ef")}
+                      on:input={(event) => setColor("color", event)}
+                    />
+                    <output>{colorValue("color", "#f7f5ef")}</output>
+                  </span>
+                </label>
+                <div class="me-property-group">
+                  <div class="me-property-label-row">
+                    <span class="me-property-label">Background</span>
+                    <button
+                      class="me-property-action"
+                      type="button"
+                      on:click={clearBackground}>Clear</button
+                    >
+                  </div>
+                  <div class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label="Background color"
+                      type="color"
+                      value={colorValue("backgroundColor", "#17191c")}
+                      on:input={(event) => setColor("backgroundColor", event)}
+                    />
+                    <output
+                      >{currentOverride().backgroundColor === "transparent"
+                        ? "transparent"
+                        : colorValue("backgroundColor", "#17191c")}</output
+                    >
+                  </div>
+                </div>
+                <div class="me-property-group">
+                  <label class="me-property-label" for="property-radius"
+                    >Corner radius</label
+                  >
+                  <div class="me-number-input-wrapper">
+                    <input
+                      id="property-radius"
+                      class="me-number-input"
+                      aria-label="Corner radius"
+                      type="number"
+                      min="0"
+                      value={numericStyleValue("borderRadius", 0)}
+                      on:input={(event) => setNumber("borderRadius", event)}
+                    />
+                    <span class="me-input-suffix">px</span>
+                  </div>
+                </div>
+              {/if}
             </div>
           {:else}
             <div class="me-properties-empty">
@@ -789,9 +930,7 @@
                 >
                 <span>{selectedScene()?.label} · {timecode(snapshot.time)}</span
                 >
-                <button on:click={openTimelineSource}
-                  >Open TypeScript source</button
-                >
+                <button on:click={openTimelineSource}>Open HTML source</button>
               </div>
             {/if}
           </div>

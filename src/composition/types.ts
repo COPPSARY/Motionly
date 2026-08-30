@@ -32,6 +32,12 @@ export interface ElementOverride {
   rotation?: number;
   opacity?: number;
   text?: string;
+  color?: string;
+  backgroundColor?: string;
+  fill?: string;
+  stroke?: string;
+  fontSize?: number;
+  borderRadius?: number;
 }
 
 export interface RuntimeSnapshot {

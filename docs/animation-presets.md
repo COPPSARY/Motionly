@@ -1,6 +1,6 @@
 # GSAP motion helpers
 
-Motionly ships a small TypeScript motion surface:
+Motionly ships a small JavaScript/TypeScript motion surface:
 
 - `reveal`
 - `slide`
@@ -19,7 +19,7 @@ Motionly ships a small TypeScript motion surface:
 
 Every helper receives the caller's GSAP timeline and an optional `at` position. This makes overlaps and nested timing explicit.
 
-```ts
+```js
 slide(timeline, panel, { direction: 'up', distance: 56, at: 0.2 });
 textReveal(timeline, title, { unit: 'words', stagger: 0.05, at: 0.35 });
 cameraPush(timeline, productWindow, { scale: 1.3, x: -220, at: 2.1 });
