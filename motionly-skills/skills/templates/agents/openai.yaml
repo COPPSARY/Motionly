@@ -1,4 +1,0 @@
-interface:
-  display_name: "Templates"
-  short_description: "Plan production-ready motion stories"
-  default_prompt: "Use $templates to plan a polished Motionly animation from this brief."
