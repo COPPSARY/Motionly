@@ -14,17 +14,19 @@
     Play,
     RefreshCcw,
     Save,
+    Send,
     Settings,
     SlidersHorizontal,
     Sparkles,
     Type,
     Upload,
     Wand2,
+    X,
   } from "lucide-svelte";
   import { downloadBlob, exportPng } from "../composition/exporter";
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
-  import { demoComposition } from "../compositions/demo";
+  import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
   import "./styles/content-panel.css";
@@ -37,12 +39,82 @@
   type EditorTab =
     "media" | "audio" | "text" | "effects" | "scenes" | "ai" | "settings";
 
-  const ticks = Array.from({ length: 10 }, (_, index) => index * 3);
+  interface SceneTrack {
+    id: string;
+    label: string;
+    kind: "Text" | "Element" | "SVG" | "Camera";
+  }
+
+  interface AssistantMessage {
+    role: "user" | "assistant";
+    text: string;
+  }
+
+  const sceneTracks: Record<string, readonly SceneTrack[]> = {
+    brand: [
+      { id: "manifesto-design", label: "Everything", kind: "Text" },
+      { id: "manifesto-motion", label: "One place", kind: "Text" },
+      { id: "manifesto-web-line", label: "Write with the web", kind: "Text" },
+      { id: "manifesto-direct", label: "Direct every frame", kind: "Text" },
+      { id: "manifesto-stack-line", label: "HTML CSS GSAP", kind: "Text" },
+      { id: "manifesto-timeline", label: "Editable timeline", kind: "Text" },
+    ],
+    code: [
+      { id: "code-card", label: "HTML source", kind: "Element" },
+      { id: "live-card", label: "Live output", kind: "Element" },
+      { id: "visual-title", label: "Launch", kind: "Text" },
+      { id: "visual-subtitle", label: "With rhythm", kind: "Text" },
+      { id: "metric-fps", label: "FPS metric", kind: "Element" },
+      { id: "metric-timeline", label: "Timeline metric", kind: "Element" },
+      { id: "metric-dom", label: "DOM metric", kind: "Element" },
+      { id: "manifesto-code", label: "Speed statement", kind: "Text" },
+    ],
+    studio: [
+      { id: "studio-window", label: "Fullscreen stage", kind: "Element" },
+      { id: "artboard-headline", label: "Editable statement", kind: "Text" },
+      { id: "editable-proof", label: "Editable controls", kind: "Element" },
+    ],
+    lab: [
+      { id: "lab-one", label: "Every layer", kind: "Text" },
+      { id: "lab-timeline", label: "Timeline", kind: "Text" },
+      { id: "signal-path", label: "Motion curve", kind: "SVG" },
+      { id: "layer-type", label: "Type layer", kind: "Element" },
+      { id: "layer-layout", label: "Layout layer", kind: "Element" },
+      { id: "layer-camera", label: "Camera layer", kind: "Camera" },
+      { id: "export-dock", label: "Export progress", kind: "Element" },
+    ],
+    cta: [
+      { id: "final-index", label: "Motionly label", kind: "Text" },
+      { id: "final-line-one", label: "Make it", kind: "Text" },
+      { id: "final-line-two", label: "Move", kind: "Text" },
+      { id: "final-subtitle", label: "Product description", kind: "Text" },
+      { id: "final-cta-label", label: "CTA label", kind: "Text" },
+      { id: "final-product", label: "Product mark", kind: "Element" },
+    ],
+  };
+  const textElementTags = new Set([
+    "B",
+    "BUTTON",
+    "DIV",
+    "EM",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "P",
+    "SMALL",
+    "SPAN",
+    "STRONG",
+  ]);
+
   let previewRoot: HTMLDivElement;
   let previewStage: HTMLDivElement;
   let fileInput: HTMLInputElement;
   let runtime: CompositionRuntime | null = null;
   let snapshot: RuntimeSnapshot = { time: 0, playing: false, sceneId: "brand" };
+  let selectedSceneId = "brand";
   let selectedId = "";
   let zoom = 1;
   let fitScale = 0.5;
@@ -50,10 +122,17 @@
   let mediaTab: "assets" | "presets" = "presets";
   let exporting = false;
   let notice = "";
+  let chatOpen = false;
+  let assistantDraft = "";
+  let assistantMessages: AssistantMessage[] = [];
+  let timelineDetailsOpen = false;
 
   onMount(() => {
     runtime = new CompositionRuntime(demoComposition, previewRoot);
-    const unsubscribe = runtime.subscribe((value) => (snapshot = value));
+    const unsubscribe = runtime.subscribe((value) => {
+      snapshot = value;
+      selectedSceneId = value.sceneId;
+    });
     const observer = new ResizeObserver(fitPreview);
     observer.observe(previewStage);
     fitPreview();
@@ -96,8 +175,104 @@
     runtime?.seek(Number((event.currentTarget as HTMLInputElement).value));
   }
 
+  function selectedScene() {
+    return (
+      demoComposition.scenes.find((scene) => scene.id === selectedSceneId) ??
+      demoComposition.scenes[0]
+    );
+  }
+
+  function visibleSceneTracks(): readonly SceneTrack[] {
+    return sceneTracks[selectedSceneId] ?? [];
+  }
+
+  function scenePlayheadPosition(): number {
+    const current = selectedScene();
+    if (!current) return 0;
+    return Math.max(
+      0,
+      Math.min(100, ((snapshot.time - current.start) / current.duration) * 100),
+    );
+  }
+
+  function sceneTicks(): number[] {
+    const duration = selectedScene()?.duration ?? 0;
+    const step = duration > 6 ? 2 : 1;
+    const values = Array.from(
+      { length: Math.floor(duration / step) + 1 },
+      (_, index) => index * step,
+    );
+    if (values.at(-1) !== duration) values.push(duration);
+    return values;
+  }
+
+  function enterScene(scene: (typeof demoComposition.scenes)[number]): void {
+    selectedSceneId = scene.id;
+    selectedId = "";
+    const visibleFrame = Math.min(
+      scene.start + scene.duration,
+      scene.start + 0.2,
+    );
+    runtime?.seek(visibleFrame);
+  }
+
+  function selectTrack(track: SceneTrack): void {
+    selectedId = track.id;
+  }
+
   function currentOverride(): ElementOverride {
     return selectedId && runtime ? runtime.getOverride(selectedId) : {};
+  }
+
+  function isTextEditable(): boolean {
+    if (!runtime || !selectedId) return false;
+    const element = runtime.elements.get(selectedId);
+    if (!element) return false;
+    if (element.dataset["motionlySplitUnit"]) return true;
+    return (
+      element.children.length === 0 && textElementTags.has(element.tagName)
+    );
+  }
+
+  function isSvgSelected(): boolean {
+    if (!runtime || !selectedId) return false;
+    return runtime.elements.get(selectedId) instanceof SVGElement;
+  }
+
+  type ColorProperty = "color" | "backgroundColor" | "fill" | "stroke";
+
+  function normalizedColor(value: string, fallback: string): string {
+    const hex = /^#([\da-f]{6})$/i.exec(value.trim());
+    if (hex) return `#${hex[1]}`;
+    const rgb = /^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?\s*\)$/i.exec(
+      value,
+    );
+    if (!rgb || (rgb[4] !== undefined && Number(rgb[4]) === 0)) return fallback;
+    return `#${[rgb[1], rgb[2], rgb[3]]
+      .map((channel) => Number(channel).toString(16).padStart(2, "0"))
+      .join("")}`;
+  }
+
+  function colorValue(property: ColorProperty, fallback: string): string {
+    const override = currentOverride()[property];
+    if (typeof override === "string")
+      return normalizedColor(override, fallback);
+    const element = selectedId ? runtime?.elements.get(selectedId) : undefined;
+    if (!element) return fallback;
+    const style = getComputedStyle(element);
+    return normalizedColor(style[property], fallback);
+  }
+
+  function numericStyleValue(
+    property: "fontSize" | "borderRadius",
+    fallback: number,
+  ): number {
+    const override = currentOverride()[property];
+    if (typeof override === "number") return override;
+    const element = selectedId ? runtime?.elements.get(selectedId) : undefined;
+    if (!element) return fallback;
+    const parsed = Number.parseFloat(getComputedStyle(element)[property]);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   function setNumber(property: keyof ElementOverride, event: Event): void {
@@ -114,6 +289,18 @@
     });
   }
 
+  function setColor(property: ColorProperty, event: Event): void {
+    if (!runtime || !selectedId) return;
+    runtime.setOverride(selectedId, {
+      [property]: (event.currentTarget as HTMLInputElement).value,
+    });
+  }
+
+  function clearBackground(): void {
+    if (!runtime || !selectedId) return;
+    runtime.setOverride(selectedId, { backgroundColor: "transparent" });
+  }
+
   function timecode(time: number): string {
     const minutes = Math.floor(time / 60);
     const seconds = time - minutes * 60;
@@ -124,21 +311,43 @@
     activeTab = tab;
     if (tab === "media") mediaTab = "assets";
     if (tab === "effects") mediaTab = "presets";
+    if (tab === "ai") chatOpen = true;
+  }
+
+  function openTimelineSource(): void {
+    activeTab = "text";
+    timelineDetailsOpen = false;
+    showNotice("Opened the HTML source for the active GSAP composition.");
+  }
+
+  function submitAssistant(event: SubmitEvent): void {
+    event.preventDefault();
+    const prompt = assistantDraft.trim();
+    if (!prompt) return;
+    assistantMessages = [
+      ...assistantMessages,
+      { role: "user", text: prompt },
+      {
+        role: "assistant",
+        text: "Request captured. Connect a web AI provider to turn it into source edits; generated changes must target semantic HTML/SVG, CSS, and the caller-owned GSAP timeline.",
+      },
+    ];
+    assistantDraft = "";
   }
 
   function saveSource(): void {
     downloadBlob(
-      new Blob([demoComposition.sourcePreview], { type: "text/typescript" }),
-      "product-demo.ts",
+      new Blob([demoComposition.sourcePreview], { type: "text/html" }),
+      "motionly-product-promo.html",
     );
-    showNotice("Saved the TypeScript composition source.");
+    showNotice("Saved the HTML composition source.");
   }
 
   function handleOpenFile(event: Event): void {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (file)
       showNotice(
-        `${file.name} selected. Add it to src/compositions to run it through Vite.`,
+        `${file.name} selected. Add it to src/compositions/presets to preview it.`,
       );
     fileInput.value = "";
   }
@@ -206,7 +415,7 @@
 
   <div class="code-editor-scope">
     <div class="me-motion-editor" style="--timeline-height: 218px;">
-      <div class="me-workbench">
+      <div class="me-workbench" class:me-chat-open={chatOpen}>
         <nav class="me-nav-rail" aria-label="Editor tools">
           <button
             class="me-nav-item"
@@ -277,7 +486,7 @@
             {#if activeTab === "text"}
               <h3 class="me-category-title">Composition source</h3>
               <div class="source-heading">
-                <Braces size={15} /> src/compositions/demo.ts
+                <Braces size={15} /> presets/motionly-promo/composition.html
               </div>
               <pre class="source-code">{demoComposition.sourcePreview}</pre>
             {:else if activeTab === "scenes"}
@@ -286,8 +495,8 @@
                 {#each demoComposition.scenes as scene}
                   <button
                     class="me-layer-row"
-                    class:me-selected={snapshot.sceneId === scene.id}
-                    on:click={() => runtime?.seek(scene.start)}
+                    class:me-selected={selectedSceneId === scene.id}
+                    on:click={() => enterScene(scene)}
                   >
                     <span class="me-layer-icon"><Layers3 size={14} /></span>
                     <span class="me-layer-copy"
@@ -311,7 +520,7 @@
                   <span class="me-preset-info"
                     ><strong class="me-preset-name"
                       >Continuous Product Film</strong
-                    ><small>27s · TypeScript + GSAP</small></span
+                    ><small>27s · HTML/CSS + GSAP</small></span
                   >
                 </button>
               </div>
@@ -325,7 +534,7 @@
                 <div class="me-asset-card-wrap">
                   <button
                     class="me-asset-card"
-                    on:click={() => (selectedId = "brand-orbit")}
+                    on:click={() => (selectedId = "brand-token")}
                   >
                     <span class="me-asset-thumbnail project-asset-thumbnail"
                       ><img src="/logo.svg" alt="Motionly logo" /></span
@@ -366,12 +575,56 @@
           </div>
         </aside>
 
-        <aside class="me-chat-drawer me-collapsed">
-          <button
-            class="me-assistant-expand"
-            aria-label="Open assistant"
-            title="Motionly Assistant"><Sparkles size={16} /></button
-          >
+        <aside class="me-chat-drawer" class:me-collapsed={!chatOpen}>
+          {#if chatOpen}
+            <section class="ai-chat-panel" aria-label="Motionly Assistant">
+              <header class="ai-chat-header">
+                <span
+                  ><Sparkles size={15} /><strong>Motionly Assistant</strong
+                  ></span
+                >
+                <button
+                  class="ai-chat-close"
+                  aria-label="Close assistant"
+                  on:click={() => (chatOpen = false)}><X size={15} /></button
+                >
+              </header>
+              <div class="ai-chat-messages" aria-live="polite">
+                <div class="ai-chat-message assistant">
+                  Describe a scene, transition, camera move, or timing change.
+                  I’ll keep the composition code-first and GSAP-driven.
+                </div>
+                {#each assistantMessages as message}
+                  <div
+                    class:assistant={message.role === "assistant"}
+                    class:user={message.role === "user"}
+                    class="ai-chat-message"
+                  >
+                    {message.text}
+                  </div>
+                {/each}
+              </div>
+              <form class="ai-chat-composer" on:submit={submitAssistant}>
+                <textarea
+                  aria-label="Assistant prompt"
+                  placeholder="Make the CTA transition feel more cinematic…"
+                  bind:value={assistantDraft}
+                ></textarea>
+                <button
+                  aria-label="Send assistant message"
+                  disabled={!assistantDraft.trim()}
+                  type="submit"><Send size={15} /></button
+                >
+              </form>
+            </section>
+          {:else}
+            <button
+              class="me-assistant-expand"
+              aria-label="Open assistant"
+              title="Motionly Assistant"
+              on:click={() => (chatOpen = true)}><Sparkles size={16} /></button
+            >
+          {/if}
         </aside>
 
         <main class="me-preview-container">
@@ -421,18 +674,38 @@
               >
             </div>
             <div class="me-primary-properties">
-              <div class="me-property-group">
-                <label class="me-property-label" for="property-text">Text</label
-                >
-                <textarea
-                  id="property-text"
-                  class="me-text-input"
-                  value={currentOverride().text ??
-                    runtime?.elements.get(selectedId)?.textContent ??
-                    ""}
-                  on:input={setText}
-                ></textarea>
-              </div>
+              {#if isTextEditable()}
+                <div class="me-property-group">
+                  <label class="me-property-label" for="property-text"
+                    >Text</label
+                  >
+                  <textarea
+                    id="property-text"
+                    class="me-text-input"
+                    value={currentOverride().text ??
+                      runtime?.elements.get(selectedId)?.textContent ??
+                      ""}
+                    on:input={setText}
+                  ></textarea>
+                </div>
+                <div class="me-property-group">
+                  <label class="me-property-label" for="property-font-size"
+                    >Font size</label
+                  >
+                  <div class="me-number-input-wrapper">
+                    <input
+                      id="property-font-size"
+                      class="me-number-input"
+                      aria-label="Font size"
+                      type="number"
+                      min="1"
+                      value={numericStyleValue("fontSize", 16)}
+                      on:input={(event) => setNumber("fontSize", event)}
+                    />
+                    <span class="me-input-suffix">px</span>
+                  </div>
+                </div>
+              {/if}
               <div class="me-property-row">
                 <label class="me-property-group"
                   ><span class="me-property-label">X</span><input
@@ -489,6 +762,83 @@
                   on:input={(event) => setNumber("opacity", event)}
                 />
               </div>
+              <div class="me-section-title me-appearance-title">Appearance</div>
+              {#if isSvgSelected()}
+                <label class="me-property-group">
+                  <span class="me-property-label">Stroke color</span>
+                  <span class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label="Stroke color"
+                      type="color"
+                      value={colorValue("stroke", "#5eead4")}
+                      on:input={(event) => setColor("stroke", event)}
+                    />
+                    <output>{colorValue("stroke", "#5eead4")}</output>
+                  </span>
+                </label>
+              {:else}
+                <label class="me-property-group">
+                  <span class="me-property-label"
+                    >{isTextEditable()
+                      ? "Text color"
+                      : "Foreground color"}</span
+                  >
+                  <span class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label={isTextEditable()
+                        ? "Text color"
+                        : "Foreground color"}
+                      type="color"
+                      value={colorValue("color", "#f7f5ef")}
+                      on:input={(event) => setColor("color", event)}
+                    />
+                    <output>{colorValue("color", "#f7f5ef")}</output>
+                  </span>
+                </label>
+                <div class="me-property-group">
+                  <div class="me-property-label-row">
+                    <span class="me-property-label">Background</span>
+                    <button
+                      class="me-property-action"
+                      type="button"
+                      on:click={clearBackground}>Clear</button
+                    >
+                  </div>
+                  <div class="me-color-control">
+                    <input
+                      class="me-color-swatch"
+                      aria-label="Background color"
+                      type="color"
+                      value={colorValue("backgroundColor", "#17191c")}
+                      on:input={(event) => setColor("backgroundColor", event)}
+                    />
+                    <output
+                      >{currentOverride().backgroundColor === "transparent"
+                        ? "transparent"
+                        : colorValue("backgroundColor", "#17191c")}</output
+                    >
+                  </div>
+                </div>
+                <div class="me-property-group">
+                  <label class="me-property-label" for="property-radius"
+                    >Corner radius</label
+                  >
+                  <div class="me-number-input-wrapper">
+                    <input
+                      id="property-radius"
+                      class="me-number-input"
+                      aria-label="Corner radius"
+                      type="number"
+                      min="0"
+                      value={numericStyleValue("borderRadius", 0)}
+                      on:input={(event) => setNumber("borderRadius", event)}
+                    />
+                    <span class="me-input-suffix">px</span>
+                  </div>
+                </div>
+              {/if}
             </div>
           {:else}
             <div class="me-properties-empty">
@@ -513,9 +863,10 @@
             <li>
               <button
                 class="storyboard-scene"
-                aria-current={snapshot.sceneId === scene.id}
+                aria-current={selectedSceneId === scene.id}
+                data-scene-id={scene.id}
                 style={`--storyboard-scene-color:${scene.accent}`}
-                on:click={() => runtime?.seek(scene.start)}
+                on:click={() => enterScene(scene)}
               >
                 <span class="storyboard-scene__swatch"></span><span
                   class="storyboard-scene__label">{scene.label}</span
@@ -532,17 +883,16 @@
         <span class="source-chip">TS</span>
       </section>
 
-      <section class="me-timeline-panel">
+      <section
+        class="me-timeline-panel"
+        style={`--playhead-position:${scenePlayheadPosition()}%`}
+      >
         <button class="me-timeline-resizer" aria-label="Resize timeline"
           ><span></span></button
         >
         <div class="me-timeline-toolbar">
           <div class="me-timeline-context">
-            <Layers3 size={14} /><span
-              >{demoComposition.scenes.find(
-                (scene) => scene.id === snapshot.sceneId,
-              )?.label}</span
-            >
+            <Layers3 size={14} /><span>{selectedScene()?.label}</span>
           </div>
           <div class="me-playback-controls">
             <button
@@ -565,9 +915,24 @@
             >
           </div>
           <div class="me-timeline-actions">
-            <span class="me-timeline-command"
-              ><Braces size={13} /> GSAP timeline</span
+            <button
+              class="me-timeline-command"
+              aria-expanded={timelineDetailsOpen}
+              aria-controls="gsap-timeline-details"
+              on:click={() => (timelineDetailsOpen = !timelineDetailsOpen)}
+              ><Braces size={13} /> GSAP timeline</button
             >
+            {#if timelineDetailsOpen}
+              <div class="me-timeline-popover" id="gsap-timeline-details">
+                <strong>Master GSAP timeline</strong>
+                <span
+                  >{demoComposition.duration}s · {demoComposition.fps} FPS</span
+                >
+                <span>{selectedScene()?.label} · {timecode(snapshot.time)}</span
+                >
+                <button on:click={openTimelineSource}>Open HTML source</button>
+              </div>
+            {/if}
           </div>
         </div>
         <div
@@ -575,55 +940,57 @@
           style="--timeline-content-width: 1100px;"
         >
           <div class="me-ruler-row">
-            <div class="me-track-label me-ruler-label">Scenes</div>
+            <div class="me-track-label me-ruler-label">
+              {selectedScene()?.label}
+            </div>
             <div class="me-ruler">
-              {#each ticks as tick}<span
+              {#each sceneTicks() as tick}<span
                   class="me-ruler-tick"
-                  style:left={`${(tick / demoComposition.duration) * 100}%`}
+                  style:left={`${(tick / (selectedScene()?.duration ?? 1)) * 100}%`}
                   >{tick}s</span
                 >{/each}
               <span
                 class="me-playhead-marker"
-                style:left={`${(snapshot.time / demoComposition.duration) * 100}%`}
+                style:left={`${scenePlayheadPosition()}%`}
               ></span>
               <input
                 class="me-timeline-scrubber"
                 aria-label="Timeline scrubber"
                 type="range"
-                min="0"
-                max={demoComposition.duration}
+                min={selectedScene()?.start ?? 0}
+                max={(selectedScene()?.start ?? 0) +
+                  (selectedScene()?.duration ?? demoComposition.duration)}
                 step={1 / demoComposition.fps}
                 value={snapshot.time}
                 on:input={seek}
               />
             </div>
           </div>
-          {#each demoComposition.scenes as scene}
+          {#each visibleSceneTracks() as track}
             <div
               class="me-timeline-row"
-              class:me-selected={snapshot.sceneId === scene.id}
+              class:me-selected={selectedId === track.id}
+              data-track-id={track.id}
             >
-              <button
-                class="me-track-label"
-                on:click={() => runtime?.seek(scene.start)}
+              <button class="me-track-label" on:click={() => selectTrack(track)}
                 ><span class="me-track-thumb"><Layers3 size={12} /></span><span
                   class="me-track-copy"
-                  ><strong>{scene.label}</strong><small
-                    >{scene.start.toFixed(1)}s – {(
-                      scene.start + scene.duration
-                    ).toFixed(1)}s</small
+                  ><strong>{track.label}</strong><small
+                    >{track.kind} · {track.id}</small
                   ></span
                 ></button
               >
               <div class="me-track-lane">
                 <button
                   class="me-clip me-element-clip scene-timeline-clip"
-                  class:me-selected-clip={snapshot.sceneId === scene.id}
-                  style:left={`${(scene.start / demoComposition.duration) * 100}%`}
-                  style:width={`${(scene.duration / demoComposition.duration) * 100}%`}
-                  on:click={() => runtime?.seek(scene.start)}
-                  ><span class="clip-accent" style:background={scene.accent}
-                  ></span><span class="me-clip-text">{scene.label}</span
+                  class:me-selected-clip={selectedId === track.id}
+                  style:left="0%"
+                  style:width="100%"
+                  on:click={() => selectTrack(track)}
+                  ><span
+                    class="clip-accent"
+                    style:background={selectedScene()?.accent}
+                  ></span><span class="me-clip-text">{track.label}</span
                   ></button
                 >
               </div>

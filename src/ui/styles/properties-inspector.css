@@ -626,6 +626,67 @@
   box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.12);
 }
 
+.code-editor-scope .me-appearance-title {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #24262a;
+}
+
+.code-editor-scope .me-color-control {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  box-sizing: border-box;
+  padding: 5px 9px 5px 5px;
+  border: 1px solid #2a2d33;
+  border-radius: 6px;
+  background: #17191c;
+}
+
+.code-editor-scope .me-color-control:focus-within,
+.code-editor-scope .me-color-control:hover {
+  border-color: #3a414d;
+  background: #1a1c20;
+}
+
+.code-editor-scope .me-color-swatch {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  outline: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-color-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.code-editor-scope .me-color-swatch::-webkit-color-swatch {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.code-editor-scope .me-color-swatch::-moz-color-swatch {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.code-editor-scope .me-color-control output {
+  min-width: 0;
+  overflow: hidden;
+  color: #c9cdd4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Preset Cards */
 .code-editor-scope .me-preset-cards {
   display: grid;

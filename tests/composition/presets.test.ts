@@ -65,7 +65,8 @@ describe("GSAP-first motion presets", () => {
     timeline.seek(0.8);
 
     expect(incoming.style.visibility).toBe("inherit");
-    expect(incoming.style.clipPath).not.toBe("inset(0px 0px 0px 100%)");
+    expect(incoming.style.transform).toContain("translate");
+    expect(outgoing.style.transform).toContain("translate");
     timeline.seek(1.3);
     expect(outgoing.style.visibility).toBe("hidden");
     expect(incoming.style.visibility).toBe("inherit");

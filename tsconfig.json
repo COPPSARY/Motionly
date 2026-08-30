@@ -3,25 +3,27 @@
     /* Language and Environment */
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    
+
     /* Modules */
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
     "types": ["svelte", "vite/client", "node"],
-    
+
     /* Emit */
     "noEmit": true,
     "sourceMap": true,
     "outDir": "./dist",
-    
+
     /* Interop Constraints */
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    
+
     /* Type Checking - STRICT MODE */
     "strict": true,
     "noImplicitAny": true,
@@ -38,15 +40,10 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
-    
+
     /* Completeness */
     "skipLibCheck": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

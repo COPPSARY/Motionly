@@ -5,7 +5,17 @@ export default defineConfig({
   plugins: [svelte()],
   base: process.env.BASE_PATH ?? "/",
   server: { port: 5173, open: false },
-  build: { outDir: "dist", sourcemap: true, target: "es2022" },
+  build: {
+    outDir: "dist",
+    sourcemap: true,
+    target: "es2022",
+    rollupOptions: {
+      input: {
+        editor: "index.html",
+        render: "render.html",
+      },
+    },
+  },
   resolve: { alias: { "@": "/src" } },
   optimizeDeps: { include: ["gsap"] },
 });

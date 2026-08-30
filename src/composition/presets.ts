@@ -256,52 +256,46 @@ export function sceneHandoff(
   options: SceneHandoffOptions = {},
 ): gsap.core.Timeline {
   const direction = options.direction ?? "left";
-  const distance = options.distance ?? 120;
-  const duration = options.duration ?? 0.78;
-  const incomingClip =
-    direction === "left"
-      ? "inset(0 0 0 100%)"
-      : direction === "right"
-        ? "inset(0 100% 0 0)"
-        : direction === "up"
-          ? "inset(100% 0 0 0)"
-          : "inset(0 0 100% 0)";
-  const outgoingClip =
-    direction === "left"
-      ? "inset(0 100% 0 0)"
-      : direction === "right"
-        ? "inset(0 0 0 100%)"
-        : direction === "up"
-          ? "inset(0 0 100% 0)"
-          : "inset(100% 0 0 0)";
-  const axis = direction === "left" || direction === "right" ? "x" : "y";
+  const duration = options.duration ?? 0.82;
+  const axis =
+    direction === "left" || direction === "right" ? "xPercent" : "yPercent";
   const incomingOffset =
-    direction === "left" || direction === "up" ? distance : -distance;
-  const outgoingOffset = -incomingOffset * 0.42;
+    direction === "left" || direction === "up" ? 100 : -100;
+  const outgoingOffset = -incomingOffset * 0.18;
   const handoff = gsap.timeline();
 
   handoff
-    .set(incoming, { autoAlpha: 1, zIndex: 2 }, 0)
-    .set(outgoing, { zIndex: 1 }, 0)
+    .set(
+      incoming,
+      {
+        autoAlpha: 1,
+        zIndex: 2,
+        [axis]: incomingOffset,
+        scale: 1,
+      },
+      0,
+    )
+    .set(outgoing, { zIndex: 1, transformOrigin: "50% 50%" }, 0)
     .fromTo(
       incoming,
-      { clipPath: incomingClip, [axis]: incomingOffset, scale: 0.985 },
       {
-        clipPath: "inset(0 0 0 0)",
+        [axis]: incomingOffset,
+        scale: 1,
+      },
+      {
         [axis]: 0,
         scale: 1,
         duration,
         ease: options.ease ?? "power3.inOut",
+        immediateRender: false,
       },
       0,
     )
-    .fromTo(
+    .to(
       outgoing,
-      { clipPath: "inset(0 0 0 0)", [axis]: 0, scale: 1 },
       {
-        clipPath: outgoingClip,
         [axis]: outgoingOffset,
-        scale: 1.025,
+        scale: 1.035,
         duration,
         ease: options.ease ?? "power3.inOut",
       },
@@ -309,13 +303,14 @@ export function sceneHandoff(
     )
     .set(outgoing, {
       autoAlpha: 0,
-      clipPath: "inset(0 0 0 0)",
       x: 0,
       y: 0,
+      xPercent: 0,
+      yPercent: 0,
       scale: 1,
       zIndex: 0,
     })
-    .set(incoming, { zIndex: 1 });
+    .set(incoming, { xPercent: 0, yPercent: 0, zIndex: 1 });
 
   return timeline.add(handoff, options.at);
 }
@@ -343,6 +338,7 @@ export function splitText(
 ): HTMLElement[] {
   const value = element.textContent ?? "";
   const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
+  element.dataset["motionlySplitUnit"] = unit;
   element.replaceChildren();
   return pieces.map((piece) => {
     const span = document.createElement("span");

@@ -63,8 +63,16 @@ export class CompositionRuntime {
   play(): void {
     if (this.time >= this.definition.duration - 1 / this.definition.fps)
       this.seek(0);
+    // A range input can issue many forward and reverse seeks before Play.
+    // Re-render the exact current frame before unpausing so GSAP flushes every
+    // nested timeline/set from that scrub position instead of resuming from a
+    // partially evaluated lazy render.
+    const resumeTime = this.time;
+    this.timeline.pause();
+    this.timeline.totalTime(resumeTime, false);
+    this.applyOverrides();
     this.playing = true;
-    this.timeline.play();
+    this.timeline.reversed(false).paused(false);
     this.emit();
   }
 
@@ -85,7 +93,15 @@ export class CompositionRuntime {
       Math.max(0, Math.min(this.definition.duration, time)) *
         this.definition.fps,
     );
-    this.timeline.pause(frame / this.definition.fps, false);
+    const frameTime = frame / this.definition.fps;
+    this.timeline.pause();
+    // GSAP set/from tweens can retain a later rendered value after a large
+    // reverse jump. Re-render the origin first so every scene and child is
+    // reconstructed from the authored timeline before applying the new frame.
+    if (frameTime < this.timeline.totalTime()) {
+      this.timeline.totalTime(0, false);
+    }
+    this.timeline.totalTime(frameTime, false);
     this.playing = false;
     this.applyOverrides();
     this.emit();
@@ -135,14 +151,62 @@ export class CompositionRuntime {
     for (const [id, override] of this.overrides) {
       const element = this.elements.get(id);
       if (!element) continue;
-      if (override.text !== undefined) element.textContent = override.text;
-      gsap.set(element, {
-        x: override.x,
-        y: override.y,
-        scale: override.scale,
-        rotation: override.rotation,
-        opacity: override.opacity,
-      });
+      if (override.text !== undefined)
+        this.applyTextOverride(element, override.text);
+      this.applyVisualOverride(element, override);
+    }
+  }
+
+  private applyVisualOverride(
+    element: HTMLElement,
+    override: ElementOverride,
+  ): void {
+    // Editor transforms intentionally use the independent CSS transform
+    // properties. GSAP keeps ownership of `transform`, so authored entrances,
+    // camera moves, and exits continue to render after a visual edit.
+    if (override.x !== undefined || override.y !== undefined) {
+      element.style.translate = `${override.x ?? 0}px ${override.y ?? 0}px`;
+    }
+    if (override.scale !== undefined)
+      element.style.scale = String(override.scale);
+    if (override.rotation !== undefined)
+      element.style.rotate = `${override.rotation}deg`;
+    if (override.opacity !== undefined)
+      element.style.opacity = String(override.opacity);
+    if (override.color !== undefined) element.style.color = override.color;
+    if (override.backgroundColor !== undefined)
+      element.style.backgroundColor = override.backgroundColor;
+    if (override.fill !== undefined) element.style.fill = override.fill;
+    if (override.stroke !== undefined) element.style.stroke = override.stroke;
+    if (override.fontSize !== undefined)
+      element.style.fontSize = `${override.fontSize}px`;
+    if (override.borderRadius !== undefined)
+      element.style.borderRadius = `${override.borderRadius}px`;
+  }
+
+  private applyTextOverride(element: HTMLElement, value: string): void {
+    const unit = element.dataset["motionlySplitUnit"];
+    if (unit !== "words" && unit !== "chars") {
+      element.textContent = value;
+      return;
+    }
+
+    const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
+    const spans = Array.from(element.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement,
+    );
+    if (!spans.length) {
+      element.textContent = value;
+      return;
+    }
+
+    spans.forEach((span, index) => {
+      span.textContent = pieces[index] ?? "";
+    });
+    if (pieces.length > spans.length) {
+      const tail = pieces.slice(spans.length).join("");
+      const last = spans.at(-1);
+      if (last) last.textContent = `${last.textContent ?? ""}${tail}`;
     }
   }
 

@@ -1,6 +1,6 @@
 # Editor
 
-The editor preserves Motionly's visual workflow around the TypeScript runtime:
+The editor preserves Motionly's visual workflow around the mounted HTML and GSAP timeline:
 
 - centered aspect-ratio preview
 - Play, Pause, Restart, and deterministic scrubbing
@@ -8,7 +8,7 @@ The editor preserves Motionly's visual workflow around the TypeScript runtime:
 - a scene and camera timeline
 - canvas element selection
 - text, position, scale, rotation, and opacity overrides
-- composition preset and TypeScript source panels
+- composition preset and HTML source panels
 - PNG frame export from the mounted composition
 
-Visual controls update runtime overrides. Composition structure and choreography remain authored in TypeScript.
+Visual controls update runtime overrides. Structure and styling remain authored in HTML/CSS, while choreography remains authored in `timeline.js`.

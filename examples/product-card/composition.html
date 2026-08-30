@@ -1,0 +1,18 @@
+<template id="product-card-template">
+  <style>
+    .example-scene { position:absolute; inset:0; display:grid; place-items:center; overflow:hidden; background:radial-gradient(circle at 72% 24%,#35225e,transparent 32%),#070910; color:#f8fafc; font-family:Inter,sans-serif; }
+    .example-scene::before { position:absolute; inset:0; content:""; opacity:.16; background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px); background-size:52px 52px; }
+    .example-card { position:relative; width:760px; padding:64px; border:1px solid #34415b; border-radius:36px; background:#101622; box-shadow:0 42px 120px #0009; }
+    .example-card h1 { margin:0; font-size:88px; letter-spacing:-.04em; }
+    .example-card p { margin:22px 0 0; color:#aab5c8; font-size:30px; }
+    .example-pills { display:flex; gap:14px; margin-top:42px; }
+    .example-pills span { padding:12px 18px; border-radius:999px; background:#182337; color:#6df6c6; font-weight:700; }
+  </style>
+  <section class="example-scene scene" data-scene="intro">
+    <article class="example-card" data-edit="product-card">
+      <h1 data-edit="title">Motionly</h1>
+      <p data-edit="subtitle">Motion graphics, like code.</p>
+      <div class="example-pills"><span>HTML</span><span>GSAP</span><span>SVG</span></div>
+    </article>
+  </section>
+</template>

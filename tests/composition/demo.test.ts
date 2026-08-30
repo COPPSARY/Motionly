@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { demoComposition } from "../../src/compositions/demo";
+import { motionlyPromoPreset as demoComposition } from "../../src/compositions/presets";
 
 describe("Motionly product demo", () => {
-  it("is a 20–30 second TypeScript composition with connected launch beats", () => {
+  it("is a 20-30 second HTML composition with connected launch beats", () => {
     expect(demoComposition.duration).toBeGreaterThanOrEqual(20);
     expect(demoComposition.duration).toBeLessThanOrEqual(30);
     expect(demoComposition.scenes.map((scene) => scene.id)).toEqual([
@@ -12,12 +12,12 @@ describe("Motionly product demo", () => {
       "lab",
       "cta",
     ]);
-    expect(demoComposition.scenes.at(-1)?.start).toBe(21.7);
+    expect(demoComposition.scenes.at(-1)?.start).toBe(21.2);
   });
 
-  it("documents its public source as TypeScript composition code", () => {
-    expect(demoComposition.sourcePreview).toContain("defineComposition");
-    expect(demoComposition.sourcePreview).toContain("gsap");
-    expect(demoComposition.sourcePreview).toContain("cameraPush");
+  it("exposes editable HTML as its public composition source", () => {
+    expect(demoComposition.sourcePreview).toContain("<template");
+    expect(demoComposition.sourcePreview).toContain('data-edit="manifesto"');
+    expect(demoComposition.sourcePreview).toContain("./timeline.js");
   });
 });

@@ -1,19 +1,21 @@
 # Architecture
 
 ```text
-CompositionDefinition
-  ├─ scene metadata
-  ├─ HTML / SVG construction
-  └─ GSAP timeline choreography
-             ↓
-      CompositionRuntime
-       ├─ preview controls
-       ├─ element selection and overrides
-       └─ frame export
+composition.html + scoped CSS
+              + timeline.js / GSAP
+                         ↓
+          thin CompositionDefinition adapter
+                         ↓
+                CompositionRuntime
+                 ├─ preview controls
+                 ├─ element selection and overrides
+                 └─ frame export
 ```
 
-`CompositionDefinition.build()` receives a root element, a paused master timeline, and an element-registration function. It creates visual nodes and adds nested or overlapping tweens to the timeline.
+The HTML template is the authored visual composition. `timeline.js` receives the root, paused master timeline, and element-registration function, then adds nested or overlapping tweens. `CompositionDefinition.build()` is only the adapter that clones the template and invokes that timeline builder.
 
-The runtime quantizes explicit seeks to composition frames. Playback delegates to GSAP. Scene state is derived from the current time and typed scene metadata. Visual overrides are reapplied after timeline evaluation.
+Do not add a DSL, parser, JSON scene representation, generated DOM layer, or a second renderer. The browser DOM and caller-owned GSAP timeline are the source used by both preview and export.
 
-Export clones the current mounted frame, inlines computed styles, wraps it in an SVG foreign object, and rasterizes that frame to canvas. This keeps export tied to the same DOM and timeline state as preview.
+The runtime quantizes explicit seeks to composition frames. Playback delegates to GSAP. Scene state is derived from the current time and scene metadata. Visual overrides are reapplied after timeline evaluation.
+
+Export seeks and captures the same mounted composition used by preview. This keeps text, SVG, transforms, media, and GSAP state deterministic between the editor and rendered frames.

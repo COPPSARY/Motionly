@@ -6,7 +6,7 @@
 
   <p>
     <strong>Code-first motion graphics editor</strong><br>
-    Create professional HTML/SVG animations with TypeScript and GSAP, then refine them visually.
+    Create professional HTML/SVG animations with CSS and GSAP, then refine them visually.
   </p>
 
 <p align="center">
@@ -59,7 +59,7 @@
 
 ## Features
 
-Motionly combines normal TypeScript authoring with a visual editor, direct HTML/SVG rendering, and professional GSAP timelines.
+Motionly combines normal HTML/CSS/JavaScript authoring with a visual editor, direct DOM/SVG rendering, and professional GSAP timelines.
 
 - Build compositions from semantic HTML and inline SVG
 - Choreograph scenes with GSAP timelines, overlap, stagger, masks, text reveals, and camera movement
@@ -70,12 +70,12 @@ Motionly combines normal TypeScript authoring with a visual editor, direct HTML/
 - Render images and SVG assets directly in the composition DOM
 - Export frames from the exact composition shown in the preview
 
-TypeScript compositions are the only project source. Motionly does not convert projects into a second format: preview and export mount the composition directly through the same runtime.
+HTML compositions are the project source. Motionly does not convert projects into a second format: preview and export mount the same HTML and seek the same GSAP timeline.
 
 ## Architecture
 
 ```text
-TypeScript Composition
+HTML Composition
         ↓
 Scenes / Components
         ↓
@@ -86,40 +86,27 @@ HTML / SVG
 Preview / Export
 ```
 
-Every project implements one `CompositionDefinition`. Its `build()` function receives the composition root, a caller-owned GSAP timeline, and a registration helper for editor-selectable elements.
+Author the visual source as normal HTML and scoped CSS:
 
-```ts
-import { textReveal } from './src/composition/presets';
-import { defineComposition } from './src/composition/types';
-
-export const composition = defineComposition({
-  id: 'product-film',
-  title: 'Product Film',
-  description: 'A code-first Motionly composition.',
-  width: 1920,
-  height: 1080,
-  fps: 60,
-  duration: 8,
-  sourcePreview: 'src/compositions/product-film.ts',
-  scenes: [
-    { id: 'intro', label: 'Intro', start: 0, duration: 8, accent: '#d8ff55' },
-  ],
-  build({ root, timeline, register }) {
-    const title = document.createElement('h1');
-    title.textContent = 'Motion graphics, like code.';
-    root.append(title);
-    register('title', title);
-
-    textReveal(timeline, title, {
-      unit: 'words',
-      duration: 0.7,
-      at: 0.2,
-    });
-  },
-});
+```html
+<template id="product-film-template">
+  <style>.title { font: 800 120px/0.9 Inter, sans-serif; }</style>
+  <main class="scene"><h1 class="title" data-edit="title">Everything.</h1></main>
+</template>
 ```
 
-Reusable motion helpers live in [`src/composition/presets.ts`](src/composition/presets.ts). A complete connected starter composition is available in [`templates/project/composition.ts`](templates/project/composition.ts).
+Write choreography in JavaScript against Motionly's caller-owned GSAP timeline:
+
+```js
+export function buildTimeline({ root, timeline, register }) {
+  const title = root.querySelector('.title');
+  register('title', title);
+  timeline.fromTo(title, { scale: 0.85 }, { scale: 1.05, duration: 0.7, ease: 'power4.out' });
+  timeline.to(title, { scale: 1, duration: 0.22, ease: 'power2.out' });
+}
+```
+
+A thin `index.ts` supplies dimensions and scene metadata, mounts the template, and calls the timeline builder. Reusable motion helpers live in [`src/composition/presets.ts`](src/composition/presets.ts). The complete starter is in [`templates/project`](templates/project).
 
 ## Quick Start
 
@@ -141,7 +128,7 @@ Open the local Vite URL, then use the existing editor to:
 5. Adjust its visual properties in the inspector.
 6. Export the current rendered frame.
 
-Start with [`templates/project/composition.ts`](templates/project/composition.ts), or inspect the 27-second product film in [`src/compositions/demo.ts`](src/compositions/demo.ts).
+Inspect the 27-second HTML/CSS + GSAP product film in [`src/compositions/presets/motionly-promo/composition.html`](src/compositions/presets/motionly-promo/composition.html).
 
 See the [introduction](docs/introduction.md), [architecture guide](docs/architecture.md), [editor guide](docs/editor.md), and [animation presets](docs/animation-presets.md) for the current workflow.
 

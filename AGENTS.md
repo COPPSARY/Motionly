@@ -4,7 +4,7 @@ Motionly is a code-first motion graphics tool. Read `.agents/skills/write-motion
 
 ## Product rule
 
-TypeScript compositions are the only project source. A composition creates HTML/SVG and writes motion into a GSAP timeline. Preview and export mount that composition directly.
+HTML is the authored visual source. Scoped CSS styles the composition and `timeline.js` writes motion into a caller-owned GSAP timeline. A thin TypeScript adapter supplies metadata and mounts those files; it must not recreate the composition. Preview and export use that same mounted DOM and timeline.
 
 Keep the visual editor: centered preview, correct aspect ratio, Play/Pause/Restart, deterministic scrubber, storyboard scenes, selection, position/scale/rotation/opacity/text controls, assets, presets, and export.
 
@@ -21,6 +21,6 @@ Keep the visual editor: centered preview, correct aspect ratio, Play/Pause/Resta
 
 ## Runtime boundary
 
-`CompositionDefinition.build()` is the boundary. It receives `root`, `timeline`, and `register`. Do not introduce a second project representation, interpreter, conversion step, or renderer.
+`CompositionDefinition.build()` is the editor adapter boundary. It receives `root`, `timeline`, and `register`, mounts `composition.html`, then calls `timeline.js`. Do not introduce a second project representation, interpreter, conversion step, or renderer.
 
 Use the helpers in `src/composition/presets.ts`, extend that small library when a reusable motion idea is genuinely missing, and keep each helper composable on a caller-owned timeline.

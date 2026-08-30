@@ -54,6 +54,7 @@
 .code-editor-scope .me-timeline-actions {
   min-width: 0;
   justify-content: flex-end;
+  position: relative;
 }
 
 .code-editor-scope .me-timeline-context {
@@ -123,10 +124,53 @@
 
 .code-editor-scope .me-timeline-command {
   cursor: pointer;
+  font: inherit;
 }
 
 .code-editor-scope .me-timeline-command:hover {
   background: #202328;
+}
+
+.code-editor-scope .me-timeline-popover {
+  position: absolute;
+  z-index: 20;
+  top: 36px;
+  right: 0;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #30333a;
+  border-radius: 8px;
+  background: #15171a;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.44);
+}
+
+.code-editor-scope .me-timeline-popover strong {
+  color: #f0f2f5;
+  font-size: 12px;
+}
+
+.code-editor-scope .me-timeline-popover span {
+  color: #858b95;
+  font-size: 10px;
+}
+
+.code-editor-scope .me-timeline-popover button {
+  min-height: 30px;
+  margin-top: 4px;
+  border: 1px solid rgba(112, 221, 184, 0.3);
+  border-radius: 5px;
+  background: rgba(112, 221, 184, 0.09);
+  color: #98e9cd;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-timeline-popover button:hover {
+  background: rgba(112, 221, 184, 0.15);
 }
 
 .code-editor-scope .me-audio-chip {
@@ -209,6 +253,10 @@
   font-size: 11px;
   text-align: left;
   cursor: default;
+}
+
+.code-editor-scope .me-timeline-row .me-track-label {
+  cursor: pointer;
 }
 
 .code-editor-scope .me-track-label strong {
