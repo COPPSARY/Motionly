@@ -50,4 +50,17 @@ describe("code-first composition runtime", () => {
     runtime.restart();
     expect(runtime.snapshot.playing).toBe(true);
   });
+
+  it("preserves animated split-text spans when the editor changes copy", () => {
+    const runtime = createRuntime();
+    const line = runtime.elements.get("final-line-one");
+    expect(line?.dataset["motionlySplitUnit"]).toBe("chars");
+    const animatedPieces = line?.children.length ?? 0;
+    expect(animatedPieces).toBeGreaterThan(0);
+
+    runtime.setOverride("final-line-one", { text: "SHIP IT" });
+
+    expect(line?.textContent).toBe("SHIP IT");
+    expect(line?.children.length).toBe(animatedPieces);
+  });
 });

@@ -135,7 +135,8 @@ export class CompositionRuntime {
     for (const [id, override] of this.overrides) {
       const element = this.elements.get(id);
       if (!element) continue;
-      if (override.text !== undefined) element.textContent = override.text;
+      if (override.text !== undefined)
+        this.applyTextOverride(element, override.text);
       gsap.set(element, {
         x: override.x,
         y: override.y,
@@ -143,6 +144,32 @@ export class CompositionRuntime {
         rotation: override.rotation,
         opacity: override.opacity,
       });
+    }
+  }
+
+  private applyTextOverride(element: HTMLElement, value: string): void {
+    const unit = element.dataset["motionlySplitUnit"];
+    if (unit !== "words" && unit !== "chars") {
+      element.textContent = value;
+      return;
+    }
+
+    const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
+    const spans = Array.from(element.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement,
+    );
+    if (!spans.length) {
+      element.textContent = value;
+      return;
+    }
+
+    spans.forEach((span, index) => {
+      span.textContent = pieces[index] ?? "";
+    });
+    if (pieces.length > spans.length) {
+      const tail = pieces.slice(spans.length).join("");
+      const last = spans.at(-1);
+      if (last) last.textContent = `${last.textContent ?? ""}${tail}`;
     }
   }
 

@@ -343,6 +343,7 @@ export function splitText(
 ): HTMLElement[] {
   const value = element.textContent ?? "";
   const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
+  element.dataset["motionlySplitUnit"] = unit;
   element.replaceChildren();
   return pieces.map((piece) => {
     const span = document.createElement("span");
