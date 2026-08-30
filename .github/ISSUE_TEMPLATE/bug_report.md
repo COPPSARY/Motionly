@@ -26,4 +26,4 @@ assignees: ""
 
 ## Evidence
 
-Add screenshots, GIFs, logs, or a minimal `.motion` file if possible.
+Add screenshots, GIFs, logs, or a minimal TypeScript composition if possible.

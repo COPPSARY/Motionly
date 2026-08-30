@@ -18,3 +18,4 @@ coverage/
 # Local render and browser inspection artifacts
 output/
 .playwright-cli/
+artifacts/

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Assets"
-  short_description: "Manage static and animated media"
-  default_prompt: "Use $assets to import and time Motionly media correctly."

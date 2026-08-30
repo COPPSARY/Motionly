@@ -1,141 +1,55 @@
-<div align="center">
-  <h1>
-    <img src="public/logo.svg" alt="Motionly Logo" width="48" height="48" valign="middle">
-    <span valign="middle">Motionly</span>
-  </h1>
+# Motionly
 
-  <p>
-    <strong>AI-native motion graphics editor</strong><br>
-    Create editable animations with AI, then refine every detail visually.
-  </p>
+Motionly is a code-first motion graphics tool for creating, previewing, and exporting professional animations.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Supported_by-ff4b4b?style=for-the-badge" alt="Supported by" valign="middle">
-  <a href="https://www.kiritts.com/">
-    <img src="https://www.kiritts.com/logo.svg" alt="KiriTTS Logo" width="28" height="28" valign="middle">
-    <font size="5" valign="middle"><b>KiriTTS</b></font>
-  </a>
-</p>
-</div>
+Compositions are TypeScript modules that create semantic HTML/SVG and choreograph it with caller-owned GSAP timelines. The editor mounts the composition directly, so playback, seeking, scene navigation, visual overrides, and export all observe the same runtime state.
 
+## Architecture
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@coppsary/motionly">
-  <img src="https://img.shields.io/npm/dm/%40coppsary%2Fmotionly?style=flat&logo=npm&logoColor=white" alt="npm Downloads">
-</a>
-  <a href="https://motionly.mintlify.app/"><img src="https://img.shields.io/badge/Docs-Mintlify-7C3AED?style=flat" alt="Documentation"></a>
-  <a href="https://github.com/COPPSARY/Motionly"><img src="https://img.shields.io/github/stars/COPPSARY/Motionly?style=flat" alt="GitHub Stars"></a>
-   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat" alt="License"></a>
-</p>
-
-<p align="center">
-  <a href="#showcase">Showcase</a> &middot;
-  <a href="#features">Features</a> &middot;
-  <a href="#quick-start">Quick Start</a> &middot;
-  <a href="#development">Development</a> &middot;
-  <a href="https://motionly.mintlify.app/">Docs</a>
-</p>
-
----
-
-## Showcase
-
-<table align="center">
-<tr>
-<th>Animation Preview</th>
-</tr>
-<tr>
-<td align="center">
-<img src=".github/assets/showcase-2.gif" alt="Motionly Animation">
-</td>
-</tr>
-</table>
-
-| Visual Editor |
-| :---: |
-| ![Motionly Editor](.github/assets/screenshot.jpg) |
-
-
-
-
-
-
----
-
-## Features
-
-Motionly combines a canvas, timeline, and visual controls with an editable `.motion` source format.
-
-- Preview, select, position, scale, rotate, and style elements visually
-- Edit timing, keyframes, easing, clips, transitions, and audio on the timeline
-- Compose scenes from a semantic component library — terminals, dashboards, browsers, phones, pricing cards, and the Motionly workspace itself — with built-in choreography, customizable down to every generated part
-- Use smooth animation presets for text, images, SVGs, and video
-- Draft editable projects with the optional BYOK AI assistant
-- Save projects as readable `.motion` files (set in the bundled Space Grotesk display face) and export MP4
-
-AI-generated work always goes through Motionly's parser and remains fully editable in the visual editor.
-
-## Quick Start
-
-Requires Node.js `20.19.0` or newer.
-
-```bash
-npx @coppsary/motionly init my-video
+```text
+TypeScript composition
+        ↓
+Scenes and components
+        ↓
+GSAP timeline
+        ↓
+HTML / SVG
+        ↓
+Preview and export
 ```
 
-The setup creates a project, optionally installs the Motionly skill for your coding agent, and opens the editor. To return later:
+## Start
 
 ```bash
-cd my-video
-npx @coppsary/motionly dev
-```
-
-Browse the built-in animation registry or install a complete editable preset:
-
-```bash
-npx @coppsary/motionly catalog --type move --tag text
-npx @coppsary/motionly catalog --type preset
-```
-
-Moves, effects, components, and archetypes are built into the engine; preset
-packages install into their own `presets/<name>/` folder.
-
-Want the editor without creating a project?
-
-```bash
-npx @coppsary/motionly
-```
-
-See the [Quick Start](https://motionly.mintlify.app/quickstart) and [Installation Guide](https://motionly.mintlify.app/installation) for editing, export, CLI options, agent setup, and requirements.
-
-## Development
-
-```bash
-git clone https://github.com/COPPSARY/Motionly.git
-cd Motionly
 npm install
 npm run dev
 ```
 
-Before opening a pull request:
+Use the Presets panel to load the product film, Play/Pause/Restart in the timeline, drag the scrubber, select an element on the canvas, and adjust its visual properties. The TypeScript tab links the visible composition to `src/compositions/demo.ts`.
 
-```bash
-npm run test:run
-npm run build
+## Composition contract
+
+```ts
+export const productFilm: CompositionDefinition = {
+  id: 'product-film',
+  width: 1920,
+  height: 1080,
+  fps: 60,
+  duration: 27,
+  scenes,
+  build({ root, timeline, register }) {
+    const title = register('title', document.createElement('h1'));
+    root.append(title);
+    textReveal(timeline, title, { unit: 'chars', at: 0.2 });
+  },
+};
 ```
 
-See [Contributing](CONTRIBUTING.md), the [Roadmap](ROADMAP.md), and the [documentation](https://motionly.mintlify.app/) for project details.
+Motion helpers live in `src/composition/presets.ts`. They add tweens to the timeline passed by the composition and remain deterministic under seek.
 
-## License
+## Commands
 
-Licensed under the [Apache License 2.0](LICENSE).
-
----
-
-<div align="center">
-  <p><em>Effortless Animation</em></p>
-  <p>
-    <a href="https://github.com/COPPSARY">GitHub</a> &middot;
-    <a href="https://web.facebook.com/profile.php?id=61567582710788">Facebook</a>
-  </p>
-</div>
+- `npm run type-check`
+- `npm run test:run`
+- `npm run build`
+- `npm run qa:editor`

@@ -1,0 +1,227 @@
+﻿.code-editor-scope .me-preview-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px), #0b0c0e;
+  background-size: 32px 32px;
+  overflow: hidden;
+}
+
+.code-editor-scope .me-stage-meta {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  color: #858a92;
+  font-size: 12px;
+  border-bottom: 1px solid #22252a;
+  background: rgba(13, 14, 16, 0.92);
+}
+
+.code-editor-scope .me-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.code-editor-scope .me-meta-btn,
+.code-editor-scope .me-icon-btn {
+  border: 1px solid #2c3035;
+  border-radius: 6px;
+  background: #17191c;
+  color: #d8dce2;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-meta-btn {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.code-editor-scope .me-meta-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.code-editor-scope .me-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.code-editor-scope .me-meta-btn:hover,
+.code-editor-scope .me-icon-btn:hover {
+  background: #202328;
+}
+
+.code-editor-scope .me-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px;
+  overflow: hidden;
+  position: relative;
+}
+
+.code-editor-scope .me-stage.me-stage-drop-active::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: 90;
+  border: 2px dashed rgba(10, 132, 255, 0.7);
+  border-radius: 10px;
+  background: rgba(10, 132, 255, 0.08);
+  pointer-events: none;
+}
+
+.code-editor-scope .me-stage-drop-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #cfe3ff;
+  font-size: 14px;
+  font-weight: 550;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.code-editor-scope .me-property-align-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) 1px repeat(3, 1fr);
+  overflow: hidden;
+  border: 1px solid #30353c;
+  border-radius: 5px;
+}
+
+.code-editor-scope .me-property-align-actions button {
+  min-width: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #30353c;
+  background: #181b20;
+  color: #cbd0d7;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-property-align-actions button:last-child {
+  border-right: 0;
+}
+.code-editor-scope .me-property-align-actions button:hover {
+  background: #282d34;
+  color: #0a84ff;
+}
+
+.code-editor-scope .me-canvas-shell {
+  position: relative;
+  flex: 0 0 auto;
+  height: auto;
+}
+
+.code-editor-scope .me-preview-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 4px;
+  background: #000;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: grab;
+  touch-action: none;
+}
+
+.code-editor-scope .me-preview-canvas.me-dragging {
+  cursor: grabbing;
+}
+
+.code-editor-scope .me-snap-guide {
+  position: absolute;
+  z-index: 5;
+  display: block;
+  background: #ff405f;
+  box-shadow: 0 0 0 1px rgba(255, 64, 95, 0.18);
+  pointer-events: none;
+}
+
+.code-editor-scope .me-snap-guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+}
+
+.code-editor-scope .me-snap-guide-h {
+  right: 0;
+  left: 0;
+  height: 1px;
+  transform: translateY(-0.5px);
+}
+
+.code-editor-scope .me-asset-preview-overlay {
+  position: absolute;
+  inset: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  border: 0;
+  padding: 0;
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  cursor: default;
+  border-radius: 4px;
+}
+
+.code-editor-scope .me-asset-preview-overlay img,
+.code-editor-scope .me-asset-preview-overlay video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.code-editor-scope .me-asset-preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3a3f46;
+  border-radius: 6px;
+  background: rgba(17, 19, 23, 0.9);
+  color: #fff;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-asset-preview-close:hover {
+  background: #292e35;
+}
+
+/* Properties Panel Controls */
