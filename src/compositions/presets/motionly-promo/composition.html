@@ -1,7 +1,7 @@
 <template id="motionly-promo-template">
   <!-- HTML/CSS is the authored visual source. Motion lives in ./timeline.js. -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
     .promo {
       --ink: #111318;
@@ -17,7 +17,13 @@
       overflow: hidden;
       color: var(--ink);
       background: var(--paper);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family:
+        "Inter",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
       isolation: isolate;
     }
 
@@ -32,6 +38,7 @@
     .ambient-gradient,
     .ambient-waves,
     .ambient-burst,
+    .burn-red-flash,
     .grid {
       position: absolute;
       inset: 0;
@@ -49,13 +56,36 @@
     /* Background color morph for the conversational "Seriously" beat */
     .witty-bg-curtain {
       background:
-        radial-gradient(circle at 20% 80%, rgba(92, 224, 208, 0.35) 0%, transparent 45%),
-        radial-gradient(circle at 80% 20%, rgba(202, 255, 69, 0.3) 0%, transparent 45%),
+        radial-gradient(
+          circle at 20% 80%,
+          rgba(92, 224, 208, 0.35) 0%,
+          transparent 45%
+        ),
+        radial-gradient(
+          circle at 80% 20%,
+          rgba(202, 255, 69, 0.3) 0%,
+          transparent 45%
+        ),
         linear-gradient(135deg, #eefbf6 0%, #e3f7ef 50%, #d5f2e6 100%);
       pointer-events: none;
       z-index: 2;
       visibility: hidden;
       opacity: 0;
+    }
+
+    /* Subtle Red Screen Flash when credit burn hits zero */
+    .burn-red-flash {
+      background: radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 91, 79, 0.42) 0%,
+        rgba(255, 77, 77, 0.2) 45%,
+        transparent 75%
+      );
+      pointer-events: none;
+      z-index: 3;
+      visibility: hidden;
+      opacity: 0;
+      transform-origin: center;
     }
 
     .ambient-gradient {
@@ -79,13 +109,23 @@
     .aurora-a {
       left: -2%;
       bottom: -10%;
-      background: radial-gradient(circle, #5ce0d0 0, #5ce0d044 48%, transparent 72%);
+      background: radial-gradient(
+        circle,
+        #5ce0d0 0,
+        #5ce0d044 48%,
+        transparent 72%
+      );
     }
 
     .aurora-b {
       right: -5%;
       top: -12%;
-      background: radial-gradient(circle, #7657ff 0, #7657ff3b 48%, transparent 72%);
+      background: radial-gradient(
+        circle,
+        #7657ff 0,
+        #7657ff3b 48%,
+        transparent 72%
+      );
     }
 
     .aurora-c {
@@ -100,7 +140,13 @@
     /* Ambient burst strictly behind typography and hero */
     .ambient-burst {
       pointer-events: none;
-      background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95) 0%, rgba(92, 224, 208, 0.65) 30%, rgba(56, 239, 125, 0.35) 60%, transparent 75%);
+      background: radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(92, 224, 208, 0.65) 30%,
+        rgba(56, 239, 125, 0.35) 60%,
+        transparent 75%
+      );
       opacity: 0;
       transform: scale(0.6);
       z-index: 3;
@@ -130,8 +176,84 @@
         linear-gradient(#11131812 1px, transparent 1px),
         linear-gradient(90deg, #11131812 1px, transparent 1px);
       background-size: 48px 48px;
-      mask-image: linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 11%,
+        #000 89%,
+        transparent
+      );
       z-index: 1;
+    }
+
+    /* ── Floating Rising Cost Parallax Arrows (Beat 3: Agency Price Surge) ── */
+
+    .cost-arrows-stage {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      visibility: hidden;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .floating-arrow {
+      position: absolute;
+      color: #ff5b4f;
+      display: grid;
+      place-items: center;
+      will-change: transform, opacity;
+    }
+
+    .floating-arrow svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .arrow-1 {
+      left: 16%;
+      top: 62%;
+      width: 56px;
+      height: 56px;
+      opacity: 0.85;
+      filter: drop-shadow(0 6px 18px rgba(255, 91, 79, 0.45));
+    }
+
+    .arrow-2 {
+      right: 18%;
+      top: 58%;
+      width: 68px;
+      height: 68px;
+      opacity: 0.9;
+      filter: drop-shadow(0 8px 22px rgba(255, 91, 79, 0.5));
+    }
+
+    .arrow-3 {
+      left: 30%;
+      top: 72%;
+      width: 36px;
+      height: 36px;
+      opacity: 0.45;
+      filter: blur(4px);
+    }
+
+    .arrow-4 {
+      right: 28%;
+      top: 68%;
+      width: 42px;
+      height: 42px;
+      opacity: 0.5;
+      filter: blur(3px);
+    }
+
+    .arrow-5 {
+      left: 48%;
+      top: 78%;
+      width: 26px;
+      height: 26px;
+      opacity: 0.35;
+      filter: blur(6px);
     }
 
     /* ── Kinetic Problem Liquid Glass Container (Morphs to Coin & Mystery Box) ── */
@@ -144,7 +266,11 @@
       width: 1360px;
       height: 200px;
       border-radius: 36px;
-      background: radial-gradient(135% 100% at 50% 0%, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 100%);
+      background: radial-gradient(
+        135% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.48) 0%,
+        rgba(255, 255, 255, 0.12) 100%
+      );
       backdrop-filter: blur(40px) saturate(180%);
       -webkit-backdrop-filter: blur(40px) saturate(180%);
       border: 1px solid rgba(255, 255, 255, 0.75);
@@ -162,23 +288,28 @@
       overflow: visible;
     }
 
-    /* 1. Currency Coin (Beat 3: Morphs seamlessly into [ $ ] [ 1000$? ]) */
+    /* 1. Agency quote (morphs seamlessly from coin to price capsule) */
     .coin-inner-details {
       position: absolute;
       inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      place-items: center;
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
+      padding: 0;
     }
 
     .coin-glow {
       position: absolute;
       inset: -40px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255, 215, 0, 0.65) 0%, rgba(56, 239, 125, 0.4) 45%, transparent 72%);
+      background: radial-gradient(
+        circle,
+        rgba(255, 215, 0, 0.65) 0%,
+        rgba(56, 239, 125, 0.4) 45%,
+        transparent 72%
+      );
       filter: blur(24px);
     }
 
@@ -187,15 +318,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 14px;
+      gap: 0px;
       white-space: nowrap;
       transform-origin: center;
     }
 
     .coin-svg {
       position: relative;
-      width: 90px;
-      height: 90px;
+      width: 86px;
+      height: 86px;
       flex-shrink: 0;
       filter: drop-shadow(0 14px 30px rgba(255, 140, 0, 0.5));
     }
@@ -206,13 +337,12 @@
     }
 
     .coin-price-text {
-      display: inline-flex;
-      align-items: baseline;
-      font-size: 64px;
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
       font-weight: 850;
-      letter-spacing: -0.04em;
       color: #ffffff;
-      line-height: 1;
       text-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
       visibility: hidden;
       opacity: 0;
@@ -221,14 +351,21 @@
       transform-origin: left center;
     }
 
-    .question-mark-confused {
-      color: #ffef8a;
-      font-size: 50px;
-      font-weight: 850;
-      margin-left: 4px;
-      display: inline-block;
-      text-shadow: 0 0 14px rgba(255, 239, 138, 0.8);
-      transform-origin: center bottom;
+    .coin-price-kicker {
+      margin-bottom: 5px;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .coin-price-digits {
+      font-size: 56px;
+      line-height: 0.9;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
     }
 
     /* 2. Interactive Holographic 3D Mystery Box with Live Slot Roulette (Beat 4) */
@@ -247,7 +384,12 @@
       position: absolute;
       inset: -50px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(118, 87, 255, 0.75) 0%, rgba(92, 224, 208, 0.45) 50%, transparent 72%);
+      background: radial-gradient(
+        circle,
+        rgba(118, 87, 255, 0.75) 0%,
+        rgba(92, 224, 208, 0.45) 50%,
+        transparent 72%
+      );
       filter: blur(28px);
     }
 
@@ -260,7 +402,7 @@
       perspective: 800px;
     }
 
-    /* Hologram Slot Roulette above the box */
+    /* Motion-design failure chips emitted by the mystery box */
     .hologram-beam {
       position: absolute;
       bottom: 95px;
@@ -275,29 +417,84 @@
       z-index: 8;
     }
 
-    .slot-reel {
-      padding: 8px 18px;
-      border-radius: 16px;
-      background: rgba(17, 19, 24, 0.92);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(92, 224, 208, 0.6);
-      box-shadow: 0 10px 30px rgba(92, 224, 208, 0.35);
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-      transform-origin: center bottom;
+    .failure-chips {
+      position: relative;
+      width: 1px;
+      height: 1px;
     }
 
-    .slot-item {
+    .failure-chip {
+      position: absolute;
+      left: 0;
+      top: 0;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(17, 19, 24, 0.94);
+      border: 1px solid rgba(255, 91, 79, 0.58);
+      box-shadow: 0 12px 34px rgba(17, 19, 24, 0.3);
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 780;
+      white-space: nowrap;
+      transform-origin: center;
     }
 
-    .slot-item-emoji {
-      font-size: 20px;
+    .failure-chip::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      flex: 0 0 8px;
+      border-radius: 50%;
+      background: #ff5b4f;
+      box-shadow: 0 0 0 5px rgba(255, 91, 79, 0.14);
+    }
+
+    .failure-stage {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      visibility: hidden;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .failure-stage .failure-chips {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+    }
+
+    .failure-ripple {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 170px;
+      height: 170px;
+      margin: -85px 0 0 -85px;
+      border: 2px solid rgba(118, 87, 255, 0.3);
+      border-radius: 42px;
+      transform-origin: center;
+    }
+
+    .failure-particle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      margin: -5px 0 0 -5px;
+      border-radius: 50%;
+      background: #ff5b4f;
+      box-shadow: 0 0 18px rgba(255, 91, 79, 0.7);
+    }
+
+    .failure-particle:nth-of-type(even) {
+      background: #5ce0d0;
+      box-shadow: 0 0 18px rgba(92, 224, 208, 0.7);
     }
 
     .box-3d-svg {
@@ -361,7 +558,12 @@
     .shimmer-word {
       display: inline-block;
       color: var(--ink);
-      background: linear-gradient(96deg, var(--ink) 0%, #c753ff 50%, var(--ink) 100%);
+      background: linear-gradient(
+        96deg,
+        var(--ink) 0%,
+        #c753ff 50%,
+        var(--ink) 100%
+      );
       background-size: 200% 100%;
       background-clip: text;
       -webkit-background-clip: text;
@@ -375,6 +577,10 @@
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+    }
+
+    .sentence-gradient {
+      color: var(--ink);
     }
 
     /* Crisp solid warning coral */
@@ -423,6 +629,9 @@
       font-weight: 900;
       font-size: 92px;
       letter-spacing: -0.04em;
+      display: inline-block;
+      width: 175px;
+      text-align: center;
     }
 
     .burn-label {
@@ -510,18 +719,123 @@
       overflow: hidden;
     }
 
+    .intro-accent-stage {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 8;
+      width: 1120px;
+      height: 520px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .intro-accent-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border: 2px solid rgba(118, 87, 255, 0.13);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transform-origin: center;
+    }
+
+    .intro-accent-ring:nth-child(1) {
+      width: 260px;
+      height: 260px;
+    }
+
+    .intro-accent-ring:nth-child(2) {
+      width: 420px;
+      height: 420px;
+      border-color: rgba(92, 224, 208, 0.12);
+    }
+
+    .intro-accent-ring:nth-child(3) {
+      width: 590px;
+      height: 590px;
+      border-color: rgba(199, 83, 255, 0.09);
+    }
+
+    .intro-accent-line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 900px;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(118, 87, 255, 0.14),
+        transparent
+      );
+      transform: translate(-50%, -50%) rotate(-8deg);
+      transform-origin: center;
+    }
+
+    .intro-accent-line + .intro-accent-line {
+      width: 720px;
+      transform: translate(-50%, -50%) rotate(12deg);
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(92, 224, 208, 0.14),
+        transparent
+      );
+    }
+
+    .intro-accent-particle {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(118, 87, 255, 0.42);
+      box-shadow: 0 0 14px rgba(118, 87, 255, 0.28);
+    }
+
+    .intro-particle-a {
+      left: 23%;
+      top: 35%;
+    }
+    .intro-particle-b {
+      left: 35%;
+      top: 72%;
+      background: rgba(92, 224, 208, 0.46);
+    }
+    .intro-particle-c {
+      left: 67%;
+      top: 27%;
+    }
+    .intro-particle-d {
+      left: 76%;
+      top: 64%;
+      background: rgba(92, 224, 208, 0.4);
+    }
+    .intro-particle-e {
+      left: 47%;
+      top: 15%;
+      background: rgba(199, 83, 255, 0.34);
+    }
+    .intro-particle-f {
+      left: 56%;
+      top: 82%;
+      background: rgba(199, 83, 255, 0.3);
+    }
+
     /* ── Persistent Morph Shell: Prompt Pill ➔ Product Window ➔ Brand Token ── */
 
     .morph-shell {
       position: absolute;
       z-index: 16;
       left: 350px;
-      top: 481px;
+      top: 421px;
       width: 1220px;
-      height: 118px;
+      height: 210px;
       overflow: hidden;
       border-radius: 28px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(250, 248, 242, 0.88) 100%);
+      background: rgba(252, 252, 250, 0.96);
       backdrop-filter: blur(32px) saturate(160%);
       -webkit-backdrop-filter: blur(32px) saturate(160%);
       border: 1px solid rgba(255, 255, 255, 0.95);
@@ -542,10 +856,10 @@
       position: absolute;
       inset: 0;
       z-index: 4;
-      padding: 24px 210px 24px 38px;
+      padding: 28px 34px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       visibility: hidden;
       opacity: 0;
     }
@@ -555,7 +869,7 @@
       z-index: 1;
       inset: 0;
       border-radius: inherit;
-      background: linear-gradient(95deg, #caff4552, #5ce0d02c 55%, transparent);
+      background: rgba(92, 224, 208, 0.08);
       transform: scaleX(0);
       transform-origin: left;
     }
@@ -563,9 +877,9 @@
     .prompt-label {
       position: relative;
       z-index: 2;
-      margin: 0 0 6px;
-      color: #7c7e7a;
-      font-size: 12px;
+      margin: 0 0 14px;
+      color: #686a66;
+      font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -575,8 +889,9 @@
       position: relative;
       z-index: 2;
       margin: 0;
-      min-height: 40px;
-      font-size: 32px;
+      min-height: 44px;
+      max-width: 1080px;
+      font-size: 29px;
       line-height: 1.15;
       font-weight: 640;
       letter-spacing: -0.038em;
@@ -586,7 +901,7 @@
     .typing-caret {
       display: inline-block;
       width: 3px;
-      height: 32px;
+      height: 29px;
       margin-left: 4px;
       vertical-align: -5px;
       border-radius: 999px;
@@ -595,28 +910,59 @@
 
     .generate-button {
       position: absolute;
-      right: 22px;
-      top: 50%;
-      transform: translateY(-50%);
-      height: 64px;
-      padding: 0 26px;
-      border-radius: 18px;
+      right: 28px;
+      bottom: 22px;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 50%;
       display: flex;
+      justify-content: center;
       align-items: center;
-      gap: 12px;
       background: var(--ink);
       color: #fff;
-      font-size: 17px;
-      font-weight: 750;
       box-shadow: 0 20px 50px #11131828;
     }
 
     .generate-button i {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
+      border-top: 2px solid currentColor;
+      border-right: 2px solid currentColor;
+      transform: rotate(-45deg) translate(-1px, 1px);
+    }
+
+    .prompt-tools {
+      position: absolute;
+      left: 28px;
+      bottom: 22px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .prompt-tool {
+      height: 40px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(17, 19, 24, 0.12);
+      border-radius: 12px;
+      color: #555752;
+      background: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      font-weight: 720;
+    }
+
+    .prompt-tool-add {
+      width: 40px;
+      padding: 0;
+      justify-content: center;
       border-radius: 50%;
-      background: var(--aqua);
-      box-shadow: 0 0 0 7px #5ce0d021;
+      font-size: 23px;
+      font-weight: 500;
     }
 
     /* Product screenshot face */
@@ -645,8 +991,8 @@
     }
 
     .face-brand-token svg {
-      width: 50px;
-      height: 50px;
+      width: 76px;
+      height: 76px;
     }
 
     .logo-outer-path,
@@ -661,7 +1007,7 @@
       stroke-dashoffset: 240;
     }
 
-    /* ── High-End Minimal Outro CTA Scene ── */
+    /* ── High-End Minimal Outro CTA Scene (Clean Pure Typography, No Containers) ── */
 
     .cta-scene {
       position: absolute;
@@ -685,14 +1031,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 32px;
+      gap: 22px;
     }
 
     .cta-headline {
       margin: 0;
-      font-size: 72px;
+      font-size: 76px;
       line-height: 1.1;
-      font-weight: 700;
+      font-weight: 750;
       letter-spacing: -0.045em;
       color: var(--ink);
     }
@@ -700,34 +1046,45 @@
     .cta-button {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      height: 64px;
-      padding: 0 38px;
-      border-radius: 20px;
-      background: var(--ink);
-      color: #fff;
-      font-size: 19px;
-      font-weight: 750;
-      letter-spacing: -0.01em;
-      box-shadow: 0 18px 45px #11131822;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: #72757d;
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      transform-origin: center;
+    }
+
+    .cta-button svg {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
     }
   </style>
 
   <div class="promo" data-edit="promo-root">
     <!-- SVG Defs definitions -->
-    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+    <svg
+      style="position: absolute; width: 0; height: 0; overflow: hidden"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id="wave-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#5ce0d0" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#7657ff" stop-opacity="0.08"/>
+          <stop offset="0%" stop-color="#5ce0d0" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="#7657ff" stop-opacity="0.08" />
         </linearGradient>
         <linearGradient id="wave-grad-2" x1="100%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#caff45" stop-opacity="0.16"/>
-          <stop offset="100%" stop-color="#5ce0d0" stop-opacity="0.08"/>
+          <stop offset="0%" stop-color="#caff45" stop-opacity="0.16" />
+          <stop offset="100%" stop-color="#5ce0d0" stop-opacity="0.08" />
         </linearGradient>
         <linearGradient id="wave-grad-3" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#7657ff" stop-opacity="0.16"/>
-          <stop offset="100%" stop-color="#ff5ba7" stop-opacity="0.08"/>
+          <stop offset="0%" stop-color="#7657ff" stop-opacity="0.16" />
+          <stop offset="100%" stop-color="#ff5ba7" stop-opacity="0.08" />
         </linearGradient>
       </defs>
     </svg>
@@ -735,6 +1092,7 @@
     <!-- Ambient Canvas Background with Dynamic Lighting Auroras -->
     <div class="world" data-edit="world"></div>
     <div class="witty-bg-curtain" data-edit="witty-bg-curtain"></div>
+    <div class="burn-red-flash" data-edit="burn-red-flash"></div>
     <div class="ambient-gradient" data-edit="ambient-gradient">
       <div class="aurora aurora-a"></div>
       <div class="aurora aurora-b"></div>
@@ -744,31 +1102,147 @@
 
     <!-- Fluid Ambient Wave Background -->
     <div class="ambient-waves" data-edit="ambient-waves">
-      <svg class="ambient-wave wave-1" viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="none">
-        <path d="M0,450 C380,320 820,580 1280,420 C1620,310 1820,390 1920,440 L1920,1080 L0,1080 Z" fill="url(#wave-grad-1)" />
+      <svg
+        class="ambient-wave wave-1"
+        viewBox="0 0 1920 1080"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0,450 C380,320 820,580 1280,420 C1620,310 1820,390 1920,440 L1920,1080 L0,1080 Z"
+          fill="url(#wave-grad-1)"
+        />
       </svg>
-      <svg class="ambient-wave wave-2" viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="none">
-        <path d="M0,580 C440,710 920,490 1380,620 C1680,700 1860,610 1920,570 L1920,1080 L0,1080 Z" fill="url(#wave-grad-2)" />
+      <svg
+        class="ambient-wave wave-2"
+        viewBox="0 0 1920 1080"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0,580 C440,710 920,490 1380,620 C1680,700 1860,610 1920,570 L1920,1080 L0,1080 Z"
+          fill="url(#wave-grad-2)"
+        />
       </svg>
-      <svg class="ambient-wave wave-3" viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="none">
-        <path d="M0,680 C360,560 880,780 1420,630 C1710,550 1850,620 1920,670 L1920,1080 L0,1080 Z" fill="url(#wave-grad-3)" />
+      <svg
+        class="ambient-wave wave-3"
+        viewBox="0 0 1920 1080"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0,680 C360,560 880,780 1420,630 C1710,550 1850,620 1920,670 L1920,1080 L0,1080 Z"
+          fill="url(#wave-grad-3)"
+        />
       </svg>
     </div>
 
     <div class="grid"></div>
 
+    <!-- Floating Rising Cost Parallax Arrows (Beat 3: Agency Price Surge) -->
+    <div class="cost-arrows-stage" data-edit="cost-arrows-stage">
+      <div class="floating-arrow arrow-1" data-edit="arrow-1">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+      </div>
+      <div class="floating-arrow arrow-2" data-edit="arrow-2">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+      </div>
+      <div class="floating-arrow arrow-3" data-edit="arrow-3">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+      </div>
+      <div class="floating-arrow arrow-4" data-edit="arrow-4">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+      </div>
+      <div class="floating-arrow arrow-5" data-edit="arrow-5">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+      </div>
+    </div>
+
     <!-- Liquid Glass Problem Morph Shape Container -->
     <div class="problem-morph-frame" data-edit="problem-morph-frame">
-      <!-- 1. Currency Coin Details (Beat 3: Morphs seamlessly into [ $ ] [ 1000$? ]) -->
+      <!-- 1. Agency quote details -->
       <div class="coin-inner-details" data-edit="coin-inner-details">
         <div class="coin-glow"></div>
         <div class="coin-content-lockup" data-edit="coin-content-lockup">
-          <svg class="coin-svg" data-edit="coin-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="38" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-dasharray="4 4"/>
-            <path class="dollar-path" d="M50 24V76M62 38C62 32.5 57 28 50 28C43 28 38 32.5 38 38C38 43.5 43 47 50 49C57 51 62 55.5 62 61C62 67.5 57 72 50 72C43 72 38 67.5 38 61" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg
+            class="coin-svg"
+            data-edit="coin-svg"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="50"
+              cy="50"
+              r="38"
+              stroke="rgba(255,255,255,0.8)"
+              stroke-width="2.5"
+              stroke-dasharray="4 4"
+            />
+            <path
+              class="dollar-path"
+              d="M50 24V76M62 38C62 32.5 57 28 50 28C43 28 38 32.5 38 38C38 43.5 43 47 50 49C57 51 62 55.5 62 61C62 67.5 57 72 50 72C43 72 38 67.5 38 61"
+              stroke="#ffffff"
+              stroke-width="6.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
           <span class="coin-price-text" data-edit="coin-price-text">
-            <span class="coin-price-digits" data-edit="coin-price-digits">1000$</span><span class="question-mark-confused">?</span>
+            <span class="coin-price-kicker">Agency quote</span>
+            <span class="coin-price-digits" data-edit="coin-price-digits"
+              >$1,000+</span
+            >
           </span>
         </div>
       </div>
@@ -777,40 +1251,93 @@
       <div class="box-inner-details" data-edit="box-inner-details">
         <div class="box-glow"></div>
         <div class="box-3d-scene" data-edit="box-3d-scene">
-          <!-- Hologram Slot Roulette above the box -->
-          <div class="hologram-beam" data-edit="hologram-beam">
-            <div class="slot-reel" data-edit="slot-reel">
-              <span class="slot-item" data-edit="slot-text">🎬 Expected Video</span>
-            </div>
-          </div>
-
           <!-- 3D Isometric Mystery Box with Openable Lid -->
-          <svg class="box-3d-svg" data-edit="box-3d-svg" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            class="box-3d-svg"
+            data-edit="box-3d-svg"
+            viewBox="0 0 140 140"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <!-- Box Bottom/Walls -->
-            <polygon points="20,50 70,76 70,118 20,92" fill="url(#box-wall-l-grad)" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
-            <polygon points="70,76 120,50 120,92 70,118" fill="url(#box-wall-r-grad)" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
-            
+            <polygon
+              points="20,50 70,76 70,118 20,92"
+              fill="url(#box-wall-l-grad)"
+              stroke="rgba(255,255,255,0.7)"
+              stroke-width="2"
+            />
+            <polygon
+              points="70,76 120,50 120,92 70,118"
+              fill="url(#box-wall-r-grad)"
+              stroke="rgba(255,255,255,0.7)"
+              stroke-width="2"
+            />
+
             <!-- Box Open Lid (Animates up!) -->
             <g class="box-lid-group" data-edit="box-lid-group">
-              <polygon points="70,18 120,44 70,70 20,44" fill="url(#box-lid-grad)" stroke="#ffffff" stroke-width="2.5"/>
-              <path class="box-lid-q" d="M70 36C72.5 36 74.5 38 74.5 40.5C74.5 43 72 45 70 47V49M70 53H70.02" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <polygon
+                points="70,18 120,44 70,70 20,44"
+                fill="url(#box-lid-grad)"
+                stroke="#ffffff"
+                stroke-width="2.5"
+              />
+              <path
+                class="box-lid-q"
+                d="M70 36C72.5 36 74.5 38 74.5 40.5C74.5 43 72 45 70 47V49M70 53H70.02"
+                stroke="#ffffff"
+                stroke-width="3.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </g>
 
             <!-- Neon Laser Scanner -->
-            <line class="box-scan-beam" data-edit="box-scan-beam" x1="20" y1="70" x2="120" y2="70" stroke="#5ce0d0" stroke-width="3.5" stroke-linecap="round" filter="drop-shadow(0 0 8px #5ce0d0)"/>
+            <line
+              class="box-scan-beam"
+              data-edit="box-scan-beam"
+              x1="20"
+              y1="70"
+              x2="120"
+              y2="70"
+              stroke="#5ce0d0"
+              stroke-width="3.5"
+              stroke-linecap="round"
+              filter="drop-shadow(0 0 8px #5ce0d0)"
+            />
 
             <defs>
-              <linearGradient id="box-wall-l-grad" x1="20" y1="50" x2="70" y2="118" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#7657FF"/>
-                <stop offset="1" stop-color="#3D1B99"/>
+              <linearGradient
+                id="box-wall-l-grad"
+                x1="20"
+                y1="50"
+                x2="70"
+                y2="118"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#7657FF" />
+                <stop offset="1" stop-color="#3D1B99" />
               </linearGradient>
-              <linearGradient id="box-wall-r-grad" x1="70" y1="76" x2="120" y2="118" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#5CE0D0"/>
-                <stop offset="1" stop-color="#1B6E64"/>
+              <linearGradient
+                id="box-wall-r-grad"
+                x1="70"
+                y1="76"
+                x2="120"
+                y2="118"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#5CE0D0" />
+                <stop offset="1" stop-color="#1B6E64" />
               </linearGradient>
-              <linearGradient id="box-lid-grad" x1="20" y1="18" x2="120" y2="70" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#A78BFA"/>
-                <stop offset="1" stop-color="#5CE0D0"/>
+              <linearGradient
+                id="box-lid-grad"
+                x1="20"
+                y1="18"
+                x2="120"
+                y2="70"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#A78BFA" />
+                <stop offset="1" stop-color="#5CE0D0" />
               </linearGradient>
             </defs>
           </svg>
@@ -818,13 +1345,39 @@
       </div>
     </div>
 
+    <!-- Independent particle stage persists after the mystery box collapses -->
+    <div class="failure-stage" data-edit="failure-stage">
+      <span class="failure-ripple"></span>
+      <span class="failure-ripple"></span>
+      <span class="failure-ripple"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <span class="failure-particle"></span>
+      <div class="failure-chips" data-edit="failure-chips">
+        <span class="failure-chip" data-edit="failure-chip-type"
+          >Warped typography</span
+        >
+        <span class="failure-chip" data-edit="failure-chip-logo"
+          >Broken logo timing</span
+        >
+        <span class="failure-chip" data-edit="failure-chip-brand"
+          >Off-brand transitions</span
+        >
+      </div>
+    </div>
+
     <!-- Pure Editorial Kinetic Typography Stage (Strictly Centered) -->
     <section class="editorial-stage" data-edit="editorial-stage">
       <!-- Thought 1 -->
       <div class="editorial-beat beat-1" data-edit="editorial-beat-1">
-        <h2 class="editorial-text">
+        <h2 class="editorial-text sentence-gradient">
           <span>Startups need</span>
-          <span class="shimmer-word">great launch videos.</span>
+          <span>great launch videos.</span>
         </h2>
       </div>
 
@@ -880,14 +1433,20 @@
       </div>
 
       <!-- Thought 8: "Seriously." (Solid bold ink text, NO GRADIENT) -->
-      <div class="editorial-beat beat-seriously" data-edit="editorial-seriously">
+      <div
+        class="editorial-beat beat-seriously"
+        data-edit="editorial-seriously"
+      >
         <h2 class="editorial-text punch-headline solid-punch-text">
           <span>Seriously.</span>
         </h2>
       </div>
 
       <!-- Thought 9: "We have a UI for you to edit everything." (Solid bold text) -->
-      <div class="editorial-beat beat-ui-promise" data-edit="editorial-ui-promise">
+      <div
+        class="editorial-beat beat-ui-promise"
+        data-edit="editorial-ui-promise"
+      >
         <h2 class="editorial-text solid-punch-text">
           <span>We have a UI for you to edit everything.</span>
         </h2>
@@ -901,7 +1460,10 @@
       </div>
 
       <!-- Thought 11: "...keep prompting." (Solid bold text, morphs smoothly into Prompt Pill!) -->
-      <div class="editorial-beat beat-keep-prompting" data-edit="editorial-keep-prompting">
+      <div
+        class="editorial-beat beat-keep-prompting"
+        data-edit="editorial-keep-prompting"
+      >
         <h2 class="editorial-text punch-headline solid-punch-text">
           <span>...keep prompting.</span>
         </h2>
@@ -918,23 +1480,71 @@
       </div>
     </div>
 
+    <div class="intro-accent-stage" data-edit="intro-accent-stage">
+      <span class="intro-accent-ring"></span>
+      <span class="intro-accent-ring"></span>
+      <span class="intro-accent-ring"></span>
+      <span class="intro-accent-line"></span>
+      <span class="intro-accent-line"></span>
+      <span class="intro-accent-particle intro-particle-a"></span>
+      <span class="intro-accent-particle intro-particle-b"></span>
+      <span class="intro-accent-particle intro-particle-c"></span>
+      <span class="intro-accent-particle intro-particle-d"></span>
+      <span class="intro-accent-particle intro-particle-e"></span>
+      <span class="intro-accent-particle intro-particle-f"></span>
+    </div>
+
     <!-- Pure Continuous Hero Intro & Giant Sentence Lockup (100% Single Unified DOM Element) -->
     <div class="intro-hero-beat" data-edit="intro-hero-beat">
       <div class="intro-logo-box" data-edit="intro-logo-box">
-        <svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path class="intro-logo-outer" d="M55 154V66C55 57.2 65.9 53.1 71.8 59.7L110 102.5L148.2 59.7C154.1 53.1 165 57.2 165 66V154" stroke="url(#intro-logo-grad)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-          <path class="intro-logo-inner" d="M80 154V105L105.8 133.4C108 135.8 112 135.8 114.2 133.4L140 105V154" stroke="white" stroke-opacity="0.75" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg
+          width="220"
+          height="220"
+          viewBox="0 0 220 220"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            class="intro-logo-outer"
+            d="M55 154V66C55 57.2 65.9 53.1 71.8 59.7L110 102.5L148.2 59.7C154.1 53.1 165 57.2 165 66V154"
+            stroke="url(#intro-logo-grad)"
+            stroke-width="18"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            class="intro-logo-inner"
+            d="M80 154V105L105.8 133.4C108 135.8 112 135.8 114.2 133.4L140 105V154"
+            stroke="white"
+            stroke-opacity="0.75"
+            stroke-width="14"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
           <defs>
-            <linearGradient id="intro-logo-grad" x1="55" y1="62" x2="170" y2="160" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#8AB4FF"/>
-              <stop offset="1" stop-color="#7CF7C5"/>
+            <linearGradient
+              id="intro-logo-grad"
+              x1="55"
+              y1="62"
+              x2="170"
+              y2="160"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stop-color="#8AB4FF" />
+              <stop offset="1" stop-color="#7CF7C5" />
             </linearGradient>
           </defs>
         </svg>
       </div>
-      <span class="intro-word-prefix" data-edit="intro-word-prefix">Introducing</span>
-      <span class="shimmer-word intro-brand-name" data-edit="intro-brand-name">Motionly.</span>
-      <span class="intro-rest-statement" data-edit="intro-rest-statement">delivers on-demand launch videos.</span>
+      <span class="intro-word-prefix" data-edit="intro-word-prefix"
+        >Introducing</span
+      >
+      <span class="shimmer-word intro-brand-name" data-edit="intro-brand-name"
+        >Motionly.</span
+      >
+      <span class="intro-rest-statement" data-edit="intro-rest-statement"
+        >delivers on-demand launch videos.</span
+      >
     </div>
 
     <!-- Persistent Hero Morph Shell: Prompt Pill ➔ Product Window ➔ Brand Token -->
@@ -943,13 +1553,20 @@
 
       <!-- Face A: Prompt Input Pill -->
       <div class="face-prompt" data-edit="face-prompt">
-        <p class="prompt-label">Ask Motionly</p>
+        <p class="prompt-label">Describe your launch video</p>
         <p class="prompt-text">
-          <span data-edit="build-question">Make me a product launch ad</span>
+          <span data-edit="build-question"
+            >Create a 20-second launch film for our product</span
+          >
           <span class="typing-caret"></span>
         </p>
+        <div class="prompt-tools">
+          <span class="prompt-tool prompt-tool-add">+</span>
+          <span class="prompt-tool">Brand kit</span>
+          <span class="prompt-tool">16:9</span>
+        </div>
         <div class="generate-button" data-edit="generate-button">
-          <i></i><span>Generate</span>
+          <i></i>
         </div>
       </div>
 
@@ -963,27 +1580,71 @@
 
       <!-- Face C: Outro Brand Token -->
       <div class="face-brand-token" data-edit="face-brand-token">
-        <svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path class="logo-outer-path" d="M55 154V66C55 57.2 65.9 53.1 71.8 59.7L110 102.5L148.2 59.7C154.1 53.1 165 57.2 165 66V154" stroke="url(#cta-logo-grad)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-          <path class="logo-inner-path" d="M80 154V105L105.8 133.4C108 135.8 112 135.8 114.2 133.4L140 105V154" stroke="white" stroke-opacity="0.75" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg
+          width="220"
+          height="220"
+          viewBox="0 0 220 220"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            class="logo-outer-path"
+            d="M55 154V66C55 57.2 65.9 53.1 71.8 59.7L110 102.5L148.2 59.7C154.1 53.1 165 57.2 165 66V154"
+            stroke="url(#cta-logo-grad)"
+            stroke-width="18"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            class="logo-inner-path"
+            d="M80 154V105L105.8 133.4C108 135.8 112 135.8 114.2 133.4L140 105V154"
+            stroke="white"
+            stroke-opacity="0.75"
+            stroke-width="14"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
           <defs>
-            <linearGradient id="cta-logo-grad" x1="55" y1="62" x2="170" y2="160" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#8AB4FF"/>
-              <stop offset="1" stop-color="#7CF7C5"/>
+            <linearGradient
+              id="cta-logo-grad"
+              x1="55"
+              y1="62"
+              x2="170"
+              y2="160"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stop-color="#8AB4FF" />
+              <stop offset="1" stop-color="#7CF7C5" />
             </linearGradient>
           </defs>
         </svg>
       </div>
     </div>
 
-    <!-- High-End Minimal Outro CTA Scene -->
+    <!-- High-End Minimal Outro CTA Scene (Clean Pure Typography, No Containers) -->
     <section class="cta-scene" data-edit="cta">
       <div class="cta-content" data-edit="cta-content">
         <h2 class="cta-headline" data-edit="final-headline">
-          <span>Make your product</span>
-          <span class="shimmer-word">move.</span>
+          <span>Video Generated by</span>
+          <span class="shimmer-word">Motionly</span>
         </h2>
-        <div class="cta-button" data-edit="final-cta">Get Started</div>
+        <div class="cta-button" data-edit="final-cta">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path
+              d="M3 12h18M12 3c2.3 2.5 3.5 5.5 3.5 9s-1.2 6.5-3.5 9c-2.3-2.5-3.5-5.5-3.5-9S9.7 5.5 12 3z"
+            />
+          </svg>
+          <span>Visit motionly.site</span>
+        </div>
       </div>
     </section>
   </div>

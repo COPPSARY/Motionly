@@ -1,4 +1,4 @@
 interface:
   display_name: "Write Motionly"
-  short_description: "Direct code-first SaaS product cinematography"
-  default_prompt: "Use $write-motionly to create a continuous startup or SaaS product film with semantic HTML/SVG in composition.html, caller-owned GSAP choreography in timeline.js, a thin index.ts adapter, motion bridges, transformation-based handoffs, real product UI behavior, UI cinematography, kinetic typography, truthful timeline spans, and browser verification; never use placeholder SaaS screens or a .motion file."
+  short_description: "Direct continuous code-first product films"
+  default_prompt: "Use $write-motionly to direct a cohesive Motionly product film with a clear story spine, readable pacing, full-sentence kinetic typography, semantic background motion, persistent morph or match-cut carriers, authentic product UI, truthful timeline metadata, and preview/export parity."

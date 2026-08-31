@@ -1,4 +1,7 @@
+import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import type { CompositionRuntime } from "./runtime";
+
+const embeddedImageCache = new Map<string, Promise<string>>();
 
 async function blobAsDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -18,9 +21,16 @@ async function inlineImages(source: Element, clone: Element): Promise<void> {
       const target = cloneImages[index];
       const url = image.currentSrc || image.src;
       if (!target || !url || url.startsWith("data:")) return;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Could not embed ${url} for export.`);
-      target.src = await blobAsDataUrl(await response.blob());
+      let embeddedImage = embeddedImageCache.get(url);
+      if (!embeddedImage) {
+        embeddedImage = fetch(url).then(async (response) => {
+          if (!response.ok)
+            throw new Error(`Could not embed ${url} for export.`);
+          return blobAsDataUrl(await response.blob());
+        });
+        embeddedImageCache.set(url, embeddedImage);
+      }
+      target.src = await embeddedImage;
     }),
   );
 }
@@ -28,6 +38,8 @@ async function inlineImages(source: Element, clone: Element): Promise<void> {
 async function imageFromSvg(svg: string): Promise<HTMLImageElement> {
   const image = new Image();
   image.decoding = "sync";
+  // Blob URLs containing foreignObject taint Chrome canvases, which prevents
+  // WebCodecs from constructing a VideoFrame. A data URL stays origin-clean.
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   await image.decode();
   return image;
@@ -71,6 +83,101 @@ export async function exportPng(
       else reject(new Error("PNG encoding failed."));
     }, "image/png");
   });
+}
+
+export async function exportVideo(
+  runtime: CompositionRuntime,
+  onProgress?: (progress: number, statusText: string) => void,
+  fps = runtime.definition.fps,
+): Promise<Blob> {
+  const { width, height, duration } = runtime.definition;
+  if (
+    typeof VideoEncoder === "undefined" ||
+    typeof VideoFrame === "undefined"
+  ) {
+    throw new Error(
+      "MP4 export requires a browser with WebCodecs support. Use the latest Chrome or Edge.",
+    );
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("2D canvas export is unavailable.");
+
+  const config: VideoEncoderConfig = {
+    codec: fps > 30 ? "avc1.42002a" : "avc1.420028",
+    width,
+    height,
+    bitrate: fps > 30 ? 20_000_000 : 12_000_000,
+    framerate: fps,
+    hardwareAcceleration: "prefer-hardware",
+    latencyMode: "quality",
+  };
+  const support = await VideoEncoder.isConfigSupported(config);
+  if (!support.supported) {
+    throw new Error(
+      `This browser cannot encode H.264 MP4 video at 1080p${fps}.`,
+    );
+  }
+
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: { codec: "avc", width, height, frameRate: fps },
+    fastStart: "in-memory",
+  });
+  let encoderError: Error | undefined;
+  const encoder = new VideoEncoder({
+    output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
+    error: (error) => {
+      encoderError = error;
+    },
+  });
+  encoder.configure(support.config ?? config);
+
+  const initialTime = runtime.time;
+  const wasPlaying = runtime.snapshot.playing;
+  runtime.pause();
+
+  const totalFrames = Math.max(1, Math.ceil(duration * fps));
+  const frameDuration = Math.round(1_000_000 / fps);
+
+  try {
+    for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+      runtime.seek(frameIndex / fps);
+
+      const frameCanvas = await renderCompositionFrame(runtime, 1);
+      context.drawImage(frameCanvas, 0, 0);
+
+      const frame = new VideoFrame(canvas, {
+        timestamp: frameIndex * frameDuration,
+        duration: frameDuration,
+      });
+      encoder.encode(frame, { keyFrame: frameIndex % (fps * 2) === 0 });
+      frame.close();
+
+      if (encoder.encodeQueueSize > 8) await encoder.flush();
+      if (encoderError) throw encoderError;
+
+      const completedFrames = frameIndex + 1;
+      const pct = Math.round((completedFrames / totalFrames) * 100);
+      onProgress?.(
+        completedFrames / totalFrames,
+        `Encoding MP4 at ${fps} FPS... ${pct}%`,
+      );
+    }
+
+    await encoder.flush();
+    if (encoderError) throw encoderError;
+    muxer.finalize();
+    return new Blob([target.buffer], { type: "video/mp4" });
+  } finally {
+    encoder.close();
+    runtime.seek(initialTime);
+    if (wasPlaying) runtime.play();
+  }
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {
