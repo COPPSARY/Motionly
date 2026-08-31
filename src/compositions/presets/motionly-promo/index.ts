@@ -218,7 +218,7 @@ const scenes: readonly SceneDefinition[] = authoredScenes.map((scene) => ({
   ...scene,
   start: scene.start * MOTIONLY_PROMO_RETIME_FACTOR,
   duration: scene.duration * MOTIONLY_PROMO_RETIME_FACTOR,
-  tracks: scene.tracks.map((track) => ({
+  tracks: scene.tracks?.map((track) => ({
     ...track,
     start: track.start * MOTIONLY_PROMO_RETIME_FACTOR,
     end: track.end * MOTIONLY_PROMO_RETIME_FACTOR,
