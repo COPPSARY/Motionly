@@ -453,6 +453,16 @@
   padding: 18px;
 }
 
+.code-editor-scope .project-asset-thumbnail.photo-thumbnail img {
+  object-fit: cover;
+  padding: 0;
+}
+
+.code-editor-scope .compact-panel-empty {
+  min-height: 180px;
+  padding: 22px 14px;
+}
+
 .code-editor-scope .project-asset-grid .me-asset-info {
   display: grid;
   gap: 3px;
@@ -621,6 +631,55 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.code-editor-scope .promo-thumbnail {
+  padding: 12px;
+  background:
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(139, 108, 255, 0.36),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 18% 82%,
+      rgba(94, 234, 212, 0.22),
+      transparent 42%
+    ),
+    #090a0e;
+}
+
+.code-editor-scope .promo-thumbnail-art {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #f7f7f2;
+  text-align: left;
+}
+
+.code-editor-scope .promo-thumbnail-art small,
+.code-editor-scope .promo-thumbnail-art i {
+  color: #8e939d;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.code-editor-scope .promo-thumbnail-art strong {
+  font-size: 20px;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+}
+
+.code-editor-scope .promo-thumbnail-art em {
+  color: #d8ff55;
+  font-style: normal;
 }
 
 .code-editor-scope .me-preset-info {

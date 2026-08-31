@@ -1,9 +1,20 @@
+export type SceneTrackKind = "Text" | "Element" | "SVG" | "Camera";
+
+export interface SceneTrack {
+  id: string;
+  label: string;
+  kind: SceneTrackKind;
+  start: number;
+  end: number;
+}
+
 export interface SceneDefinition {
   id: string;
   label: string;
   start: number;
   duration: number;
   accent: string;
+  tracks?: readonly SceneTrack[];
 }
 
 export interface CompositionContext {

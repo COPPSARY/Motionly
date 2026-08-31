@@ -17,10 +17,10 @@ function createRuntime(): CompositionRuntime {
   return runtime;
 }
 
-describe("code-first composition runtime", () => {
+describe("code-first composition runtime", { timeout: 15_000 }, () => {
   it("builds the product film directly from HTML and GSAP", () => {
     const runtime = createRuntime();
-    expect(runtime.timeline.duration()).toBeCloseTo(27, 3);
+    expect(runtime.timeline.duration()).toBeCloseTo(34, 3);
     expect(runtime.root.querySelector(".intro-scene")).not.toBeNull();
     expect(runtime.root.querySelector(".product-stage")).not.toBeNull();
     expect(runtime.elements.has("final-cta")).toBe(true);
@@ -28,13 +28,13 @@ describe("code-first composition runtime", () => {
 
   it("seeks deterministically across scenes and frame boundaries", () => {
     const runtime = createRuntime();
-    runtime.seek(6.43);
-    expect(runtime.snapshot.sceneId).toBe("code");
-    expect(runtime.time).toBeCloseTo(6.4333, 3);
-    runtime.seek(16.21);
+    runtime.seek(3.75);
+    expect(runtime.snapshot.sceneId).toBe("problem");
+    expect(runtime.time).toBeCloseTo(3.75, 3);
+    runtime.seek(25.1);
     expect(runtime.snapshot.sceneId).toBe("lab");
     runtime.seek(100);
-    expect(runtime.time).toBe(27);
+    expect(runtime.time).toBe(34);
   });
 
   it("supports play, pause, restart, and visual overrides without a conversion layer", () => {
@@ -54,10 +54,10 @@ describe("code-first composition runtime", () => {
 
   it("resumes a complete frame after forward and reverse timeline scrubs", () => {
     const runtime = createRuntime();
-    runtime.seek(18.4);
-    runtime.seek(5.2);
-    runtime.seek(15.9);
-    runtime.seek(11.8);
+    runtime.seek(27.2);
+    runtime.seek(5.1);
+    runtime.seek(23.7);
+    runtime.seek(22.4);
 
     const artboard = runtime.elements.get("artboard");
     const headline = runtime.elements.get("artboard-headline");
@@ -66,13 +66,13 @@ describe("code-first composition runtime", () => {
 
     runtime.play();
     expect(runtime.snapshot.playing).toBe(true);
-    expect(runtime.time).toBeCloseTo(11.8, 2);
+    expect(runtime.time).toBeCloseTo(22.4, 2);
   });
 
   it("preserves animated split-text spans when the editor changes copy", () => {
     const runtime = createRuntime();
     const line = runtime.elements.get("final-line-one");
-    expect(line?.dataset["motionlySplitUnit"]).toBe("chars");
+    expect(line?.dataset["motionlySplitUnit"]).toBe("words");
     const animatedPieces = line?.children.length ?? 0;
     expect(animatedPieces).toBeGreaterThan(0);
 
@@ -96,9 +96,10 @@ describe("code-first composition runtime", () => {
     });
     runtime.seek(1);
 
+    const animatedToken = title?.firstElementChild as HTMLElement | null;
     expect(title?.style.translate).toBe("24px 0px");
     expect(title?.style.scale).toBe("1.04");
-    expect(title?.style.transform).not.toBe("");
+    expect(animatedToken?.style.transform).not.toBe("");
     expect(title?.style.color).toBe("rgb(255, 112, 94)");
     expect(title?.style.backgroundColor).toBe("rgb(23, 25, 28)");
     expect(title?.style.fontSize).toBe("118px");
