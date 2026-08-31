@@ -1,6 +1,7 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount } from "svelte";
   import {
+    ArrowLeft,
     Bot,
     Braces,
     Download,
@@ -27,6 +28,7 @@
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
+  import { deriveSceneTracks, type SceneTrack } from "./timeline-data";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
   import "./styles/content-panel.css";
@@ -39,59 +41,13 @@
   type EditorTab =
     "media" | "audio" | "text" | "effects" | "scenes" | "ai" | "settings";
 
-  interface SceneTrack {
-    id: string;
-    label: string;
-    kind: "Text" | "Element" | "SVG" | "Camera";
-  }
+  type TimelineMode = "project" | "scene";
 
   interface AssistantMessage {
     role: "user" | "assistant";
     text: string;
   }
 
-  const sceneTracks: Record<string, readonly SceneTrack[]> = {
-    brand: [
-      { id: "manifesto-design", label: "Everything", kind: "Text" },
-      { id: "manifesto-motion", label: "One place", kind: "Text" },
-      { id: "manifesto-web-line", label: "Write with the web", kind: "Text" },
-      { id: "manifesto-direct", label: "Direct every frame", kind: "Text" },
-      { id: "manifesto-stack-line", label: "HTML CSS GSAP", kind: "Text" },
-      { id: "manifesto-timeline", label: "Editable timeline", kind: "Text" },
-    ],
-    code: [
-      { id: "code-card", label: "HTML source", kind: "Element" },
-      { id: "live-card", label: "Live output", kind: "Element" },
-      { id: "visual-title", label: "Launch", kind: "Text" },
-      { id: "visual-subtitle", label: "With rhythm", kind: "Text" },
-      { id: "metric-fps", label: "FPS metric", kind: "Element" },
-      { id: "metric-timeline", label: "Timeline metric", kind: "Element" },
-      { id: "metric-dom", label: "DOM metric", kind: "Element" },
-      { id: "manifesto-code", label: "Speed statement", kind: "Text" },
-    ],
-    studio: [
-      { id: "studio-window", label: "Fullscreen stage", kind: "Element" },
-      { id: "artboard-headline", label: "Editable statement", kind: "Text" },
-      { id: "editable-proof", label: "Editable controls", kind: "Element" },
-    ],
-    lab: [
-      { id: "lab-one", label: "Every layer", kind: "Text" },
-      { id: "lab-timeline", label: "Timeline", kind: "Text" },
-      { id: "signal-path", label: "Motion curve", kind: "SVG" },
-      { id: "layer-type", label: "Type layer", kind: "Element" },
-      { id: "layer-layout", label: "Layout layer", kind: "Element" },
-      { id: "layer-camera", label: "Camera layer", kind: "Camera" },
-      { id: "export-dock", label: "Export progress", kind: "Element" },
-    ],
-    cta: [
-      { id: "final-index", label: "Motionly label", kind: "Text" },
-      { id: "final-line-one", label: "Make it", kind: "Text" },
-      { id: "final-line-two", label: "Move", kind: "Text" },
-      { id: "final-subtitle", label: "Product description", kind: "Text" },
-      { id: "final-cta-label", label: "CTA label", kind: "Text" },
-      { id: "final-product", label: "Product mark", kind: "Element" },
-    ],
-  };
   const textElementTags = new Set([
     "B",
     "BUTTON",
@@ -126,6 +82,8 @@
   let assistantDraft = "";
   let assistantMessages: AssistantMessage[] = [];
   let timelineDetailsOpen = false;
+  let timelineMode: TimelineMode = "project";
+  let sourceOpen = false;
 
   onMount(() => {
     runtime = new CompositionRuntime(demoComposition, previewRoot);
@@ -183,21 +141,33 @@
   }
 
   function visibleSceneTracks(): readonly SceneTrack[] {
-    return sceneTracks[selectedSceneId] ?? [];
+    const scene = selectedScene();
+    if (!scene) return [];
+    return deriveSceneTracks(scene, runtime?.elements);
   }
 
-  function scenePlayheadPosition(): number {
-    const current = selectedScene();
-    if (!current) return 0;
+  function timelineStart(): number {
+    return timelineMode === "project" ? 0 : (selectedScene()?.start ?? 0);
+  }
+
+  function timelineDuration(): number {
+    return timelineMode === "project"
+      ? demoComposition.duration
+      : (selectedScene()?.duration ?? demoComposition.duration);
+  }
+
+  function timelinePlayheadPosition(): number {
+    const start = timelineStart();
+    const duration = timelineDuration();
     return Math.max(
       0,
-      Math.min(100, ((snapshot.time - current.start) / current.duration) * 100),
+      Math.min(100, ((snapshot.time - start) / duration) * 100),
     );
   }
 
-  function sceneTicks(): number[] {
-    const duration = selectedScene()?.duration ?? 0;
-    const step = duration > 6 ? 2 : 1;
+  function timelineTicks(): number[] {
+    const duration = timelineDuration();
+    const step = timelineMode === "project" ? 5 : duration > 6 ? 2 : 1;
     const values = Array.from(
       { length: Math.floor(duration / step) + 1 },
       (_, index) => index * step,
@@ -207,13 +177,39 @@
   }
 
   function enterScene(scene: (typeof demoComposition.scenes)[number]): void {
-    selectedSceneId = scene.id;
-    selectedId = "";
+    const arrivalOffset = scene.id === "brand" ? 0.2 : 1.15;
     const visibleFrame = Math.min(
-      scene.start + scene.duration,
-      scene.start + 0.2,
+      scene.start + scene.duration - 1 / demoComposition.fps,
+      scene.start + arrivalOffset,
     );
     runtime?.seek(visibleFrame);
+    timelineMode = "scene";
+    selectedSceneId = scene.id;
+    selectedId = "";
+  }
+
+  function showProjectTimeline(): void {
+    timelineMode = "project";
+    selectedId = "";
+  }
+
+  function trackLeft(track: SceneTrack): number {
+    return Math.max(0, (track.start / timelineDuration()) * 100);
+  }
+
+  function trackWidth(track: SceneTrack): number {
+    return Math.max(
+      0.8,
+      ((track.end - track.start) / timelineDuration()) * 100,
+    );
+  }
+
+  function sceneLeft(scene: (typeof demoComposition.scenes)[number]): number {
+    return (scene.start / demoComposition.duration) * 100;
+  }
+
+  function sceneWidth(scene: (typeof demoComposition.scenes)[number]): number {
+    return (scene.duration / demoComposition.duration) * 100;
   }
 
   function selectTrack(track: SceneTrack): void {
@@ -308,6 +304,7 @@
   }
 
   function selectTab(tab: EditorTab): void {
+    sourceOpen = false;
     activeTab = tab;
     if (tab === "media") mediaTab = "assets";
     if (tab === "effects") mediaTab = "presets";
@@ -315,6 +312,7 @@
   }
 
   function openTimelineSource(): void {
+    sourceOpen = true;
     activeTab = "text";
     timelineDetailsOpen = false;
     showNotice("Opened the HTML source for the active GSAP composition.");
@@ -464,31 +462,74 @@
 
         <aside class="me-content-panel">
           <div class="me-panel-header">
-            <div class="me-panel-tabs">
+            {#if sourceOpen}
+              <div class="me-panel-title"><Braces size={15} /> Source</div>
               <button
-                class="me-panel-tab"
-                class:me-active={mediaTab === "assets"}
-                on:click={() => (mediaTab = "assets")}>Assets</button
+                class="me-header-icon-btn"
+                aria-label="Close composition source"
+                on:click={() => (sourceOpen = false)}><X size={15} /></button
               >
+            {:else if activeTab === "media"}
+              <div class="me-panel-tabs">
+                <button
+                  class="me-panel-tab"
+                  class:me-active={mediaTab === "assets"}
+                  on:click={() => (mediaTab = "assets")}>Assets</button
+                >
+                <button
+                  class="me-panel-tab"
+                  class:me-active={mediaTab === "presets"}
+                  on:click={() => (mediaTab = "presets")}>Presets</button
+                >
+              </div>
               <button
-                class="me-panel-tab"
-                class:me-active={mediaTab === "presets"}
-                on:click={() => (mediaTab = "presets")}>Presets</button
+                class="me-import-header-btn"
+                on:click={() => fileInput.click()}
+                ><Upload size={14} /> Import</button
               >
-            </div>
-            <button
-              class="me-import-header-btn"
-              on:click={() => fileInput.click()}
-              ><Upload size={14} /> Import</button
-            >
+            {:else}
+              <div class="me-panel-title">
+                {#if activeTab === "text"}<Type size={15} /> Text{:else if activeTab === "effects"}<Wand2
+                    size={15}
+                  /> Motion{:else if activeTab === "scenes"}<Layers3
+                    size={15}
+                  /> Scenes{:else if activeTab === "audio"}<Headphones
+                    size={15}
+                  /> Audio{:else if activeTab === "settings"}<Settings
+                    size={15}
+                  /> Settings{:else}<Bot size={15} /> Assistant{/if}
+              </div>
+            {/if}
           </div>
           <div class="me-panel-content">
-            {#if activeTab === "text"}
+            {#if sourceOpen}
               <h3 class="me-category-title">Composition source</h3>
               <div class="source-heading">
                 <Braces size={15} /> presets/motionly-promo/composition.html
               </div>
               <pre class="source-code">{demoComposition.sourcePreview}</pre>
+            {:else if activeTab === "text"}
+              <h3 class="me-category-title">Text in this scene</h3>
+              <p class="me-category-hint">
+                Select a text layer to edit it. Its timeline bar shows only when
+                it is actually visible.
+              </p>
+              <div class="me-layer-list">
+                {#each visibleSceneTracks().filter((track) => track.kind === "Text") as track}
+                  <button
+                    class="me-layer-row"
+                    class:me-selected={selectedId === track.id}
+                    on:click={() => selectTrack(track)}
+                  >
+                    <span class="me-layer-icon"><Type size={14} /></span>
+                    <span class="me-layer-copy"
+                      ><strong>{track.label}</strong><small
+                        >{(track.end - track.start).toFixed(1)}s visible</small
+                      ></span
+                    >
+                  </button>
+                {/each}
+              </div>
             {:else if activeTab === "scenes"}
               <h3 class="me-category-title">Scenes</h3>
               <div class="me-layer-list">
@@ -507,28 +548,57 @@
                   </button>
                 {/each}
               </div>
-            {:else if mediaTab === "presets" || activeTab === "effects"}
+            {:else if activeTab === "effects"}
+              <h3 class="me-category-title">Text animation</h3>
+              <p class="me-category-hint">
+                Motion presets write directly into the caller-owned GSAP
+                timeline.
+              </p>
+              <div class="me-effects-list">
+                <button
+                  class="me-effect-item"
+                  on:click={() =>
+                    showNotice("Word reveal is used in the active promo.")}
+                  ><Sparkles size={14} /> Word reveal · power4.out</button
+                >
+                <button
+                  class="me-effect-item"
+                  on:click={() =>
+                    showNotice("Character cascade is used in the CTA.")}
+                  ><Type size={14} /> Character cascade</button
+                >
+                <button
+                  class="me-effect-item"
+                  on:click={() =>
+                    showNotice("Directional handoffs overlap adjacent scenes.")}
+                  ><Layers3 size={14} /> Scene handoff</button
+                >
+              </div>
+            {:else if activeTab === "media" && mediaTab === "presets"}
               <h3 class="me-category-title">Promo video</h3>
               <div class="me-preset-grid">
                 <button
                   class="me-preset-card"
                   on:click={() => runtime?.restart()}
                 >
-                  <span class="me-preset-thumbnail promo-thumbnail"
-                    ><img src="/logo.svg" alt="" /></span
-                  >
+                  <span class="me-preset-thumbnail promo-thumbnail">
+                    <span class="promo-thumbnail-art"
+                      ><small>WRITE / DIRECT / EXPORT</small><strong
+                        >MAKE IT<br /><em>MOVE.</em></strong
+                      ><i>HTML · CSS · GSAP</i></span
+                    >
+                  </span>
                   <span class="me-preset-info"
-                    ><strong class="me-preset-name"
-                      >Continuous Product Film</strong
-                    ><small>27s · HTML/CSS + GSAP</small></span
+                    ><strong class="me-preset-name">Fast Product Story</strong
+                    ><small>20s · HTML/CSS + GSAP</small></span
                   >
                 </button>
               </div>
               <p class="panel-copy">
-                Overlapping scene handoffs, active UI states, shared progress,
-                and directed camera movement on one GSAP timeline.
+                Fast kinetic type, native product UI, overlapping handoffs, and
+                one directed GSAP timeline. No generated media.
               </p>
-            {:else}
+            {:else if activeTab === "media"}
               <h3 class="me-category-title">Project assets</h3>
               <div class="me-asset-grid project-asset-grid">
                 <div class="me-asset-card-wrap">
@@ -569,6 +639,18 @@
                 <button
                   class="me-import-media-button"
                   on:click={() => fileInput.click()}>Import</button
+                >
+              </div>
+            {:else}
+              <div class="me-properties-empty compact-panel-empty">
+                <Sparkles size={26} /><strong
+                  >{activeTab === "audio"
+                    ? "No audio yet"
+                    : "Editor settings"}</strong
+                ><span
+                  >{activeTab === "audio"
+                    ? "Import an audio file to add a waveform track."
+                    : "The demo uses project defaults for preview and export."}</span
                 >
               </div>
             {/if}
@@ -853,8 +935,16 @@
 
       <section class="storyboard-strip" aria-label="Storyboard">
         <div class="storyboard-strip__head">
-          <span class="storyboard-strip__title">Storyboard</span><span
-            class="storyboard-strip__meta"
+          {#if timelineMode === "scene"}
+            <button
+              class="storyboard-strip__back"
+              on:click={showProjectTimeline}
+              ><ArrowLeft size={13} /> All scenes</button
+            >
+          {:else}
+            <span class="storyboard-strip__title">Storyboard</span>
+          {/if}
+          <span class="storyboard-strip__meta"
             >{demoComposition.scenes.length} scenes · {demoComposition.duration}s</span
           >
         </div>
@@ -885,14 +975,25 @@
 
       <section
         class="me-timeline-panel"
-        style={`--playhead-position:${scenePlayheadPosition()}%`}
+        style={`--playhead-position:${timelinePlayheadPosition()}%`}
       >
         <button class="me-timeline-resizer" aria-label="Resize timeline"
           ><span></span></button
         >
         <div class="me-timeline-toolbar">
           <div class="me-timeline-context">
-            <Layers3 size={14} /><span>{selectedScene()?.label}</span>
+            {#if timelineMode === "scene"}
+              <button
+                class="me-timeline-back"
+                on:click={showProjectTimeline}
+                aria-label="Back to all scenes"><ArrowLeft size={14} /></button
+              >
+              <Layers3 size={14} /><span>{selectedScene()?.label}</span>
+            {:else}
+              <Layers3 size={14} /><span>All scenes</span><small
+                >Master timeline</small
+              >
+            {/if}
           </div>
           <div class="me-playback-controls">
             <button
@@ -928,7 +1029,10 @@
                 <span
                   >{demoComposition.duration}s · {demoComposition.fps} FPS</span
                 >
-                <span>{selectedScene()?.label} · {timecode(snapshot.time)}</span
+                <span
+                  >{timelineMode === "project"
+                    ? "All scenes"
+                    : selectedScene()?.label} · {timecode(snapshot.time)}</span
                 >
                 <button on:click={openTimelineSource}>Open HTML source</button>
               </div>
@@ -941,61 +1045,114 @@
         >
           <div class="me-ruler-row">
             <div class="me-track-label me-ruler-label">
-              {selectedScene()?.label}
+              {timelineMode === "project" ? "MASTER" : selectedScene()?.label}
             </div>
             <div class="me-ruler">
-              {#each sceneTicks() as tick}<span
+              {#each timelineTicks() as tick}<span
                   class="me-ruler-tick"
-                  style:left={`${(tick / (selectedScene()?.duration ?? 1)) * 100}%`}
+                  style:left={`${(tick / timelineDuration()) * 100}%`}
                   >{tick}s</span
                 >{/each}
               <span
                 class="me-playhead-marker"
-                style:left={`${scenePlayheadPosition()}%`}
+                style:left={`${timelinePlayheadPosition()}%`}
               ></span>
               <input
                 class="me-timeline-scrubber"
                 aria-label="Timeline scrubber"
                 type="range"
-                min={selectedScene()?.start ?? 0}
-                max={(selectedScene()?.start ?? 0) +
-                  (selectedScene()?.duration ?? demoComposition.duration)}
+                min={timelineStart()}
+                max={timelineStart() + timelineDuration()}
                 step={1 / demoComposition.fps}
                 value={snapshot.time}
                 on:input={seek}
               />
             </div>
           </div>
-          {#each visibleSceneTracks() as track}
-            <div
-              class="me-timeline-row"
-              class:me-selected={selectedId === track.id}
-              data-track-id={track.id}
-            >
-              <button class="me-track-label" on:click={() => selectTrack(track)}
+          {#if timelineMode === "project"}
+            <div class="me-timeline-row project-timeline-row">
+              <button class="me-track-label" on:click={showProjectTimeline}
                 ><span class="me-track-thumb"><Layers3 size={12} /></span><span
                   class="me-track-copy"
-                  ><strong>{track.label}</strong><small
-                    >{track.kind} · {track.id}</small
+                  ><strong>Scenes</strong><small>Entire composition</small
                   ></span
                 ></button
               >
-              <div class="me-track-lane">
-                <button
-                  class="me-clip me-element-clip scene-timeline-clip"
-                  class:me-selected-clip={selectedId === track.id}
-                  style:left="0%"
-                  style:width="100%"
-                  on:click={() => selectTrack(track)}
-                  ><span
-                    class="clip-accent"
-                    style:background={selectedScene()?.accent}
-                  ></span><span class="me-clip-text">{track.label}</span
-                  ></button
-                >
+              <div class="me-track-lane project-scene-lane">
+                {#each demoComposition.scenes as scene}
+                  <button
+                    class="me-clip me-project-scene-clip"
+                    style:left={`${sceneLeft(scene)}%`}
+                    style:width={`${sceneWidth(scene)}%`}
+                    style:--scene-accent={scene.accent}
+                    on:click={() => enterScene(scene)}
+                  >
+                    <span class="clip-accent" style:background={scene.accent}
+                    ></span>
+                    <span class="me-clip-text">{scene.label}</span>
+                    <small>{scene.duration}s</small>
+                  </button>
+                {/each}
               </div>
             </div>
-          {/each}
+            <div class="me-timeline-row project-timeline-row">
+              <div class="me-track-label">
+                <span class="me-track-thumb"><Sparkles size={12} /></span><span
+                  class="me-track-copy"
+                  ><strong>Handoffs</strong><small>0.7s overlaps</small></span
+                >
+              </div>
+              <div class="me-track-lane project-scene-lane">
+                {#each demoComposition.scenes.slice(1) as scene}
+                  <button
+                    class="me-project-handoff"
+                    aria-label={`Preview handoff into ${scene.label}`}
+                    style:left={`${((scene.start - 0.7) / demoComposition.duration) * 100}%`}
+                    style:width={`${(0.7 / demoComposition.duration) * 100}%`}
+                    on:click={() => runtime?.seek(scene.start - 0.35)}
+                    ><span></span></button
+                  >
+                {/each}
+              </div>
+            </div>
+          {:else}
+            {#each visibleSceneTracks() as track}
+              <div
+                class="me-timeline-row"
+                class:me-selected={selectedId === track.id}
+                data-track-id={track.id}
+              >
+                <button
+                  class="me-track-label"
+                  on:click={() => selectTrack(track)}
+                  ><span class="me-track-thumb"><Layers3 size={12} /></span
+                  ><span class="me-track-copy"
+                    ><strong>{track.label}</strong><small
+                      >{track.kind} · {track.start.toFixed(
+                        1,
+                      )}–{track.end.toFixed(1)}s</small
+                    ></span
+                  ></button
+                >
+                <div class="me-track-lane">
+                  <button
+                    class="me-clip me-element-clip scene-timeline-clip"
+                    class:me-selected-clip={selectedId === track.id}
+                    style:left={`${trackLeft(track)}%`}
+                    style:width={`${trackWidth(track)}%`}
+                    on:click={() => selectTrack(track)}
+                    ><span
+                      class="clip-accent"
+                      style:background={selectedScene()?.accent}
+                    ></span><span class="me-clip-text">{track.label}</span
+                    ><small class="me-clip-duration"
+                      >{(track.end - track.start).toFixed(1)}s</small
+                    ></button
+                  >
+                </div>
+              </div>
+            {/each}
+          {/if}
         </div>
       </section>
     </div>

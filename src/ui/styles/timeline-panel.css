@@ -63,6 +63,33 @@
   font-size: 11px;
 }
 
+.code-editor-scope .me-timeline-context small {
+  margin-left: 2px;
+  color: #626871;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.code-editor-scope .me-timeline-back {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #2d3036;
+  border-radius: 5px;
+  background: #191b1f;
+  color: #aab0b9;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-timeline-back:hover {
+  border-color: #454a53;
+  color: #f1f3f5;
+}
+
 .code-editor-scope .me-timeline-context span {
   max-width: 180px;
   overflow: hidden;
@@ -546,6 +573,80 @@
   background: #34383d;
   box-sizing: border-box;
   overflow: visible;
+}
+
+.code-editor-scope .me-project-scene-clip {
+  top: 3px;
+  height: 35px;
+  min-width: 52px;
+  border-color: color-mix(in srgb, var(--scene-accent) 32%, #383c43);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--scene-accent) 13%, #23262a),
+    #24272c 58%
+  );
+  cursor: pointer;
+}
+
+.code-editor-scope .me-project-scene-clip:hover {
+  z-index: 4;
+  border-color: color-mix(in srgb, var(--scene-accent) 70%, #ffffff);
+  background: color-mix(in srgb, var(--scene-accent) 18%, #2a2d32);
+}
+
+.code-editor-scope .me-project-scene-clip .me-clip-text {
+  right: 34px;
+  padding-left: 10px;
+  font-weight: 650;
+}
+
+.code-editor-scope .me-project-scene-clip small {
+  position: absolute;
+  z-index: 2;
+  right: 7px;
+  top: 9px;
+  color: #8b919a;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.code-editor-scope .me-project-handoff {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  bottom: 7px;
+  min-width: 16px;
+  padding: 0;
+  border: 1px solid rgba(112, 221, 184, 0.62);
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(112, 221, 184, 0.25),
+    rgba(112, 221, 184, 0.25) 3px,
+    rgba(112, 221, 184, 0.06) 3px,
+    rgba(112, 221, 184, 0.06) 6px
+  );
+  cursor: pointer;
+}
+
+.code-editor-scope .me-project-handoff:hover {
+  border-color: #91e8ca;
+  box-shadow: 0 0 10px rgba(112, 221, 184, 0.24);
+}
+
+.code-editor-scope .me-clip-duration {
+  position: absolute;
+  z-index: 2;
+  right: 6px;
+  top: 7px;
+  color: #a3a9b1;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.code-editor-scope .scene-timeline-clip .me-clip-text {
+  right: 38px;
 }
 
 .code-editor-scope .me-clip-media,

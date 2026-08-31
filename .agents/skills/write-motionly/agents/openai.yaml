@@ -1,4 +1,4 @@
 interface:
   display_name: "Write Motionly"
-  short_description: "Direct premium code-first GSAP motion compositions"
-  default_prompt: "Create or improve a Motionly HTML/CSS composition and GSAP timeline with semantic HTML/SVG, overlapping scene handoffs, readable scene phases, purposeful camera travel, deterministic preview/export, and real-browser visual playback verification. Keep TypeScript limited to the thin editor adapter."
+  short_description: "Direct code-first SaaS product cinematography"
+  default_prompt: "Use $write-motionly to create a continuous startup or SaaS product film with semantic HTML/SVG in composition.html, caller-owned GSAP choreography in timeline.js, a thin index.ts adapter, motion bridges, transformation-based handoffs, real product UI behavior, UI cinematography, kinetic typography, truthful timeline spans, and browser verification; never use placeholder SaaS screens or a .motion file."

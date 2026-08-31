@@ -20,6 +20,27 @@ export interface SceneHandoffOptions extends MotionOptions {
   distance?: number;
 }
 
+export interface CameraZoomPanOptions extends MotionOptions {
+  startScale?: number;
+  endScale?: number;
+  startX?: number;
+  endX?: number;
+  startY?: number;
+  endY?: number;
+}
+
+export interface WaveOptions extends MotionOptions {
+  totalDuration?: number;
+  yOffset?: number;
+  scaleXOffset?: number;
+}
+
+export interface GiantCropOptions extends MotionOptions {
+  startScale?: number;
+  endScale?: number;
+  panX?: number;
+}
+
 type Target = gsap.TweenTarget;
 
 export function reveal(
@@ -156,6 +177,23 @@ export function maskWipe(
   );
 }
 
+export function gradientSweep(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: MotionOptions & { fromPosition?: string; toPosition?: string } = {},
+): gsap.core.Timeline {
+  return timeline.fromTo(
+    target,
+    { backgroundPosition: options.fromPosition ?? "200% 0" },
+    {
+      backgroundPosition: options.toPosition ?? "0% 0",
+      duration: options.duration ?? 1.4,
+      ease: options.ease ?? "power2.inOut",
+    },
+    options.at,
+  );
+}
+
 export function rotateReveal(
   timeline: gsap.core.Timeline,
   target: Target,
@@ -249,6 +287,114 @@ export function cameraPull(
   );
 }
 
+export function cameraZoomPan(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: CameraZoomPanOptions = {},
+): gsap.core.Timeline {
+  return timeline.fromTo(
+    target,
+    {
+      scale: options.startScale ?? 2.6,
+      x: options.startX ?? 0,
+      y: options.startY ?? 0,
+      filter: "blur(12px)",
+      autoAlpha: 0,
+    },
+    {
+      scale: options.endScale ?? 1.0,
+      x: options.endX ?? 0,
+      y: options.endY ?? 0,
+      filter: "blur(0px)",
+      autoAlpha: 1,
+      duration: options.duration ?? 0.95,
+      ease: options.ease ?? "power3.out",
+    },
+    options.at,
+  );
+}
+
+export function giantKineticCrop(
+  timeline: gsap.core.Timeline,
+  element: HTMLElement,
+  options: GiantCropOptions = {},
+): HTMLElement[] {
+  const chars = splitText(element, "chars");
+  const startScale = options.startScale ?? 2.8;
+  const endScale = options.endScale ?? 1.0;
+  const duration = options.duration ?? 0.88;
+
+  timeline.fromTo(
+    element,
+    {
+      scale: startScale,
+      x: options.panX ?? 240,
+      filter: "blur(14px)",
+      autoAlpha: 0,
+    },
+    {
+      scale: endScale,
+      x: 0,
+      filter: "blur(0px)",
+      autoAlpha: 1,
+      duration,
+      ease: options.ease ?? "power3.out",
+    },
+    options.at,
+  );
+
+  chars.forEach((char, i) => {
+    const microOffset = i % 3 === 0 ? -16 : i % 3 === 1 ? 12 : -6;
+    timeline.fromTo(
+      char,
+      { y: microOffset * 2.5, autoAlpha: 0 },
+      {
+        y: 0,
+        autoAlpha: 1,
+        duration: duration * 0.7,
+        ease: "back.out(1.5)",
+      },
+      ((options.at as number) ?? 0) + i * 0.02,
+    );
+  });
+
+  return chars;
+}
+
+export function ambientWaves(
+  timeline: gsap.core.Timeline,
+  waves: Target[],
+  options: WaveOptions = {},
+): gsap.core.Timeline {
+  const totalDuration = options.totalDuration ?? 24;
+  const at = options.at ?? 0;
+
+  waves.forEach((wave, i) => {
+    timeline.fromTo(
+      wave,
+      {
+        y: (options.yOffset ?? -20) + i * 14,
+        x: i % 2 === 0 ? -40 : 40,
+        scaleX: options.scaleXOffset ?? 1.2,
+        scaleY: 1.05,
+        opacity: 0.32,
+      },
+      {
+        y: (options.yOffset ?? -20) - i * 14,
+        x: i % 2 === 0 ? 40 : -40,
+        scaleX: (options.scaleXOffset ?? 1.2) * 1.08,
+        scaleY: 1.12,
+        opacity: 0.46,
+        duration: totalDuration,
+        ease: "sine.inOut",
+      },
+      at,
+    );
+  });
+
+  return timeline;
+}
+
 export function sceneHandoff(
   timeline: gsap.core.Timeline,
   outgoing: Target,
@@ -336,6 +482,21 @@ export function splitText(
   element: HTMLElement,
   unit: "words" | "chars",
 ): HTMLElement[] {
+  if (element.dataset["motionlySplitUnit"] === unit) {
+    return Array.from(element.querySelectorAll(".motionly-split-item"));
+  }
+
+  const childElements = Array.from(element.children) as HTMLElement[];
+  if (childElements.length > 0) {
+    const allPieces: HTMLElement[] = [];
+    childElements.forEach((child) => {
+      const childPieces = splitText(child, unit);
+      allPieces.push(...childPieces);
+    });
+    element.dataset["motionlySplitUnit"] = unit;
+    return allPieces;
+  }
+
   const value = element.textContent ?? "";
   const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
   element.dataset["motionlySplitUnit"] = unit;
@@ -343,6 +504,7 @@ export function splitText(
   return pieces.map((piece) => {
     const span = document.createElement("span");
     span.textContent = piece;
+    span.className = "motionly-split-item";
     span.style.display = piece.trim() ? "inline-block" : "inline";
     element.append(span);
     return span;
@@ -369,4 +531,52 @@ export function textReveal(
     options.at,
   );
   return pieces;
+}
+
+export function wordSlideRotate(
+  timeline: gsap.core.Timeline,
+  element: HTMLElement,
+  options: StaggerOptions & { rotation?: number } = {},
+): HTMLElement[] {
+  const words = splitText(element, "words");
+  timeline.fromTo(
+    words,
+    {
+      y: options.distance ?? 42,
+      rotation: options.rotation ?? 4,
+      autoAlpha: 0,
+    },
+    {
+      y: 0,
+      rotation: 0,
+      autoAlpha: 1,
+      duration: options.duration ?? 0.58,
+      stagger: options.stagger ?? 0.045,
+      ease: options.ease ?? "power3.out",
+    },
+    options.at,
+  );
+  return words;
+}
+
+export function charSpringBounce(
+  timeline: gsap.core.Timeline,
+  element: HTMLElement,
+  options: StaggerOptions = {},
+): HTMLElement[] {
+  const chars = splitText(element, "chars");
+  timeline.fromTo(
+    chars,
+    { y: options.distance ?? 30, scale: 0.82, autoAlpha: 0 },
+    {
+      y: 0,
+      scale: 1,
+      autoAlpha: 1,
+      duration: options.duration ?? 0.48,
+      stagger: options.stagger ?? 0.025,
+      ease: options.ease ?? "back.out(1.7)",
+    },
+    options.at,
+  );
+  return chars;
 }
