@@ -44,16 +44,15 @@ describe("GSAP-first motion presets", () => {
   it("supports masks, camera moves, morphs, and stagger without hidden state", () => {
     const timeline = gsap.timeline({ paused: true });
     const camera = document.createElement("div");
-    const cards = [
-      document.createElement("div"),
-      document.createElement("div"),
-    ];
+    const firstCard = document.createElement("div");
+    const secondCard = document.createElement("div");
+    const cards = [firstCard, secondCard];
 
     presets.cameraPush(timeline, camera, { scale: 1.15, at: 0 });
-    presets.maskWipe(timeline, cards[0]!, { direction: "right", at: 0.2 });
+    presets.maskWipe(timeline, firstCard, { direction: "right", at: 0.2 });
     presets.morph(
       timeline,
-      cards[1]!,
+      secondCard,
       { borderRadius: 24, scale: 1.05 },
       { at: 0.4 },
     );

@@ -18,7 +18,10 @@ afterAll(() => {
 
 describe("code-first composition runtime", { timeout: 60_000 }, () => {
   it("builds the product film directly from HTML and GSAP", () => {
-    expect(runtime.timeline.duration()).toBeCloseTo(39, 3);
+    expect(runtime.timeline.duration()).toBeCloseTo(
+      demoComposition.duration,
+      3,
+    );
     expect(runtime.root.querySelector(".promo")).not.toBeNull();
     expect(runtime.elements.has("final-cta")).toBe(true);
     expect(runtime.elements.has("build-question")).toBe(true);
@@ -28,10 +31,14 @@ describe("code-first composition runtime", { timeout: 60_000 }, () => {
     runtime.seek(3.75);
     expect(runtime.snapshot.sceneId).toBe("problem");
     expect(runtime.time).toBeCloseTo(3.75, 3);
-    runtime.seek(23.1);
+    const solutionsStart = demoComposition.scenes.find(
+      (scene) => scene.id === "solutions",
+    )?.start;
+    expect(solutionsStart).toBeTypeOf("number");
+    runtime.seek((solutionsStart ?? 0) + 0.1);
     expect(runtime.snapshot.sceneId).toBe("solutions");
     runtime.seek(100);
-    expect(runtime.time).toBe(39);
+    expect(runtime.time).toBe(demoComposition.duration);
   });
 
   it("supports play, pause, restart, and visual overrides without a conversion layer", () => {

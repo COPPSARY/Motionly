@@ -1596,7 +1596,6 @@ export function buildPromoTimeline(context) {
       borderColor: "rgba(255, 255, 255, 0.14)",
       boxShadow: "0 14px 32px rgba(17, 19, 24, 0.14)",
       backdropFilter: "none",
-      webkitBackdropFilter: "none",
     },
     { duration: 0.65, ease: "power3.inOut", at: 35.3 },
   );
