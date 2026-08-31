@@ -194,6 +194,31 @@ export function gradientSweep(
   );
 }
 
+export function continuousTextGradient(
+  element: HTMLElement,
+  gradient = "linear-gradient(96deg, #111318 0%, #7657ff 42%, #c753ff 62%, #111318 100%)",
+): HTMLElement[] {
+  const words = splitText(element, "words").filter((word) =>
+    Boolean(word.textContent?.trim()),
+  );
+  const elementRect = element.getBoundingClientRect();
+  const gradientWidth = Math.max(1, element.scrollWidth);
+  const layoutRatio = gradientWidth / Math.max(1, elementRect.width);
+  words.forEach((word) => {
+    const offset =
+      (elementRect.left - word.getBoundingClientRect().left) * layoutRatio;
+    word.style.backgroundImage = gradient;
+    word.style.backgroundRepeat = "no-repeat";
+    word.style.backgroundSize = `${gradientWidth}px 100%`;
+    word.style.backgroundPosition = `${offset}px 0`;
+    word.style.backgroundClip = "text";
+    word.style.webkitBackgroundClip = "text";
+    word.style.webkitTextFillColor = "transparent";
+  });
+
+  return words;
+}
+
 export function rotateReveal(
   timeline: gsap.core.Timeline,
   target: Target,

@@ -40,20 +40,9 @@
 
 ## Showcase
 
-<table align="center">
-<tr>
-<th>Animation Preview</th>
-</tr>
-<tr>
-<td align="center">
-<img src=".github/assets/showcase-2.gif" alt="Motionly Animation">
-</td>
-</tr>
-</table>
-
-| Visual Editor |
-| :---: |
-| ![Motionly Editor](.github/assets/screenshot.jpg) |
+<p align="center">
+  <img src=".github/assets/motionly-showcase.gif" alt="Motionly product film showcase" width="720">
+</p>
 
 ---
 
@@ -68,7 +57,7 @@ Motionly combines normal HTML/CSS/JavaScript authoring with a visual editor, dir
 - Navigate scenes from the storyboard and inspect their timing on the editor timeline
 - Reuse a focused library of composable animation presets without introducing a custom animation language
 - Render images and SVG assets directly in the composition DOM
-- Export frames from the exact composition shown in the preview
+- Export PNG frames or a full H.264 MP4 from the exact composition shown in the preview
 
 HTML compositions are the project source. Motionly does not convert projects into a second format: preview and export mount the same HTML and seek the same GSAP timeline.
 
@@ -126,9 +115,9 @@ Open the local Vite URL, then use the existing editor to:
 3. Open scenes from the storyboard.
 4. Select an editable object in the preview.
 5. Adjust its visual properties in the inspector.
-6. Export the current rendered frame.
+6. Export the current PNG frame or render the full MP4 video.
 
-Inspect the 27-second HTML/CSS + GSAP product film in [`src/compositions/presets/motionly-promo/composition.html`](src/compositions/presets/motionly-promo/composition.html).
+Inspect the 58.5-second HTML/CSS + GSAP product film in [`src/compositions/presets/motionly-promo/composition.html`](src/compositions/presets/motionly-promo/composition.html).
 
 See the [introduction](docs/introduction.md), [architecture guide](docs/architecture.md), [editor guide](docs/editor.md), and [animation presets](docs/animation-presets.md) for the current workflow.
 

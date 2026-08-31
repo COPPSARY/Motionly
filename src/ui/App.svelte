@@ -24,7 +24,11 @@
     Wand2,
     X,
   } from "lucide-svelte";
-  import { downloadBlob, exportPng } from "../composition/exporter";
+  import {
+    downloadBlob,
+    exportPng,
+    exportVideo,
+  } from "../composition/exporter";
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
@@ -350,17 +354,45 @@
     fileInput.value = "";
   }
 
+  let exportStatus = "";
+
+  async function exportFullVideo(): Promise<void> {
+    if (!runtime || exporting) return;
+    exporting = true;
+    exportStatus = "Initializing video export...";
+    showNotice("Rendering full video export (1080p)...", 20000);
+    try {
+      const blob = await exportVideo(
+        runtime,
+        (_progress, statusText) => {
+          exportStatus = statusText;
+        },
+        demoComposition.fps,
+      );
+      downloadBlob(blob, `motionly-launch-ad-${demoComposition.fps}fps.mp4`);
+      showNotice("Video export successful! Download started.");
+    } catch (error) {
+      console.error("Video export failed:", error);
+      showNotice(
+        error instanceof Error ? error.message : "Video export failed.",
+      );
+    } finally {
+      exporting = false;
+      exportStatus = "";
+    }
+  }
+
   async function exportFrame(): Promise<void> {
     if (!runtime || exporting) return;
     exporting = true;
-    showNotice("Rendering the current composition frame…", 10000);
+    showNotice("Rendering current frame snapshot…", 6000);
     try {
       const blob = await exportPng(runtime, 1);
       downloadBlob(
         blob,
         `motionly-${Math.round(snapshot.time * demoComposition.fps)}.png`,
       );
-      showNotice("Export successful.");
+      showNotice("Frame PNG saved.");
     } catch (error) {
       showNotice(error instanceof Error ? error.message : "Export failed.");
     } finally {
@@ -402,11 +434,22 @@
         ><Save size={17} /><span>Save</span></button
       >
       <button
-        class="btn export-action"
+        class="btn"
+        title="Export Current Frame as PNG"
         on:click={exportFrame}
         disabled={exporting}
       >
-        <Download size={17} /><span>{exporting ? "Rendering…" : "Export"}</span>
+        <ImageIcon size={16} /><span>PNG</span>
+      </button>
+      <button
+        class="btn export-action"
+        title="Render and Download 1080p Full Video"
+        on:click={exportFullVideo}
+        disabled={exporting}
+      >
+        <Download size={17} /><span
+          >{exporting ? exportStatus || "Rendering…" : "Export Video"}</span
+        >
       </button>
     </div>
   </header>
