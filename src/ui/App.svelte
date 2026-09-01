@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { currentMotionlyUser, motionlyLoginUrl } from "../auth";
+  import type { MotionlyUser } from "../auth";
   import {
     ArrowLeft,
     Bot,
@@ -86,10 +88,16 @@
   let assistantDraft = "";
   let assistantMessages: AssistantMessage[] = [];
   let timelineDetailsOpen = false;
+  let currentUser: MotionlyUser | null = null;
+  let authChecked = false;
   let timelineMode: TimelineMode = "project";
   let sourceOpen = false;
 
   onMount(() => {
+    void currentMotionlyUser().then((user) => {
+      currentUser = user;
+      authChecked = true;
+    });
     runtime = new CompositionRuntime(demoComposition, previewRoot);
     const unsubscribe = runtime.subscribe((value) => {
       snapshot = value;
@@ -420,6 +428,22 @@
       <FileText size={16} /><span>product-demo.ts</span>
     </div>
     <div class="actions">
+      {#if authChecked}
+        {#if currentUser}
+          <span class="account-status" title={currentUser.email}>
+            <span class="account-status__dot" aria-hidden="true"></span>
+            <span>{currentUser.displayName || currentUser.email}</span>
+          </span>
+        {:else}
+          <a
+            class="account-status account-status--signed-out"
+            href={motionlyLoginUrl()}
+          >
+            <span class="account-status__dot" aria-hidden="true"></span>
+            <span>Not signed in</span>
+          </a>
+        {/if}
+      {/if}
       <input
         bind:this={fileInput}
         class="file-input"
