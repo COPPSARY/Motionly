@@ -7,6 +7,8 @@
     Bot,
     Braces,
     Download,
+    Eye,
+    EyeOff,
     FileText,
     FolderOpen,
     Headphones,
@@ -34,7 +36,12 @@
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
-  import { deriveSceneTracks, type SceneTrack } from "./timeline-data";
+  import {
+    deriveSceneTracks,
+    formatTimelineSeconds,
+    type SceneTrack,
+  } from "./timeline-data";
+  import AnimationControls from "./AnimationControls.svelte";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
   import "./styles/content-panel.css";
@@ -87,11 +94,29 @@
   let chatOpen = false;
   let assistantDraft = "";
   let assistantMessages: AssistantMessage[] = [];
-  let timelineDetailsOpen = false;
+  let editorRevision = 0;
+  let animationSpeed = 1;
+  let animationEase = "power3.inOut";
   let currentUser: MotionlyUser | null = null;
   let authChecked = false;
   let timelineMode: TimelineMode = "project";
   let sourceOpen = false;
+
+  interface SelectionRect {
+    visible: boolean;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }
+
+  let selectionRect: SelectionRect = {
+    visible: false,
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  };
 
   onMount(() => {
     void currentMotionlyUser().then((user) => {
@@ -102,10 +127,15 @@
     const unsubscribe = runtime.subscribe((value) => {
       snapshot = value;
       selectedSceneId = value.sceneId;
+      updateSelectionRect();
     });
-    const observer = new ResizeObserver(fitPreview);
+    const observer = new ResizeObserver(() => {
+      fitPreview();
+      updateSelectionRect();
+    });
     observer.observe(previewStage);
     fitPreview();
+    updateSelectionRect();
     return () => {
       unsubscribe();
       observer.disconnect();
@@ -124,25 +154,100 @@
     zoom = 1;
   }
 
+  function updateSelectionRect(): void {
+    if (!runtime || !selectedId || !previewRoot) {
+      selectionRect = { visible: false, left: 0, top: 0, width: 0, height: 0 };
+      return;
+    }
+    const element = runtime.elements.get(selectedId);
+    if (!element) {
+      selectionRect = { visible: false, left: 0, top: 0, width: 0, height: 0 };
+      return;
+    }
+    const style = getComputedStyle(element);
+    if (
+      style.visibility === "hidden" ||
+      style.display === "none" ||
+      Number(style.opacity) <= 0.01
+    ) {
+      selectionRect = { visible: false, left: 0, top: 0, width: 0, height: 0 };
+      return;
+    }
+    const rootRect = previewRoot.getBoundingClientRect();
+    const elRect = element.getBoundingClientRect();
+    const scale = rootRect.width / demoComposition.width;
+    if (scale <= 0 || elRect.width <= 0 || elRect.height <= 0) {
+      selectionRect = { visible: false, left: 0, top: 0, width: 0, height: 0 };
+      return;
+    }
+    selectionRect = {
+      visible: true,
+      left: (elRect.left - rootRect.left) / scale,
+      top: (elRect.top - rootRect.top) / scale,
+      width: elRect.width / scale,
+      height: elRect.height / scale,
+    };
+  }
+
   function togglePlayback(): void {
     if (!runtime) return;
     snapshot.playing ? runtime.pause() : runtime.play();
   }
 
   function selectFromPreview(event: MouseEvent): void {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(
+    const directTarget = (event.target as HTMLElement).closest<HTMLElement>(
       "[data-motionly-id]",
     );
-    if (target?.dataset["motionlyId"])
-      selectedId = target.dataset["motionlyId"];
+    const pointTargets = runtime
+      ? [...runtime.elements.entries()]
+          .filter(([, element]) => {
+            const bounds = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return (
+              bounds.width > 0 &&
+              bounds.height > 0 &&
+              event.clientX >= bounds.left &&
+              event.clientX <= bounds.right &&
+              event.clientY >= bounds.top &&
+              event.clientY <= bounds.bottom &&
+              style.visibility !== "hidden" &&
+              style.display !== "none" &&
+              Number(style.opacity) > 0.02
+            );
+          })
+          .sort(([, first], [, second]) => {
+            const firstBounds = first.getBoundingClientRect();
+            const secondBounds = second.getBoundingClientRect();
+            return (
+              firstBounds.width * firstBounds.height -
+              secondBounds.width * secondBounds.height
+            );
+          })
+      : [];
+    const hitId =
+      pointTargets[0]?.[0] ?? directTarget?.dataset["motionlyId"] ?? "";
+    if (!hitId) {
+      selectedId = "";
+      updateSelectionRect();
+      return;
+    }
+    timelineMode = "scene";
+    selectedSceneId = snapshot.sceneId;
+    selectedId = hitId;
+    syncAnimationControls();
+    updateSelectionRect();
   }
 
   function handlePreviewKey(event: KeyboardEvent): void {
-    if (event.key === "Escape") selectedId = "";
+    if (event.key === "Escape") {
+      selectedId = "";
+      updateSelectionRect();
+    }
   }
 
   function seek(event: Event): void {
     runtime?.seek(Number((event.currentTarget as HTMLInputElement).value));
+    updateSelectionRect();
   }
 
   function selectedScene() {
@@ -194,10 +299,10 @@
       scene.start + scene.duration - 1 / demoComposition.fps,
       scene.start + arrivalOffset,
     );
-    runtime?.seek(visibleFrame);
     timelineMode = "scene";
     selectedSceneId = scene.id;
     selectedId = "";
+    runtime?.seek(visibleFrame);
   }
 
   function showProjectTimeline(): void {
@@ -225,10 +330,52 @@
   }
 
   function selectTrack(track: SceneTrack): void {
+    const scene = selectedScene();
+    if (!runtime || !scene || !runtime.elements.has(track.id)) {
+      showNotice(
+        `The ${track.label} layer is not registered in this composition.`,
+      );
+      return;
+    }
+    const localTime = snapshot.time - scene.start;
+    if (localTime < track.start || localTime >= track.end) {
+      const previewOffset = Math.min(
+        0.15,
+        Math.max(0, (track.end - track.start) / 3),
+      );
+      runtime.seek(
+        scene.start +
+          Math.min(
+            track.end - 1 / demoComposition.fps,
+            track.start + previewOffset,
+          ),
+      );
+    }
     selectedId = track.id;
+    syncAnimationControls();
+    updateSelectionRect();
+  }
+
+  function syncAnimationControls(): void {
+    if (!runtime || !selectedId) {
+      animationSpeed = 1;
+      animationEase = "power3.inOut";
+      return;
+    }
+    const settings = runtime.getAnimationOverride(selectedId);
+    animationSpeed = settings.speed;
+    animationEase = settings.ease;
+  }
+
+  function selectedTrack(): SceneTrack | undefined {
+    if (!selectedId) return undefined;
+    return demoComposition.scenes
+      .flatMap((scene) => scene.tracks ?? [])
+      .find((track) => track.id === selectedId);
   }
 
   function currentOverride(): ElementOverride {
+    void editorRevision;
     return selectedId && runtime ? runtime.getOverride(selectedId) : {};
   }
 
@@ -240,6 +387,15 @@
     return (
       element.children.length === 0 && textElementTags.has(element.tagName)
     );
+  }
+
+  function editableTextValue(): string {
+    if (!runtime || !selectedId) return "";
+    const override = currentOverride().text;
+    if (override !== undefined) return override;
+    return (runtime.elements.get(selectedId)?.textContent ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function isSvgSelected(): boolean {
@@ -271,6 +427,37 @@
     return normalizedColor(style[property], fallback);
   }
 
+  function isBackgroundTransparent(): boolean {
+    if (!runtime || !selectedId) return true;
+    const override = currentOverride().backgroundColor;
+    if (override === "transparent") return true;
+    if (typeof override === "string" && override.trim()) {
+      return (
+        override.trim() === "transparent" ||
+        override.trim() === "rgba(0, 0, 0, 0)"
+      );
+    }
+    const element = runtime.elements.get(selectedId);
+    if (!element) return true;
+    const bg = getComputedStyle(element).backgroundColor;
+    if (!bg || bg === "transparent") return true;
+    const rgb = /^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?\s*\)$/i.exec(
+      bg,
+    );
+    return rgb !== null && rgb[4] !== undefined && Number(rgb[4]) === 0;
+  }
+
+  function effectiveBackgroundColorHex(): string {
+    const override = currentOverride().backgroundColor;
+    if (override && override !== "transparent") {
+      return normalizedColor(override, "#17191c");
+    }
+    const element = selectedId ? runtime?.elements.get(selectedId) : undefined;
+    if (!element) return "#17191c";
+    const bg = getComputedStyle(element).backgroundColor;
+    return normalizedColor(bg, "#17191c");
+  }
+
   function numericStyleValue(
     property: "fontSize" | "borderRadius",
     fallback: number,
@@ -288,6 +475,8 @@
     runtime.setOverride(selectedId, {
       [property]: Number((event.currentTarget as HTMLInputElement).value),
     });
+    editorRevision += 1;
+    updateSelectionRect();
   }
 
   function setText(event: Event): void {
@@ -295,6 +484,8 @@
     runtime.setOverride(selectedId, {
       text: (event.currentTarget as HTMLInputElement).value,
     });
+    editorRevision += 1;
+    updateSelectionRect();
   }
 
   function setColor(property: ColorProperty, event: Event): void {
@@ -302,11 +493,44 @@
     runtime.setOverride(selectedId, {
       [property]: (event.currentTarget as HTMLInputElement).value,
     });
+    editorRevision += 1;
+    updateSelectionRect();
   }
 
   function clearBackground(): void {
     if (!runtime || !selectedId) return;
     runtime.setOverride(selectedId, { backgroundColor: "transparent" });
+    editorRevision += 1;
+    updateSelectionRect();
+  }
+
+  function toggleSelectedLayer(): void {
+    if (!runtime || !selectedId) return;
+    runtime.setOverride(selectedId, {
+      hidden: !currentOverride().hidden,
+    });
+    editorRevision += 1;
+    updateSelectionRect();
+  }
+
+  function animationSettings() {
+    return selectedId && runtime
+      ? runtime.getAnimationOverride(selectedId)
+      : { speed: 1, ease: "power3.inOut", tweenCount: 0 };
+  }
+
+  function setAnimationSpeed(speed: number): void {
+    if (!runtime || !selectedId) return;
+    animationSpeed = speed;
+    runtime.setAnimationOverride(selectedId, {
+      speed: animationSpeed,
+    });
+  }
+
+  function setAnimationEase(ease: string): void {
+    if (!runtime || !selectedId) return;
+    animationEase = ease;
+    runtime.setAnimationOverride(selectedId, { ease });
   }
 
   function timecode(time: number): string {
@@ -326,7 +550,6 @@
   function openTimelineSource(): void {
     sourceOpen = true;
     activeTab = "text";
-    timelineDetailsOpen = false;
     showNotice("Opened the HTML source for the active GSAP composition.");
   }
 
@@ -566,6 +789,14 @@
                     size={15}
                   /> Settings{:else}<Bot size={15} /> Assistant{/if}
               </div>
+              {#if activeTab === "text"}
+                <button
+                  class="me-header-icon-btn"
+                  aria-label="Open composition HTML source"
+                  title="Open composition HTML source"
+                  on:click={openTimelineSource}><Braces size={15} /></button
+                >
+              {/if}
             {/if}
           </div>
           <div class="me-panel-content">
@@ -591,7 +822,7 @@
                     <span class="me-layer-icon"><Type size={14} /></span>
                     <span class="me-layer-copy"
                       ><strong>{track.label}</strong><small
-                        >{(track.end - track.start).toFixed(1)}s visible</small
+                        >{formatTimelineSeconds(track.end - track.start)} visible</small
                       ></span
                     >
                   </button>
@@ -609,7 +840,7 @@
                     <span class="me-layer-icon"><Layers3 size={14} /></span>
                     <span class="me-layer-copy"
                       ><strong>{scene.label}</strong><small
-                        >{scene.duration}s</small
+                        >{formatTimelineSeconds(scene.duration)}</small
                       ></span
                     >
                   </button>
@@ -800,12 +1031,43 @@
             on:keydown={handlePreviewKey}
           >
             <div
-              class="me-canvas-shell composition-canvas"
+              class="me-canvas-shell"
               style:width={`${demoComposition.width}px`}
               style:height={`${demoComposition.height}px`}
               style:transform={`scale(${fitScale * zoom})`}
-              bind:this={previewRoot}
-            ></div>
+            >
+              <div
+                class="composition-canvas"
+                style:width={`${demoComposition.width}px`}
+                style:height={`${demoComposition.height}px`}
+                bind:this={previewRoot}
+              ></div>
+              {#if selectionRect.visible && selectedId}
+                <div
+                  class="me-selection-overlay"
+                  style:left={`${selectionRect.left}px`}
+                  style:top={`${selectionRect.top}px`}
+                  style:width={`${selectionRect.width}px`}
+                  style:height={`${selectionRect.height}px`}
+                >
+                  <div class="me-selection-outline"></div>
+                  <div class="me-selection-handle handle-tl"></div>
+                  <div class="me-selection-handle handle-tr"></div>
+                  <div class="me-selection-handle handle-bl"></div>
+                  <div class="me-selection-handle handle-br"></div>
+                  <div class="me-selection-badge">
+                    <span class="badge-label"
+                      >{selectedTrack()?.label ?? selectedId}</span
+                    >
+                    <span class="badge-dims"
+                      >{Math.round(selectionRect.width)} × {Math.round(
+                        selectionRect.height,
+                      )}</span
+                    >
+                  </div>
+                </div>
+              {/if}
+            </div>
           </div>
         </main>
 
@@ -817,8 +1079,8 @@
             <div class="me-selection-summary">
               <span class="me-layer-icon"><Sparkles size={14} /></span>
               <span
-                ><strong>{selectedId}</strong><small
-                  >DOM composition element</small
+                ><strong>{selectedTrack()?.label ?? selectedId}</strong><small
+                  >{selectedId} · editable layer</small
                 ></span
               >
             </div>
@@ -828,14 +1090,13 @@
                   <label class="me-property-label" for="property-text"
                     >Text</label
                   >
-                  <textarea
+                  <input
                     id="property-text"
                     class="me-text-input"
-                    value={currentOverride().text ??
-                      runtime?.elements.get(selectedId)?.textContent ??
-                      ""}
+                    type="text"
+                    value={editableTextValue()}
                     on:input={setText}
-                  ></textarea>
+                  />
                 </div>
                 <div class="me-property-group">
                   <label class="me-property-label" for="property-font-size"
@@ -911,6 +1172,15 @@
                   on:input={(event) => setNumber("opacity", event)}
                 />
               </div>
+              {#if animationSettings().tweenCount > 0}
+                <AnimationControls
+                  speed={animationSpeed}
+                  ease={animationEase}
+                  tweenCount={animationSettings().tweenCount}
+                  onSpeed={setAnimationSpeed}
+                  onEase={setAnimationEase}
+                />
+              {/if}
               <div class="me-section-title me-appearance-title">Appearance</div>
               {#if isSvgSelected()}
                 <label class="me-property-group">
@@ -940,31 +1210,40 @@
                         ? "Text color"
                         : "Foreground color"}
                       type="color"
-                      value={colorValue("color", "#f7f5ef")}
+                      value={colorValue("color", "#111318")}
                       on:input={(event) => setColor("color", event)}
                     />
-                    <output>{colorValue("color", "#f7f5ef")}</output>
+                    <output>{colorValue("color", "#111318")}</output>
                   </span>
                 </label>
                 <div class="me-property-group">
                   <div class="me-property-label-row">
                     <span class="me-property-label">Background</span>
-                    <button
-                      class="me-property-action"
-                      type="button"
-                      on:click={clearBackground}>Clear</button
-                    >
+                    {#if isBackgroundTransparent()}
+                      <span class="me-property-pill-transparent"
+                        >Transparent</span
+                      >
+                    {:else}
+                      <button
+                        class="me-property-action"
+                        type="button"
+                        on:click={clearBackground}>Clear</button
+                      >
+                    {/if}
                   </div>
-                  <div class="me-color-control">
+                  <div
+                    class="me-color-control"
+                    class:me-transparent-bg={isBackgroundTransparent()}
+                  >
                     <input
                       class="me-color-swatch"
                       aria-label="Background color"
                       type="color"
-                      value={colorValue("backgroundColor", "#17191c")}
+                      value={effectiveBackgroundColorHex()}
                       on:input={(event) => setColor("backgroundColor", event)}
                     />
                     <output
-                      >{currentOverride().backgroundColor === "transparent"
+                      >{isBackgroundTransparent()
                         ? "transparent"
                         : colorValue("backgroundColor", "#17191c")}</output
                     >
@@ -988,6 +1267,16 @@
                   </div>
                 </div>
               {/if}
+              <button
+                class="me-layer-visibility"
+                class:me-restore={currentOverride().hidden}
+                type="button"
+                on:click={toggleSelectedLayer}
+              >
+                {#if currentOverride().hidden}<Eye size={14} /> Restore layer{:else}<EyeOff
+                    size={14}
+                  /> Remove layer{/if}
+              </button>
             </div>
           {:else}
             <div class="me-properties-empty">
@@ -1012,7 +1301,9 @@
             <span class="storyboard-strip__title">Storyboard</span>
           {/if}
           <span class="storyboard-strip__meta"
-            >{demoComposition.scenes.length} scenes · {demoComposition.duration}s</span
+            >{demoComposition.scenes.length} scenes · {formatTimelineSeconds(
+              demoComposition.duration,
+            )}</span
           >
         </div>
         <ol class="storyboard-strip__scenes">
@@ -1028,7 +1319,7 @@
                 <span class="storyboard-scene__swatch"></span><span
                   class="storyboard-scene__label">{scene.label}</span
                 ><span class="storyboard-scene__facts"
-                  ><span>{scene.duration}s</span><span
+                  ><span>{formatTimelineSeconds(scene.duration)}</span><span
                     class="storyboard-scene__members"
                     ><Layers3 size={11} /> Film</span
                   ></span
@@ -1082,29 +1373,7 @@
               >F{Math.round(snapshot.time * demoComposition.fps)}</span
             >
           </div>
-          <div class="me-timeline-actions">
-            <button
-              class="me-timeline-command"
-              aria-expanded={timelineDetailsOpen}
-              aria-controls="gsap-timeline-details"
-              on:click={() => (timelineDetailsOpen = !timelineDetailsOpen)}
-              ><Braces size={13} /> GSAP timeline</button
-            >
-            {#if timelineDetailsOpen}
-              <div class="me-timeline-popover" id="gsap-timeline-details">
-                <strong>Master GSAP timeline</strong>
-                <span
-                  >{demoComposition.duration}s · {demoComposition.fps} FPS</span
-                >
-                <span
-                  >{timelineMode === "project"
-                    ? "All scenes"
-                    : selectedScene()?.label} · {timecode(snapshot.time)}</span
-                >
-                <button on:click={openTimelineSource}>Open HTML source</button>
-              </div>
-            {/if}
-          </div>
+          <div class="me-timeline-actions"></div>
         </div>
         <div
           class="me-timeline-scroll"
@@ -1118,7 +1387,7 @@
               {#each timelineTicks() as tick}<span
                   class="me-ruler-tick"
                   style:left={`${(tick / timelineDuration()) * 100}%`}
-                  >{tick}s</span
+                  >{formatTimelineSeconds(tick)}</span
                 >{/each}
               <span
                 class="me-playhead-marker"
@@ -1157,7 +1426,7 @@
                     <span class="clip-accent" style:background={scene.accent}
                     ></span>
                     <span class="me-clip-text">{scene.label}</span>
-                    <small>{scene.duration}s</small>
+                    <small>{formatTimelineSeconds(scene.duration)}</small>
                   </button>
                 {/each}
               </div>
@@ -1195,9 +1464,9 @@
                   ><span class="me-track-thumb"><Layers3 size={12} /></span
                   ><span class="me-track-copy"
                     ><strong>{track.label}</strong><small
-                      >{track.kind} · {track.start.toFixed(
-                        1,
-                      )}–{track.end.toFixed(1)}s</small
+                      >{track.kind} · {formatTimelineSeconds(
+                        track.start,
+                      )}–{formatTimelineSeconds(track.end)}</small
                     ></span
                   ></button
                 >
@@ -1213,7 +1482,7 @@
                       style:background={selectedScene()?.accent}
                     ></span><span class="me-clip-text">{track.label}</span
                     ><small class="me-clip-duration"
-                      >{(track.end - track.start).toFixed(1)}s</small
+                      >{formatTimelineSeconds(track.end - track.start)}</small
                     ></button
                   >
                 </div>

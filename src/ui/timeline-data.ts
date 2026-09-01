@@ -13,6 +13,14 @@ function humanizeLabel(id: string): string {
     .trim();
 }
 
+export function formatTimelineSeconds(value: number): string {
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100;
+  return `${rounded
+    .toFixed(2)
+    .replace(/\.00$/, "")
+    .replace(/(\.\d)0$/, "$1")}s`;
+}
+
 function detectElementKind(element?: HTMLElement): SceneTrackKind {
   if (!element) return "Element";
   if (
@@ -48,7 +56,9 @@ export function deriveSceneTracks(
   registeredElements?: Map<string, HTMLElement>,
 ): readonly SceneTrack[] {
   if (scene.tracks && scene.tracks.length > 0) {
-    return scene.tracks;
+    return registeredElements
+      ? scene.tracks.filter((track) => registeredElements.has(track.id))
+      : scene.tracks;
   }
 
   if (!registeredElements || registeredElements.size === 0) {

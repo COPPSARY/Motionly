@@ -1,4 +1,4 @@
-﻿.code-editor-scope .me-preview-container {
+.code-editor-scope .me-preview-container {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -222,6 +222,100 @@
 
 .code-editor-scope .me-asset-preview-close:hover {
   background: #292e35;
+}
+
+/* Selection Box Overlay */
+.code-editor-scope .me-selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 999;
+  box-sizing: border-box;
+}
+
+.code-editor-scope .me-selection-outline {
+  position: absolute;
+  inset: -3px;
+  border: 2px solid #0a84ff;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 0 16px rgba(10, 132, 255, 0.35);
+  animation: meSelectionPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes meSelectionPulse {
+  0%,
+  100% {
+    border-color: #0a84ff;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 0 14px rgba(10, 132, 255, 0.35);
+  }
+  50% {
+    border-color: #38ef7d;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 0 20px rgba(56, 239, 125, 0.45);
+  }
+}
+
+.code-editor-scope .me-selection-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid #0a84ff;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+}
+
+.code-editor-scope .me-selection-handle.handle-tl {
+  top: -3px;
+  left: -3px;
+}
+.code-editor-scope .me-selection-handle.handle-tr {
+  top: -3px;
+  left: calc(100% + 3px);
+}
+.code-editor-scope .me-selection-handle.handle-bl {
+  top: calc(100% + 3px);
+  left: -3px;
+}
+.code-editor-scope .me-selection-handle.handle-br {
+  top: calc(100% + 3px);
+  left: calc(100% + 3px);
+}
+
+.code-editor-scope .me-selection-badge {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: -3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(13, 14, 16, 0.94);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.code-editor-scope .me-selection-badge .badge-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cfe3ff;
+  letter-spacing: -0.01em;
+}
+
+.code-editor-scope .me-selection-badge .badge-dims {
+  font-size: 10px;
+  font-weight: 500;
+  color: #7d8590;
 }
 
 /* Properties Panel Controls */
