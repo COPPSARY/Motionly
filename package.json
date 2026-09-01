@@ -26,6 +26,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "qa:editor": "node qa/editor-browser-qa.mjs",
+    "qa:timeline": "node qa/timeline-editor-qa.mjs",
     "render:video": "node scripts/render-video.mjs",
     "lint": "eslint src tests examples templates --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,svelte,css}\" \"tests/**/*.ts\" \"examples/**/*.ts\" \"templates/**/*.ts\" \"qa/**/*.mjs\"",

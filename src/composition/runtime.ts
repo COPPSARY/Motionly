@@ -1,5 +1,6 @@
 ﻿import gsap from "gsap";
 import type {
+  AnimationOverride,
   CompositionDefinition,
   ElementOverride,
   RuntimeSnapshot,
@@ -13,6 +14,14 @@ export class CompositionRuntime {
   private readonly context: gsap.Context;
   private readonly listeners = new Set<RuntimeListener>();
   private readonly overrides = new Map<string, ElementOverride>();
+  private readonly animationOverrides = new Map<
+    string,
+    Pick<AnimationOverride, "speed" | "ease">
+  >();
+  private readonly tweenBaselines = new WeakMap<
+    gsap.core.Tween,
+    { timeScale: number; ease: gsap.EaseString | gsap.EaseFunction | undefined }
+  >();
   private playing = false;
   private lastPlaybackNotification = 0;
 
@@ -117,6 +126,41 @@ export class CompositionRuntime {
     return { ...this.overrides.get(id) };
   }
 
+  getAnimationOverride(id: string): AnimationOverride {
+    const override = this.animationOverrides.get(id);
+    return {
+      speed: override?.speed ?? 1,
+      ease: override?.ease ?? "power3.inOut",
+      tweenCount: this.elementTweens(id).length,
+    };
+  }
+
+  setAnimationOverride(
+    id: string,
+    patch: Partial<Pick<AnimationOverride, "speed" | "ease">>,
+  ): void {
+    const current = this.getAnimationOverride(id);
+    const next = {
+      speed: Math.max(0.25, Math.min(2, patch.speed ?? current.speed)),
+      ease: patch.ease ?? current.ease,
+    };
+    this.animationOverrides.set(id, next);
+    for (const tween of this.elementTweens(id)) {
+      let baseline = this.tweenBaselines.get(tween);
+      if (!baseline) {
+        baseline = {
+          timeScale: tween.timeScale(),
+          ease: tween.vars.ease,
+        };
+        this.tweenBaselines.set(tween, baseline);
+      }
+      tween.timeScale(baseline.timeScale * next.speed);
+      tween.vars.ease = next.ease;
+      tween.invalidate();
+    }
+    this.seek(this.time);
+  }
+
   subscribe(listener: RuntimeListener): () => void {
     this.listeners.add(listener);
     listener(this.snapshot);
@@ -182,6 +226,17 @@ export class CompositionRuntime {
       element.style.fontSize = `${override.fontSize}px`;
     if (override.borderRadius !== undefined)
       element.style.borderRadius = `${override.borderRadius}px`;
+    if (override.hidden !== undefined)
+      element.style.visibility = override.hidden ? "hidden" : "";
+  }
+
+  private elementTweens(id: string): gsap.core.Tween[] {
+    const element = this.elements.get(id);
+    if (!element) return [];
+    const targets = [element, ...Array.from(element.querySelectorAll("*"))];
+    return Array.from(new Set(this.timeline.getTweensOf(targets))).filter(
+      (tween) => tween.duration() > 0,
+    );
   }
 
   private applyTextOverride(element: HTMLElement, value: string): void {

@@ -477,22 +477,19 @@ try {
     "document.querySelector('button[aria-label=Pause]')?.click()",
   );
 
-  await browser.evaluate(
-    "document.querySelector('button[aria-controls=\"gsap-timeline-details\"]')?.click()",
+  const hasTimelineDebugButton = await browser.evaluate(
+    "Boolean(document.querySelector('button[aria-controls=\"gsap-timeline-details\"]'))",
   );
-  const timelineInspector = await browser.evaluate(`(() => ({
-    expanded: document.querySelector('button[aria-controls="gsap-timeline-details"]')?.getAttribute('aria-expanded'),
-    text: document.querySelector('#gsap-timeline-details')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
-  }))()`);
-  if (
-    timelineInspector.expanded !== "true" ||
-    !timelineInspector.text.includes("Master GSAP timeline")
-  )
+  if (hasTimelineDebugButton)
     throw new Error(
-      `GSAP timeline control did not open: ${JSON.stringify(timelineInspector)}`,
+      "The removed GSAP timeline debug control is still visible.",
     );
   await browser.evaluate(
-    "document.querySelector('#gsap-timeline-details button')?.click()",
+    "document.querySelector('button[data-tooltip=Text]')?.click()",
+  );
+  await wait(80);
+  await browser.evaluate(
+    "document.querySelector('button[aria-label=\"Open composition HTML source\"]')?.click()",
   );
   await wait(80);
   const sourcePanel = await browser.evaluate(`(() => ({

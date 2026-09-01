@@ -28,6 +28,7 @@ export function buildPromoTimeline(context) {
   registerAll(context);
   const { root, timeline: callerTimeline } = context;
   const timeline = gsap.timeline();
+  timeline.timeScale(MOTIONLY_PROMO_TIME_SCALE);
   callerTimeline.add(timeline, 0);
 
   // Background layers & dynamic lighting

@@ -101,4 +101,26 @@ describe("code-first composition runtime", { timeout: 60_000 }, () => {
     expect(title?.style.fontSize).toBe("118px");
     expect(title?.style.borderRadius).toBe("8px");
   });
+
+  it("edits registered layer animation timing and visibility", () => {
+    const layer = runtime.elements.get("intro-brand-name");
+    expect(layer).toBeDefined();
+
+    const initial = runtime.getAnimationOverride("intro-brand-name");
+    expect(initial.tweenCount).toBeGreaterThan(0);
+
+    runtime.setAnimationOverride("intro-brand-name", {
+      speed: 1.4,
+      ease: "sine.inOut",
+    });
+    expect(runtime.getAnimationOverride("intro-brand-name")).toMatchObject({
+      speed: 1.4,
+      ease: "sine.inOut",
+    });
+
+    runtime.setOverride("intro-brand-name", { hidden: true });
+    expect(layer?.style.visibility).toBe("hidden");
+    runtime.setOverride("intro-brand-name", { hidden: false });
+    expect(layer?.style.visibility).toBe("");
+  });
 });

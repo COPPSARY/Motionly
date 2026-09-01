@@ -1,4 +1,4 @@
-﻿.code-editor-scope .me-properties-panel {
+.code-editor-scope .me-properties-panel {
   min-height: 0;
   overflow: auto;
   background: #111214;
@@ -238,6 +238,97 @@
 .code-editor-scope .me-property-action:hover {
   color: #b9ddff;
   text-decoration: underline;
+}
+
+.code-editor-scope .me-animation-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.code-editor-scope .me-property-label-row output {
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.code-editor-scope .me-ease-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.code-editor-scope .me-ease-preset {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #2b3037;
+  border-radius: 6px;
+  background: #141619;
+  color: #9298a1;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-ease-preset:hover,
+.code-editor-scope .me-ease-preset.me-active {
+  border-color: rgba(112, 221, 184, 0.55);
+  background: rgba(112, 221, 184, 0.09);
+  color: #dffaf1;
+}
+
+.code-editor-scope .me-ease-preset svg {
+  width: 100%;
+  height: 32px;
+  overflow: visible;
+}
+
+.code-editor-scope .me-ease-axis {
+  fill: none;
+  stroke: #343941;
+  stroke-width: 1;
+}
+
+.code-editor-scope .me-ease-curve {
+  fill: none;
+  stroke: #70ddb8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.code-editor-scope .me-animation-help {
+  color: #666d76;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.code-editor-scope .me-layer-visibility {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+  border: 1px solid #543136;
+  border-radius: 6px;
+  background: #221518;
+  color: #ff9da5;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.code-editor-scope .me-layer-visibility:hover {
+  border-color: #7b444b;
+  background: #2b191d;
+}
+
+.code-editor-scope .me-layer-visibility.me-restore {
+  border-color: rgba(112, 221, 184, 0.45);
+  background: rgba(112, 221, 184, 0.09);
+  color: #9aebd0;
 }
 
 .code-editor-scope .me-clip-original-size {
@@ -595,7 +686,7 @@
 /* Text Input & Textarea */
 .code-editor-scope .me-text-input {
   width: 100%;
-  min-height: 72px;
+  min-height: 36px;
   box-sizing: border-box;
   border: 1px solid #2a2d33;
   border-radius: 6px;
@@ -677,6 +768,16 @@
   border-radius: 4px;
 }
 
+.code-editor-scope .me-property-pill-transparent {
+  font-size: 10px;
+  font-weight: 500;
+  color: #8b949e;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .code-editor-scope .me-color-control output {
   min-width: 0;
   overflow: hidden;
@@ -685,6 +786,26 @@
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.code-editor-scope .me-color-control.me-transparent-bg {
+  background: #15171a;
+}
+
+.code-editor-scope .me-color-control.me-transparent-bg .me-color-swatch {
+  background:
+    linear-gradient(45deg, #2a2e36 25%, transparent 25%),
+    linear-gradient(-45deg, #2a2e36 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2a2e36 75%),
+    linear-gradient(-45deg, transparent 75%, #2a2e36 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0px;
+  background-color: #16181d;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 /* Preset Cards */

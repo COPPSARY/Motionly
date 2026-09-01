@@ -1,4 +1,5 @@
-export type SceneTrackKind = "Text" | "Element" | "SVG" | "Camera";
+export type SceneTrackKind =
+  "Text" | "Element" | "SVG" | "Background" | "Camera";
 
 export interface SceneTrack {
   id: string;
@@ -49,6 +50,13 @@ export interface ElementOverride {
   stroke?: string;
   fontSize?: number;
   borderRadius?: number;
+  hidden?: boolean;
+}
+
+export interface AnimationOverride {
+  speed: number;
+  ease: string;
+  tweenCount: number;
 }
 
 export interface RuntimeSnapshot {
