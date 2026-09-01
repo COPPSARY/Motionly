@@ -1,47 +1,132 @@
 ---
 name: write-motionly
-description: Create, edit, retime, review, and repair Motionly code-first HTML/CSS compositions animated by GSAP. Use for Motionly product films, scenes, components, animation choreography, text reveals, stagger, camera moves, timeline behavior, preview, visual overrides, or export.
+description: Create, edit, retime, review, and repair Motionly code-first HTML/CSS compositions animated by GSAP. Use for startup ads, SaaS explainers, product films, story pacing, narration sync, kinetic typography, semantic backgrounds, shape morphs, match cuts, particle transitions, UI cinematography, assets, and preview/export parity.
 ---
 
 # Write Motionly compositions
 
-Author the visual composition in `composition.html` and its choreography in `timeline.js`. Keep the adjacent `index.ts` as a thin metadata and mounting adapter for `CompositionDefinition`.
+Build a directed product film, not decorated slides. Make every visual change explain, intensify, or resolve the current spoken thought.
 
-## Workflow
+## Preserve the runtime boundary
 
-1. Write a short story spine and divide it into scenes with starts and durations in the thin adapter.
-2. Build semantic HTML/SVG and scoped CSS in `composition.html`. Do not generate the visual tree in TypeScript.
-3. Mark editable nodes with stable `data-edit` ids and register them from `timeline.js` so the editor can select and override them.
-4. Add motion from `timeline.js` to the caller-owned GSAP timeline. Use helpers from `src/composition/presets.ts` before creating a new helper.
-5. Overlap entrances, use stagger for groups, and reserve the strongest camera move for the focal product moment.
-6. Start ordinary scene handoffs before the outgoing scene has finished. Use `sceneHandoff` or an equally explicit shared transform so two roots overlap for roughly 0.5–0.9 seconds.
-7. Let `index.ts` clone the HTML template and call the timeline builder through `CompositionRuntime`; never introduce an interpreter or parallel renderer.
-8. Give every scene three readable phases: arrival, active transformation, and resolve. Static support objects still need an authored role such as a reveal, state change, parallax response, or deliberate hold.
-9. Verify Play by observing a real animated target change over wall-clock time. A moving timeline marker alone is not proof that animation playback works.
-10. Verify Pause, Restart, frame-quantized seek, every scene boundary, selection, and export.
-11. Watch representative frames, every handoff midpoint, and continuous playback in a real browser; revise composition, clipping, rhythm, and hierarchy until the motion reads as one directed film.
+```text
+composition-name/
+|- composition.html   # semantic HTML/SVG and scoped CSS
+|- timeline.js        # GSAP choreography
+`- index.ts           # metadata and mounting adapter only
+```
 
-## Quality contract
+- Treat HTML/CSS as the visual source of truth.
+- Write motion into the caller-owned GSAP timeline. A nested timeline is acceptable for proportional retiming, but add it to the caller timeline.
+- Keep `index.ts` thin: metadata, asset substitution, HTML mounting, and one builder call.
+- Never introduce `.motion`, a JSON animation DSL, generated DOM in TypeScript, a conversion layer, or a second renderer.
+- Keep stable `data-edit` ids and register editable elements.
+- Use `src/composition/presets.ts`; extend it only for reusable behavior.
 
-- Keep most entrances within 0.45–0.8 seconds.
-- Use `power4.out` for arrivals and `power3.inOut` for camera/layout travel.
-- Let focal elements travel farther and settle later than support elements.
-- Use mask and blur reveals to clarify hierarchy, not as decoration.
-- Use spring or overshoot only for tactile or playful materials.
-- Avoid identical entrance timing, continuous drift, and repetitive fade cycles.
-- Keep text readable before starting the next semantic action.
-- Use a subtle grid, light field, or another restrained spatial reference when camera movement would otherwise be visually ambiguous.
-- Define camera moves as `subject → destination → settle`. Move toward a meaningful detail, keep one dominant direction, and give the viewer time to read the result.
-- Do not leave decorative metadata, cards, badges, or diagrams permanently static unless their stillness is intentionally supporting the focal action.
-- Every panel, card, label, metric, and diagram must communicate a real capability or useful state. Remove placeholder duration cards, chapter labels, and decorative UI that does not advance the story.
-- Reveal a surface with its primary content as one readable beat. Do not expose an empty panel and make the viewer wait for its text, chart, or controls to appear later.
-- A text-led opening may chain several short statements before showing product UI; keep those statements connected by direction and timing so the sequence feels like one thought rather than separate slides.
-- Do not implement ordinary scene changes as a hard hide/show pair. The outgoing composition must visibly transfer direction, scale, mask, or focus into the incoming one.
+## Direct the story first
 
-## Runtime contract
+Use a clear change in belief:
 
-Preview and export must observe the same mounted DOM and GSAP timeline state. Explicit seeks are deterministic and frame-quantized. The authored HTML/CSS and GSAP timeline are the project source; TypeScript only adapts them to editor metadata.
+1. Hook: state the audience's desired outcome.
+2. Friction: make the obstacle recognizable.
+3. Consequence: visualize the cost, failure, or wasted effort.
+4. Turn: introduce the product as the answer.
+5. Proof: show the real interaction or product surface.
+6. Resolution: reduce the product to one memorable promise and CTA.
 
-GSAP owns visual frame updates. Throttle editor snapshot/readout notifications so the Svelte shell does not rerender on every animation tick. Runtime QA must compare a target's computed transform or opacity before and after Play, in addition to checking timeline time.
+Give every beat one spoken thought, one focal subject, one primary action, and one transition destination. Do not add visuals merely because the frame feels empty. Read [story-timing.md](references/story-timing.md) when scripting, retiming, or synchronizing narration.
 
-Read `docs/architecture.md` for the runtime boundary and `docs/animation-presets.md` for the helper surface.
+## Use continuous transition ownership
+
+Every boundary must use one of these mechanisms:
+
+- **Morph:** keep one carrier visible while its geometry, surface, and role change.
+- **Match-cut:** align position, dimensions, silhouette, and motion before swapping internal content.
+- **Particle-reassemble:** emit fragments from a visible source and direct them toward a meaningful destination.
+
+Opacity may clean up internal faces after continuity is established; it must not be the transition itself. Prefer one persistent carrier across related beats, such as statement frame -> symbolic object -> prompt surface -> product window -> brand token. Read [transitions-camera.md](references/transitions-camera.md) before designing handoffs or camera paths.
+
+## Compose editorial typography
+
+- Express each beat as one bold, full-sentence thought.
+- Never split one thought into a giant title plus a small gray subtitle.
+- Center the thought as a unit; use `xPercent: -50` and `yPercent: -50` for absolute centering.
+- Enter important thoughts giant and cropped, then settle into readable focus.
+- Animate words or characters in reading order with restrained stagger and spring overshoot.
+- Keep punctuation attached and preserve natural spaces.
+- Apply sentence-wide gradients in shared coordinates. Do not restart the gradient on every word.
+- Reserve gradients for emphasis and retain enough solid ink for immediate readability.
+- Give the completed sentence a real reading hold before its exit.
+
+Read [typography-backgrounds.md](references/typography-backgrounds.md) for split-text handling, hierarchy, background direction, and stability.
+
+## Make backgrounds support meaning
+
+Build a quiet system: base field, faint structure, slow ambient light, then one beat-specific accent. Keep background contrast, frequency, and speed below the focal subject.
+
+- Use rising marks for cost or momentum.
+- Use ripples, scan lines, or dispersed particles for uncertainty or failure.
+- Use circular waves and orbiting particles for a reveal or convergence.
+- Let color temperature change with the story.
+- Remove or transform a beat-specific accent when its idea ends.
+- Avoid arbitrary particles, decorative blobs, muddy veils, and motion with no narrative relationship.
+
+## Choreograph readable motion
+
+- Separate arrival, settle, readable hold, and departure.
+- Overlap transitions, but do not overlap competing messages.
+- Alternate energy: fast setup, readable settle, emphasized consequence, spacious proof.
+- Use `back.out(...)` for tactile text and controls; use `power3.inOut` or `power4.inOut` for camera and geometry.
+- Keep subtle ambient drift during holds. Continuous motion does not mean constant foreground motion.
+- Animate counters in fixed-width containers to prevent layout wobble.
+- Do not reveal a cursor until typing begins.
+- Preserve close prompt framing through its workspace morph unless the story motivates a pullback.
+- After showing UI, hold it for inspection, then use one deliberate camera move instead of repeated zooming.
+
+## Show real product behavior
+
+- Use authentic screenshots, supplied assets, or faithful product HTML/CSS.
+- Make the reveal causal: prompt -> action -> workspace.
+- Keep prompt controls credible and proportioned like a real composer.
+- Use a shared shell so the prompt physically becomes the product window.
+- Make the active task legible; decorative dashboards are not proof.
+- Collapse the product surface into the brand token or CTA with the same carrier.
+
+Read [assets-export.md](references/assets-export.md) when importing media, using filters, or preparing export.
+
+## Build deterministically
+
+1. Set all hidden, transformed, and layered initial states at time `0`.
+2. Use explicit timeline positions for story beats.
+3. Keep scene and track metadata truthful to the timeline.
+4. Base timing on seconds. Changing fps adds samples; it must not alter speed.
+5. For global retiming, change a nested timeline's `timeScale` and scale metadata by the inverse factor.
+6. Seek representative frames and inspect continuous playback in a real browser.
+7. Verify preview/export parity, asset loading, text bounds, end-state cleanup, codec, and fps.
+
+## Reject these failures
+
+- title + subtitle + card composition;
+- fade, hard cut, or wipe as the primary handoff;
+- overlapping, reflowing, or clipped split words;
+- a separate repeated gradient on every word;
+- background motion that competes or has no meaning;
+- cursor blinking before typing;
+- product screenshot appearing without a causal bridge;
+- camera push, reset, then another unmotivated push;
+- filter, hidden screenshot, or backdrop blur surviving into the logo;
+- foreground beats too brief to read;
+- storyboard timing that differs from GSAP;
+- cross-origin or tainted export sources.
+
+## Reusable helper guidance
+
+- `morph`: persistent geometry and surface transformation.
+- `cameraZoomPan`, `cameraPush`, `cameraPull`: motivated reframing.
+- `wordSlideRotate`, `charSpringBounce`, `textReveal`: reading-order typography.
+- `giantKineticCrop`: high-emphasis giant-to-settle entrance.
+- `continuousTextGradient`: one gradient across split words.
+- `gradientSweep`: temporary keyword emphasis.
+- `ambientWaves`: low-frequency background life.
+
+Use helpers as verbs, not a fixed style. Vary intensity, direction, duration, and visual language for the audience. Never copy a preset's exact colors, dimensions, copy, timestamps, or scene count.

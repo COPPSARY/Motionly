@@ -213,10 +213,10 @@ button {
     linear-gradient(145deg, #172239, #0a0c11);
 }
 .promo-thumbnail img {
-  width: 56px !important;
-  height: 56px !important;
-  object-fit: contain !important;
-  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.45));
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: 64% center;
 }
 .me-preset-info small {
   display: block;

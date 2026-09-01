@@ -1,53 +1,235 @@
 import {
   defineComposition,
   type CompositionContext,
+  type SceneDefinition,
 } from "../../../composition/types";
 import compositionHtml from "./composition.html?raw";
+import logoUrl from "./logo.svg?url";
+import uiScreenshotUrl from "./ui-screenshot.png?url";
 import { buildPromoTimeline } from "./timeline.js";
+import {
+  MOTIONLY_PROMO_DURATION,
+  MOTIONLY_PROMO_RETIME_FACTOR,
+} from "./timing";
 
-const scenes = [
+const authoredScenes: readonly SceneDefinition[] = [
   {
-    id: "brand",
-    label: "Web-native manifesto",
+    id: "problem",
+    label: "The startup video dilemma",
     start: 0,
-    duration: 6.4,
-    accent: "#d8ff55",
-  },
-  {
-    id: "code",
-    label: "Code becomes motion",
-    start: 6.4,
-    duration: 5,
-    accent: "#8b6cff",
-  },
-  {
-    id: "studio",
-    label: "Everything stays editable",
-    start: 11.4,
-    duration: 4.6,
+    duration: 16.25,
     accent: "#ff705e",
+    tracks: [
+      {
+        id: "editorial-beat-1",
+        label: "Startups need launch videos",
+        kind: "Text",
+        start: 0.04,
+        end: 1.75,
+      },
+      {
+        id: "editorial-beat-2",
+        label: "Making them is too hard",
+        kind: "Text",
+        start: 1.75,
+        end: 3.0,
+      },
+      {
+        id: "editorial-beat-3",
+        label: "Agencies are too expensive",
+        kind: "Text",
+        start: 3.0,
+        end: 7.75,
+      },
+      {
+        id: "editorial-beat-4",
+        label: "AI tools are a mystery box",
+        kind: "Text",
+        start: 7.75,
+        end: 10.45,
+      },
+      {
+        id: "editorial-beat-5",
+        label: "You can't edit, need to reprompt",
+        kind: "Text",
+        start: 10.45,
+        end: 13.15,
+      },
+      {
+        id: "editorial-beat-6",
+        label: "Wasting hours & burning credits",
+        kind: "Text",
+        start: 13.15,
+        end: 16.25,
+      },
+    ],
   },
   {
-    id: "lab",
-    label: "Composition system",
-    start: 16,
-    duration: 5.2,
-    accent: "#5eead4",
+    id: "intro",
+    label: "Introducing Motionly",
+    start: 16.25,
+    duration: 7.75,
+    accent: "#38ef7d",
+    tracks: [
+      {
+        id: "intro-hero-beat",
+        label: "Introducing Motionly",
+        kind: "Text",
+        start: 0.2,
+        end: 7.5,
+      },
+      {
+        id: "intro-brand-name",
+        label: "Motionly brand zoom",
+        kind: "Text",
+        start: 1.85,
+        end: 5.4,
+      },
+      {
+        id: "ambient-waves",
+        label: "Fluid wave canvas",
+        kind: "SVG",
+        start: 0.0,
+        end: 7.75,
+      },
+    ],
+  },
+  {
+    id: "solutions",
+    label: "On-demand launch videos",
+    start: 24.0,
+    duration: 6.95,
+    accent: "#5ce0d0",
+    tracks: [
+      {
+        id: "editorial-sol-2",
+        label: "Prompt like AI, edit every layer",
+        kind: "Text",
+        start: 0.0,
+        end: 1.6,
+      },
+      {
+        id: "editorial-seriously",
+        label: "Seriously.",
+        kind: "Text",
+        start: 1.85,
+        end: 3.1,
+      },
+      {
+        id: "editorial-ui-promise",
+        label: "We have a UI to edit everything",
+        kind: "Text",
+        start: 3.35,
+        end: 4.8,
+      },
+      {
+        id: "editorial-or",
+        label: "Or...",
+        kind: "Text",
+        start: 5.0,
+        end: 5.85,
+      },
+      {
+        id: "editorial-keep-prompting",
+        label: "...keep prompting.",
+        kind: "Text",
+        start: 6.1,
+        end: 6.95,
+      },
+    ],
+  },
+  {
+    id: "product",
+    label: "Prompt to editable workspace",
+    start: 30.95,
+    duration: 4.65,
+    accent: "#7657ff",
+    tracks: [
+      {
+        id: "face-prompt",
+        label: "Command prompt pill",
+        kind: "Element",
+        start: 0.25,
+        end: 2.12,
+      },
+      {
+        id: "build-question",
+        label: "Product launch ad prompt",
+        kind: "Text",
+        start: 0.45,
+        end: 1.35,
+      },
+      {
+        id: "generate-button",
+        label: "Generate button",
+        kind: "Element",
+        start: 1.35,
+        end: 1.55,
+      },
+      {
+        id: "product-screenshot",
+        label: "Interactive workspace preview",
+        kind: "Element",
+        start: 2.13,
+        end: 4.65,
+      },
+      {
+        id: "morph-shell",
+        label: "Workspace morph frame",
+        kind: "Element",
+        start: 0.0,
+        end: 4.35,
+      },
+    ],
   },
   {
     id: "cta",
-    label: "Make it move",
-    start: 21.2,
-    duration: 5.8,
-    accent: "#d8ff55",
+    label: "Type generate edit",
+    start: 35.3,
+    duration: 3.7,
+    accent: "#caff45",
+    tracks: [
+      {
+        id: "face-brand-token",
+        label: "Motionly brand token",
+        kind: "SVG",
+        start: 0.3,
+        end: 3.7,
+      },
+      {
+        id: "final-headline",
+        label: "Video Generated by Motionly",
+        kind: "Text",
+        start: 0.25,
+        end: 3.7,
+      },
+      {
+        id: "final-cta",
+        label: "Visit motionly.site",
+        kind: "Element",
+        start: 0.85,
+        end: 3.7,
+      },
+    ],
   },
-] as const;
+];
+
+const scenes: readonly SceneDefinition[] = authoredScenes.map((scene) => ({
+  ...scene,
+  start: scene.start * MOTIONLY_PROMO_RETIME_FACTOR,
+  duration: scene.duration * MOTIONLY_PROMO_RETIME_FACTOR,
+  tracks: scene.tracks?.map((track) => ({
+    ...track,
+    start: track.start * MOTIONLY_PROMO_RETIME_FACTOR,
+    end: track.end * MOTIONLY_PROMO_RETIME_FACTOR,
+  })),
+}));
 
 function mountHtmlComposition(context: CompositionContext): void {
-  const documentNode = new DOMParser().parseFromString(
-    compositionHtml,
-    "text/html",
-  );
+  const html = compositionHtml
+    .replaceAll("__MOTIONLY_LOGO__", logoUrl)
+    .replaceAll("__MOTIONLY_UI__", uiScreenshotUrl);
+  const documentNode = new DOMParser().parseFromString(html, "text/html");
   const template = documentNode.querySelector<HTMLTemplateElement>(
     "#motionly-promo-template",
   );
@@ -57,13 +239,13 @@ function mountHtmlComposition(context: CompositionContext): void {
 
 export const motionlyPromoPreset = defineComposition({
   id: "motionly-product-promo",
-  title: "Motionly — Make it move",
+  title: "Motionly - Make your product move",
   description:
-    "A 27-second HTML/CSS product film animated by a seekable GSAP timeline.",
+    "A kinetic SaaS product film with word-by-word editorial typography, witty founder storytelling, and clean prompt-to-workspace morphing.",
   width: 1920,
   height: 1080,
   fps: 60,
-  duration: 27,
+  duration: MOTIONLY_PROMO_DURATION,
   scenes,
   sourcePreview: compositionHtml,
   build(context) {

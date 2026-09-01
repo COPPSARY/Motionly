@@ -8,16 +8,17 @@ HTML is the authored visual source. Scoped CSS styles the composition and `timel
 
 Keep the visual editor: centered preview, correct aspect ratio, Play/Pause/Restart, deterministic scrubber, storyboard scenes, selection, position/scale/rotation/opacity/text controls, assets, presets, and export.
 
-## Motion quality
+## Core Motion & Typography Rules
 
-- Build one focal action at a time.
-- Use overlap and stagger to create rhythm; do not queue every entrance.
-- Prefer `power4.out` for arrivals and `power3.inOut` for camera/layout travel.
-- Keep most entrances between 0.45 and 0.8 seconds.
-- Use spring or overshoot only when the material calls for it.
-- Transform between scenes; avoid repetitive fade-wait-fade patterns.
-- Start ordinary scene transitions before the outgoing scene ends. Require a visible overlap and shared directional handoff instead of a hard hide/show cut.
-- Watch the real browser preview at opening, transition, camera, and CTA frames.
+- **Transitions MUST use MORPH, MATCH-CUT, or PARTICLE-REASSEMBLE**: Never use hard cuts, cross-dissolves, or fade-to-black.
+  - **MORPH**: Shape's own outline (width, height, border-radius) stretches and bends continuously.
+  - **MATCH-CUT**: Cut happens at the exact instant two shots share identical position and silhouette.
+  - **PARTICLE-REASSEMBLE**: Object fractures into physical shards that travel and reform into the next object.
+- **Single Full-Sentence Editorial Thoughts**: NEVER split thoughts into oversized headlines plus tiny subtitles. Use single, bold, full-size statements in standard `Inter 68px/700`, strictly centered (`xPercent: -50, yPercent: -50`).
+- **Giant-to-Settle Kinetic Zoom**: Statements enter massive/zoomed-in (`scale: 2.0+` with gradient fill) and dynamically pull back into centered focus.
+- **Continuous Word-by-Word Animation**: Typography always animates word-by-word with spring overshoot bounce (`back.out(1.35)`).
+- **Rule of Continuous Motion**: No frame is ever static; apply continuous drift, breathing scale, or live stroke drawing.
+- **No Premature Cursors & No Muddy Dark Veils**: Cursors arrive only with active typing; never use full-screen dark opacity overlays over luminous backgrounds.
 
 ## Runtime boundary
 

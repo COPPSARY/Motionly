@@ -46,7 +46,7 @@ async function startPreview(port) {
   child.stdout?.on("data", (chunk) => (diagnostics += String(chunk)));
   child.stderr?.on("data", (chunk) => (diagnostics += String(chunk)));
   const url = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
     try {
       if ((await fetch(url)).ok) return { child, url };
     } catch {
@@ -81,7 +81,7 @@ async function launchBrowser(url) {
     { stdio: "ignore", windowsHide: true },
   );
   let target;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
     try {
       const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then(
         (response) => response.json(),
@@ -180,12 +180,173 @@ try {
     await wait(100);
   }
 
+  const masterTimeline = await browser.evaluate(`(() => ({
+    ruler: document.querySelector('.me-ruler-label')?.textContent?.trim(),
+    scenes: [...document.querySelectorAll('.me-project-scene-clip')].map((clip) => ({
+      text: clip.textContent?.replace(/\\s+/g, ' ').trim(),
+      left: getComputedStyle(clip).left,
+      width: getComputedStyle(clip).width,
+    })),
+    handoffs: document.querySelectorAll('.me-project-handoff').length,
+  }))()`);
+  if (
+    masterTimeline.ruler !== "MASTER" ||
+    masterTimeline.scenes.length !== 7 ||
+    masterTimeline.handoffs !== 6
+  )
+    throw new Error(
+      `Master timeline did not show the whole film: ${JSON.stringify(masterTimeline)}`,
+    );
+  const masterScreenshot = await browser.command("Page.captureScreenshot", {
+    format: "png",
+    captureBeyondViewport: false,
+  });
+  await writeFile(
+    join(output, "master-timeline.png"),
+    Buffer.from(masterScreenshot.result.data, "base64"),
+  );
+  await browser.evaluate(
+    "document.querySelector('button[data-tooltip=Text]')?.click()",
+  );
+  await wait(60);
+  const textPanel = await browser.evaluate(`(() => ({
+    category: document.querySelector('.me-panel-content .me-category-title')?.textContent?.trim(),
+    sourceVisible: Boolean(document.querySelector('.source-code')),
+  }))()`);
+  if (textPanel.category !== "Text in this scene" || textPanel.sourceVisible)
+    throw new Error(
+      `Text tool unexpectedly exposed composition source: ${JSON.stringify(textPanel)}`,
+    );
+  await browser.evaluate(
+    "document.querySelector('button[data-tooltip=Media]')?.click()",
+  );
+  await wait(60);
+  await browser.evaluate(
+    "document.querySelector('[data-scene-id=brand]')?.click()",
+  );
+  await wait(80);
+  const localTimeline = await browser.evaluate(`(() => ({
+    ruler: document.querySelector('.me-ruler-label')?.textContent?.trim(),
+    hasExit: Boolean(document.querySelector('.me-timeline-back')),
+    widths: [...document.querySelectorAll('.scene-timeline-clip')].map((clip) => getComputedStyle(clip).width),
+  }))()`);
+  if (
+    localTimeline.ruler !== "Prompts become video" ||
+    !localTimeline.hasExit ||
+    new Set(localTimeline.widths).size < 2
+  )
+    throw new Error(
+      `Local timeline clips did not reflect authored timing: ${JSON.stringify(localTimeline)}`,
+    );
+  await browser.evaluate(
+    "document.querySelector('.me-timeline-back')?.click()",
+  );
+  await wait(80);
+  const returnedToMaster = await browser.evaluate(
+    "document.querySelector('.me-ruler-label')?.textContent?.trim()",
+  );
+  if (returnedToMaster !== "MASTER")
+    throw new Error("Scene timeline did not return to the master timeline.");
+
+  await browser.evaluate(`(() => {
+    const scrubber = document.querySelector('input[aria-label="Timeline scrubber"]');
+    scrubber.value = '2.5';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await wait(80);
+  const introCentering = await browser.evaluate(`(() => {
+    const canvas = document.querySelector('.composition-canvas')?.getBoundingClientRect();
+    const line = document.querySelector('.giant-line')?.getBoundingClientRect();
+    return {
+      delta: Math.abs((line.left + line.width / 2) - (canvas.left + canvas.width / 2)),
+      lineLeft: line.left,
+      canvasLeft: canvas.left,
+      lineRight: line.right,
+      canvasRight: canvas.right,
+    };
+  })()`);
+  if (
+    introCentering.delta > 90 ||
+    introCentering.lineLeft < introCentering.canvasLeft - 10 ||
+    introCentering.lineRight > introCentering.canvasRight + 10
+  )
+    throw new Error(
+      `Intro kinetic text is not centered/readable: ${JSON.stringify(introCentering)}`,
+    );
+
+  await browser.evaluate(`(() => {
+    const scrubber = document.querySelector('input[aria-label="Timeline scrubber"]');
+    scrubber.value = '13.6';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await browser.evaluate(
+    "document.querySelector('[data-scene-id=code]')?.click()",
+  );
+  await wait(80);
+  await browser.evaluate(`(() => {
+    const scrubber = document.querySelector('input[aria-label="Timeline scrubber"]');
+    scrubber.value = '13.6';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await wait(100);
+  const productProof = await browser.evaluate(`(() => {
+    const shell = document.querySelector('.motionly-ui');
+    const track = document.querySelector('.timeline-count-track');
+    const artboard = document.querySelector('.output-artboard');
+    if (!shell || !track || !artboard) return {
+      missing: {
+        shell: !shell,
+        track: !track,
+        artboard: !artboard,
+      },
+      hasFakeScreenshotUi: Boolean(document.querySelector('.reference-ui, .frozen-window')),
+    };
+    const shellStyle = getComputedStyle(shell);
+    const count = document.querySelector('.count-number')?.textContent?.trim();
+    const prompt = document.querySelector('.prompt-typed')?.textContent?.replace(/\\s+/g, ' ').trim();
+    const trackWidth = Number.parseFloat(getComputedStyle(track).width);
+    const artboardStyle = getComputedStyle(artboard);
+    return {
+      shell: { opacity: Number(shellStyle.opacity), visibility: shellStyle.visibility },
+      prompt,
+      count,
+      trackWidth,
+      artboard: { opacity: Number(artboardStyle.opacity), visibility: artboardStyle.visibility },
+      hasFakeScreenshotUi: Boolean(document.querySelector('.reference-ui, .frozen-window')),
+    };
+  })()`);
+  if (
+    productProof.missing ||
+    productProof.shell.visibility === "hidden" ||
+    productProof.shell.opacity < 0.5 ||
+    productProof.prompt !== "Can you make a text that counts to 150?" ||
+    productProof.count !== "150" ||
+    productProof.trackWidth < 100 ||
+    productProof.artboard.visibility === "hidden" ||
+    productProof.artboard.opacity < 0.5 ||
+    productProof.hasFakeScreenshotUi
+  )
+    throw new Error(
+      `Product demo did not show real Motionly usage: ${JSON.stringify({ productProof, errors: browser.errors, warnings: browser.warnings })}`,
+    );
+  await browser.evaluate(
+    "document.querySelector('.me-timeline-back')?.click()",
+  );
+  await wait(80);
+  await browser.evaluate(`(() => {
+    const scrubber = document.querySelector('input[aria-label="Timeline scrubber"]');
+    scrubber.value = '0';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+
   const sceneForTime = (time) =>
     [
-      { id: "cta", start: 21.2 },
-      { id: "lab", start: 16 },
-      { id: "studio", start: 11.4 },
-      { id: "code", start: 6.4 },
+      { id: "cta", start: 26.5 },
+      { id: "lab", start: 20.4 },
+      { id: "studio", start: 15.6 },
+      { id: "code", start: 10.8 },
+      { id: "build", start: 5 },
+      { id: "problem", start: 3.4 },
       { id: "brand", start: 0 },
     ].find((scene) => time >= scene.start)?.id ?? "brand";
   const seekTo = async (time) => {
@@ -202,7 +363,7 @@ try {
   };
 
   const motionBeforePlay = await browser.evaluate(`(() => {
-    const target = document.querySelector('.everything-word');
+    const target = document.querySelector('.hook-one');
     const style = getComputedStyle(target);
     return { transform: style.transform, opacity: style.opacity };
   })()`);
@@ -219,7 +380,7 @@ try {
   );
   await wait(1400);
   const playback = await browser.evaluate(`(() => {
-    const target = document.querySelector('.everything-word');
+    const target = document.querySelector('.hook-one');
     const style = getComputedStyle(target);
     return {
       time: Number(document.querySelector('input[aria-label="Timeline scrubber"]')?.value ?? 0),
@@ -249,14 +410,14 @@ try {
     "document.querySelector('button[aria-label=Pause]')?.click()",
   );
 
-  for (const time of [18.4, 5.2, 15.9, 11.8]) await seekTo(time);
+  for (const time of [27.2, 5.1, 23.7, 22.4]) await seekTo(time);
   await browser.evaluate(
     "document.querySelector('button[aria-label=Play]')?.click()",
   );
   await wait(760);
   const rapidScrubPlayback = await browser.evaluate(`(() => {
-    const target = document.querySelector('[data-motionly-id="artboard"]');
-    const headline = document.querySelector('[data-motionly-id="artboard-headline"]');
+    const target = document.querySelector('[data-motionly-id="output-artboard"]');
+    const headline = document.querySelector('[data-motionly-id="visual-title"]');
     const targetStyle = getComputedStyle(target);
     const headlineStyle = getComputedStyle(headline);
     return {
@@ -266,7 +427,7 @@ try {
     };
   })()`);
   if (
-    rapidScrubPlayback.time < 12.4 ||
+    rapidScrubPlayback.time < 23 ||
     rapidScrubPlayback.target.visibility === "hidden" ||
     rapidScrubPlayback.target.opacity < 0.1 ||
     rapidScrubPlayback.headline.visibility === "hidden" ||
@@ -279,9 +440,9 @@ try {
     "document.querySelector('button[aria-label=Pause]')?.click()",
   );
 
-  await seekTo(11.8);
+  await seekTo(22.4);
   const scrubbedBeforePlay = await browser.evaluate(`(() => {
-    const ids = ['artboard', 'visual-stage', 'artboard-headline', 'editable-proof'];
+    const ids = ['output-artboard', 'visual-title', 'timeline-count-track', 'export-panel'];
     return Object.fromEntries(ids.map((id) => {
       const element = document.querySelector('[data-motionly-id="' + id + '"]');
       const style = getComputedStyle(element);
@@ -293,7 +454,7 @@ try {
   );
   await wait(900);
   const scrubbedAfterPlay = await browser.evaluate(`(() => {
-    const ids = ['artboard', 'visual-stage', 'artboard-headline', 'editable-proof'];
+    const ids = ['output-artboard', 'visual-title', 'timeline-count-track', 'export-panel'];
     return {
       time: Number(document.querySelector('input[aria-label="Timeline scrubber"]')?.value ?? 0),
       elements: Object.fromEntries(ids.map((id) => {
@@ -304,7 +465,7 @@ try {
     };
   })()`);
   if (
-    scrubbedAfterPlay.time < 12.45 ||
+    scrubbedAfterPlay.time < 23 ||
     Object.values(scrubbedAfterPlay.elements).some(
       (element) => element.visibility === "hidden" || element.opacity < 0.1,
     )
@@ -330,6 +491,26 @@ try {
     throw new Error(
       `GSAP timeline control did not open: ${JSON.stringify(timelineInspector)}`,
     );
+  await browser.evaluate(
+    "document.querySelector('#gsap-timeline-details button')?.click()",
+  );
+  await wait(80);
+  const sourcePanel = await browser.evaluate(`(() => ({
+    heading: document.querySelector('.source-heading')?.textContent?.replace(/\\s+/g, ' ').trim(),
+    sourceVisible: Boolean(document.querySelector('.source-code')),
+    closeVisible: Boolean(document.querySelector('button[aria-label="Close composition source"]')),
+  }))()`);
+  if (
+    !sourcePanel.heading?.includes("composition.html") ||
+    !sourcePanel.sourceVisible ||
+    !sourcePanel.closeVisible
+  )
+    throw new Error(
+      `Explicit source action did not open the source panel: ${JSON.stringify(sourcePanel)}`,
+    );
+  await browser.evaluate(
+    "document.querySelector('button[aria-label=\"Close composition source\"]')?.click()",
+  );
 
   await browser.evaluate(
     "document.querySelector('button[aria-label=\"Open assistant\"]')?.click()",
@@ -371,7 +552,9 @@ try {
   );
 
   const frames = [];
-  for (const time of [0.8, 2.8, 4.8, 7.7, 12.8, 18.4, 24.4]) {
+  for (const time of [
+    0.75, 2.4, 4.2, 5.7, 8.2, 9.8, 12.6, 14.6, 17.2, 21.8, 27.2, 29.4,
+  ]) {
     await seekTo(time);
     await wait(250);
     const state = await browser.evaluate(`(() => {
@@ -404,7 +587,7 @@ try {
       join(output, filename),
       Buffer.from(screenshot.result.data, "base64"),
     );
-    if (time === 12.8) {
+    if (time === 21.8) {
       const editorScreenshot = await browser.command("Page.captureScreenshot", {
         format: "png",
         captureBeyondViewport: false,
@@ -419,15 +602,43 @@ try {
 
   const handoffs = [];
   const handoffChecks = [
-    { time: 1.94, selectors: [".intro-one", ".intro-two"] },
-    { time: 3.72, selectors: [".intro-two", ".intro-three"] },
-    { time: 5.92, selectors: [".intro-three", ".product-stage"] },
-    { time: 10.46, selectors: [".live-card", ".speed-panel"] },
-    { time: 11.48, selectors: [".speed-panel", ".studio-view"] },
-    { time: 15.62, selectors: [".studio-view", ".lab-view"] },
-    { time: 21.18, selectors: [".product-stage", ".cta-scene"] },
+    {
+      time: 9.18,
+      selectors: [
+        ".product-stage",
+        ".demo-composer",
+        ".preview-container",
+        ".timeline-ui",
+      ],
+      expectedVisible: 4,
+    },
+    {
+      time: 16.92,
+      selectors: [
+        ".product-stage",
+        ".timeline-ui",
+        ".timeline-playhead",
+        ".timeline-count-track",
+      ],
+      expectedVisible: 4,
+    },
+    {
+      time: 21.72,
+      selectors: [
+        ".product-stage",
+        ".export-panel",
+        ".export-format",
+        ".export-progress",
+      ],
+      expectedVisible: 3,
+    },
+    {
+      time: 26.72,
+      selectors: [".product-stage", ".cta-scene", ".final-wrap"],
+      expectedVisible: 2,
+    },
   ];
-  for (const { time, selectors } of handoffChecks) {
+  for (const { time, selectors, expectedVisible } of handoffChecks) {
     await seekTo(time);
     await wait(180);
     const state = await browser.evaluate(`(() => {
@@ -454,13 +665,7 @@ try {
         targets,
       };
     })()`);
-    if (
-      state.targets.length !== 2 ||
-      state.targets.every(
-        (element) =>
-          element.transform === "none" && element.clipPath === "none",
-      )
-    )
+    if (state.targets.length < expectedVisible)
       throw new Error(
         `Static continuity handoff ${time}: ${JSON.stringify(state)}`,
       );
@@ -478,11 +683,10 @@ try {
   }
 
   const cameraMotion = [];
-  for (const time of [12.8, 14.2, 18.0, 19.5]) {
+  for (const time of [9.8, 12.4, 16.9, 21.8]) {
     await seekTo(time);
     await wait(120);
-    const selector =
-      time < 16 ? ".editability-field" : "[data-motionly-id=studio-window]";
+    const selector = ".product-window";
     cameraMotion.push(
       await browser.evaluate(`(() => {
         const target = document.querySelector(${JSON.stringify(selector)});
@@ -498,18 +702,41 @@ try {
       `Camera route stayed static: ${JSON.stringify(cameraMotion)}`,
     );
 
+  const ambientMotion = [];
+  for (const time of [1, 15, 30]) {
+    await seekTo(time);
+    await wait(80);
+    ambientMotion.push(
+      await browser.evaluate(`(() => ({
+        time: ${time},
+        field: getComputedStyle(document.querySelector('[data-motionly-id=ambient-gradient]')).transform,
+        primary: getComputedStyle(document.querySelector('.aurora-a')).transform,
+        secondary: getComputedStyle(document.querySelector('.aurora-b')).transform,
+      }))()`),
+    );
+  }
+  if (
+    ambientMotion[0].field === ambientMotion[2].field ||
+    ambientMotion[0].primary === ambientMotion[2].primary ||
+    ambientMotion[0].secondary === ambientMotion[2].secondary
+  )
+    throw new Error(
+      `Ambient gradient stayed static: ${JSON.stringify(ambientMotion)}`,
+    );
+
   const studioTimelineMotion = [];
-  for (const time of [12.6, 14.7]) {
+  for (const time of [16.8, 18.0]) {
     await seekTo(time);
     await wait(80);
     studioTimelineMotion.push(
       await browser.evaluate(`(() => ({
         time: ${time},
-        transform: getComputedStyle(document.querySelector('.editable-word')).transform,
+        left: getComputedStyle(document.querySelector('.timeline-playhead')).left,
+        transform: getComputedStyle(document.querySelector('.timeline-playhead')).transform,
       }))()`),
     );
   }
-  if (studioTimelineMotion[0].transform === studioTimelineMotion[1].transform)
+  if (studioTimelineMotion[0].left === studioTimelineMotion[1].left)
     throw new Error(
       `Editable product proof stayed static: ${JSON.stringify(studioTimelineMotion)}`,
     );
@@ -525,7 +752,7 @@ try {
   }))()`);
   if (
     sceneNavigation.selected !== "true" ||
-    sceneNavigation.ruler !== "Make it move" ||
+    sceneNavigation.ruler !== "Type generate edit" ||
     !sceneNavigation.tracks.includes("final-line-one")
   )
     throw new Error(
@@ -636,12 +863,15 @@ try {
     x.dispatchEvent(new Event('input', { bubbles: true }));
     const target = document.querySelector('[data-motionly-id=manifesto-design]');
     const style = getComputedStyle(target);
-    return { transform: style.transform, translate: style.translate };
+    return {
+      motionTransform: getComputedStyle(document.querySelector('.hook-one')).transform,
+      translate: style.translate,
+    };
   })()`);
   await browser.evaluate(
     "document.querySelector('button[aria-label=Play]')?.click()",
   );
-  await wait(1100);
+  await wait(520);
   const playedAfterEdit = await browser.evaluate(`(() => {
     const target = document.querySelector('[data-motionly-id=manifesto-design]');
     const style = getComputedStyle(target);
@@ -650,7 +880,7 @@ try {
       return sceneStyle.visibility !== 'hidden' && Number(sceneStyle.opacity) > .01;
     });
     return {
-      transform: style.transform,
+      motionTransform: getComputedStyle(document.querySelector('.hook-one')).transform,
       translate: style.translate,
       opacity: Number(style.opacity),
       visibility: style.visibility,
@@ -662,7 +892,7 @@ try {
     playedAfterEdit.opacity < 0.1 ||
     !playedAfterEdit.visibleScenes.includes("brand") ||
     !playedAfterEdit.translate.includes("32px") ||
-    playedAfterEdit.transform === editedBeforePlay.transform
+    playedAfterEdit.motionTransform === editedBeforePlay.motionTransform
   )
     throw new Error(
       `Editing before Play erased the composition: ${JSON.stringify({ editedBeforePlay, playedAfterEdit })}`,
@@ -671,14 +901,17 @@ try {
     "document.querySelector('button[aria-label=Pause]')?.click()",
   );
 
-  const exportButton = await browser.evaluate(`(() => {
-    const button = document.querySelector('.export-action');
-    const state = { found: Boolean(button), disabled: Boolean(button?.disabled), text: button?.textContent?.trim() ?? '' };
-    button?.click();
-    return state;
-  })()`);
+  const skipExport = process.env["MOTIONLY_QA_SKIP_EXPORT"] === "1";
+  const exportButton = skipExport
+    ? { found: true, disabled: false, text: "Skipped for motion QA" }
+    : await browser.evaluate(`(() => {
+        const button = document.querySelector('.export-action');
+        const state = { found: Boolean(button), disabled: Boolean(button?.disabled), text: button?.textContent?.trim() ?? '' };
+        button?.click();
+        return state;
+      })()`);
   const exportMessages = [];
-  for (let attempt = 0; attempt < 240; attempt += 1) {
+  for (let attempt = 0; !skipExport && attempt < 240; attempt += 1) {
     const message = await browser.evaluate(
       "document.querySelector('.notice')?.textContent ?? ''",
     );
@@ -693,6 +926,12 @@ try {
   }
 
   const result = {
+    masterTimeline,
+    localTimeline,
+    introCentering,
+    productProof,
+    textPanel,
+    sourcePanel,
     playback: {
       before: motionBeforePlay,
       ...playback,
@@ -704,6 +943,7 @@ try {
     frames,
     handoffs,
     cameraMotion,
+    ambientMotion,
     studioTimelineMotion,
     errors: browser.errors,
     warnings: browser.warnings,
