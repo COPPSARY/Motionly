@@ -1,0 +1,233 @@
+export const PROJECT_SOURCE_PATHS = [
+  "composition.html",
+  "styles.css",
+  "timeline.js",
+  "index.ts",
+] as const;
+
+export type ProjectSourcePath = (typeof PROJECT_SOURCE_PATHS)[number];
+export type ProjectSourceFiles = Record<ProjectSourcePath, string>;
+
+export interface CloudUser {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  slug: string;
+  kind: "personal" | "team";
+  role: "owner" | "editor" | "viewer";
+}
+
+export interface ProjectSummary {
+  id: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
+  width: number;
+  height: number;
+  fps: number;
+  duration: number;
+  sourceHash: string;
+  revision: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  savedAt: string;
+}
+
+export interface ProjectSource {
+  sourceHash: string;
+  savedAt: string;
+  revision: number;
+  files: ProjectSourceFiles;
+}
+
+export interface ProjectMutationResult {
+  project: ProjectSummary;
+  unchanged: boolean;
+}
+
+export interface ProjectPreview {
+  sourceHash: string;
+  bundle: string;
+  styles: string;
+}
+
+interface ApiEnvelope<T> {
+  data: T;
+}
+
+interface ApiErrorEnvelope {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
+}
+
+export class CloudApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "CloudApiError";
+  }
+}
+
+export class ProjectsApi {
+  private csrfToken = "";
+
+  constructor(
+    readonly baseUrl = (import.meta.env["VITE_MOTIONLY_API_URL"] as
+      string | undefined) ?? "http://localhost:3000",
+  ) {}
+
+  async getSession(): Promise<{ user: CloudUser; csrfToken: string }> {
+    const session = await this.request<{ user: CloudUser; csrfToken: string }>(
+      "/v1/auth/me",
+    );
+    this.csrfToken = session.csrfToken;
+    return session;
+  }
+
+  async login(email: string, password: string) {
+    const session = await this.request<{
+      user: CloudUser;
+      csrfToken: string;
+    }>("/v1/auth/login", {
+      method: "POST",
+      body: { email, password },
+    });
+    this.csrfToken = session.csrfToken;
+    return session;
+  }
+
+  googleLoginUrl() {
+    return new URL("/v1/auth/google", this.baseUrl).toString();
+  }
+
+  listWorkspaces() {
+    return this.request<WorkspaceSummary[]>("/v1/workspaces");
+  }
+
+  listProjects(workspaceId: string) {
+    return this.request<ProjectSummary[]>(
+      `/v1/workspaces/${encodeURIComponent(workspaceId)}/projects`,
+    );
+  }
+
+  createProject(
+    workspaceId: string,
+    input: {
+      name: string;
+      width: number;
+      height: number;
+      fps: number;
+      duration: number;
+      files: ProjectSourceFiles;
+    },
+  ) {
+    return this.request<ProjectSummary>(
+      `/v1/workspaces/${encodeURIComponent(workspaceId)}/projects`,
+      { method: "POST", body: input },
+    );
+  }
+
+  getProject(projectId: string) {
+    return this.request<ProjectSummary>(
+      `/v1/projects/${encodeURIComponent(projectId)}`,
+    );
+  }
+
+  getSource(projectId: string) {
+    return this.request<ProjectSource>(
+      `/v1/projects/${encodeURIComponent(projectId)}/source`,
+    );
+  }
+
+  getPreview(projectId: string) {
+    return this.request<ProjectPreview>(
+      `/v1/projects/${encodeURIComponent(projectId)}/preview`,
+    );
+  }
+
+  saveSource(
+    projectId: string,
+    input: { revision: number; files: ProjectSourceFiles },
+  ) {
+    return this.request<ProjectMutationResult>(
+      `/v1/projects/${encodeURIComponent(projectId)}/source`,
+      { method: "PUT", body: input },
+    );
+  }
+
+  updateProject(
+    projectId: string,
+    input: {
+      revision: number;
+      name?: string;
+      width?: number;
+      height?: number;
+      fps?: number;
+      duration?: number;
+    },
+  ) {
+    return this.request<ProjectSummary>(
+      `/v1/projects/${encodeURIComponent(projectId)}`,
+      { method: "PATCH", body: input },
+    );
+  }
+
+  removeProject(projectId: string, revision: number) {
+    return this.request<void>(`/v1/projects/${encodeURIComponent(projectId)}`, {
+      method: "DELETE",
+      body: { revision },
+    });
+  }
+
+  private async request<T>(
+    path: string,
+    options: { method?: string; body?: unknown } = {},
+  ): Promise<T> {
+    const method = options.method ?? "GET";
+    const response = await fetch(new URL(path, this.baseUrl), {
+      method,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(options.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(method === "GET" || method === "HEAD" || !this.csrfToken
+          ? {}
+          : { "X-CSRF-Token": this.csrfToken }),
+      },
+      ...(options.body === undefined
+        ? {}
+        : { body: JSON.stringify(options.body) }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as ApiErrorEnvelope;
+      throw new CloudApiError(
+        response.status,
+        payload.error?.code ?? "REQUEST_FAILED",
+        payload.error?.message ??
+          `Request failed with status ${response.status}.`,
+        payload.error?.details,
+      );
+    }
+    if (response.status === 204) return undefined as T;
+    return ((await response.json()) as ApiEnvelope<T>).data;
+  }
+}
