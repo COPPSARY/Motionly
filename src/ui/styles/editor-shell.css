@@ -1,6 +1,7 @@
-﻿.code-editor-scope {
+.code-editor-scope {
   display: contents;
 }
+
 .code-editor-scope .me-motion-editor {
   width: 100%;
   height: 100%;
@@ -23,15 +24,17 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns:
-    52px var(--content-panel-width, 260px) 50px minmax(0, 1fr)
-    300px;
+  grid-template-columns: 52px var(--content-panel-width, 260px) 50px minmax(
+      0,
+      1fr
+    ) 300px;
 }
 
 .code-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns:
-    52px var(--content-panel-width, 260px) 324px minmax(0, 1fr)
-    300px;
+  grid-template-columns: 52px var(--content-panel-width, 260px) 324px minmax(
+      0,
+      1fr
+    ) 300px;
 }
 
 .code-editor-scope .me-chat-drawer {
@@ -129,6 +132,32 @@
   border-color: rgba(120, 168, 255, 0.34);
   background: rgba(120, 168, 255, 0.11);
   color: #eef4ff;
+}
+
+.code-editor-scope .ai-chat-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  color: #8fa8d8;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.code-editor-scope .ai-chat-activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #78a8ff;
+  box-shadow: 0 0 0 4px rgba(120, 168, 255, 0.12);
+  animation: ai-chat-activity-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ai-chat-activity-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
 }
 
 .code-editor-scope .ai-chat-composer {
