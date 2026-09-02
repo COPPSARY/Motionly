@@ -223,9 +223,17 @@ export default defineComposition({
   let mediaTab: "assets" | "presets" = "presets";
   let exporting = false;
   let notice = "";
-  let chatOpen = false;
   let assistantDraft = "";
   let assistantMessages: AssistantMessage[] = readAssistantHistory();
+  const activityVerbs = [
+    "Composing",
+    "Shaping",
+    "Animating",
+    "Polishing",
+    "Rendering",
+  ];
+  let activityVerb = activityVerbs[0];
+  let activityTimer: ReturnType<typeof setInterval> | undefined;
   $: if (typeof localStorage !== "undefined") {
     localStorage.setItem(
       ASSISTANT_HISTORY_KEY,
@@ -326,7 +334,6 @@ export default defineComposition({
       url.searchParams.delete("prompt");
       window.history.replaceState({}, "", url);
       activeTab = "ai";
-      chatOpen = true;
     }
     void currentMotionlyUser().then((user) => {
       currentUser = user;
@@ -355,9 +362,16 @@ export default defineComposition({
     observer.observe(previewStage);
     fitPreview();
     updateSelectionRect();
+    activityTimer = setInterval(() => {
+      if (!$generationStore.isActive) return;
+      const currentIndex = activityVerbs.indexOf(activityVerb);
+      const nextIndex = (currentIndex + 1) % activityVerbs.length;
+      activityVerb = activityVerbs[nextIndex] ?? activityVerbs[0];
+    }, 1200);
     return () => {
       runtimeUnsubscribe?.();
       cancelAnimationFrame(playbackFrame);
+      if (activityTimer) clearInterval(activityTimer);
       observer.disconnect();
       runtime?.destroy();
       projectStyles?.remove();
@@ -843,7 +857,6 @@ export default defineComposition({
     activeTab = tab;
     if (tab === "media") mediaTab = "assets";
     if (tab === "effects") mediaTab = "presets";
-    if (tab === "ai") chatOpen = true;
   }
 
   function openTimelineSource(): void {
@@ -1150,7 +1163,7 @@ export default defineComposition({
 
   <div class="code-editor-scope">
     <div class="me-motion-editor" style="--timeline-height: 218px;">
-      <div class="me-workbench" class:me-chat-open={chatOpen}>
+      <div class="me-workbench me-chat-open">
         <nav class="me-nav-rail" aria-label="Editor tools">
           <button
             class="me-nav-item"
@@ -1402,72 +1415,62 @@ export default defineComposition({
           </div>
         </aside>
 
-        <aside class="me-chat-drawer" class:me-collapsed={!chatOpen}>
-          {#if chatOpen}
-            <section class="ai-chat-panel" aria-label="Motionly Assistant">
-              <header class="ai-chat-header">
-                <span
-                  ><Sparkles size={15} /><strong>Motionly Assistant</strong
-                  ></span
-                >
-                <button
-                  class="ai-chat-close"
-                  aria-label="Close assistant"
-                  on:click={() => (chatOpen = false)}><X size={15} /></button
-                >
-              </header>
-              <div class="ai-chat-messages" aria-live="polite">
-                <div class="ai-chat-message assistant">
-                  Describe a scene, transition, camera move, or timing change.
-                  I’ll keep the composition code-first and GSAP-driven.
-                </div>
-                {#each assistantMessages as message}
-                  <div
-                    class:assistant={message.role === "assistant"}
-                    class:user={message.role === "user"}
-                    class="ai-chat-message"
-                  >
-                    {message.text}
-                  </div>
-                {/each}
+        <aside class="me-chat-drawer">
+          <section class="ai-chat-panel" aria-label="Motionly Assistant">
+            <header class="ai-chat-header">
+              <span
+                ><Sparkles size={15} /><strong>Motionly Assistant</strong></span
+              >
+            </header>
+            <div class="ai-chat-messages" aria-live="polite">
+              <div class="ai-chat-message assistant">
+                Describe a scene, transition, camera move, or timing change.
+                I’ll keep the composition code-first and GSAP-driven.
               </div>
-              {#if stagedAssets.length > 0}
+              {#each assistantMessages as message}
                 <div
-                  style="padding: 10px; background: #222; border-top: 1px solid #333; font-size: 12px; display: flex; gap: 8px;"
+                  class:assistant={message.role === "assistant"}
+                  class:user={message.role === "user"}
+                  class="ai-chat-message"
                 >
-                  {#each stagedAssets as asset}
-                    <span
-                      style="background: #444; padding: 2px 6px; border-radius: 4px;"
-                      >{asset.name}</span
-                    >
-                  {/each}
+                  {message.text}
+                </div>
+              {/each}
+              {#if $generationStore.isActive}
+                <div class="ai-chat-activity" aria-live="polite">
+                  <span class="ai-chat-activity-dot"></span>{activityVerb}…
                 </div>
               {/if}
-              <form class="ai-chat-composer" on:submit={submitAssistant}>
-                <textarea
-                  aria-label="Assistant prompt"
-                  on:paste={handlePaste}
-                  placeholder="Make the CTA transition feel more cinematic…"
-                  bind:value={assistantDraft}
-                  disabled={$generationStore.isActive}
-                ></textarea>
-                <button
-                  aria-label="Send assistant message"
-                  disabled={!assistantDraft.trim() ||
-                    $generationStore.isActive ||
-                    uploadingMedia}
-                  type="submit"><Send size={15} /></button
-                >
-              </form>
-            </section>
-          {:else}
-            <button
-              class="me-assistant-expand"
-              aria-label="Open assistant"
-              title="Motionly Assistant"
-              on:click={() => (chatOpen = true)}><Sparkles size={16} /></button
-            >
-          {/if}
+            </div>
+            {#if stagedAssets.length > 0}
+              <div
+                style="padding: 10px; background: #222; border-top: 1px solid #333; font-size: 12px; display: flex; gap: 8px;"
+              >
+                {#each stagedAssets as asset}
+                  <span
+                    style="background: #444; padding: 2px 6px; border-radius: 4px;"
+                    >{asset.name}</span
+                  >
+                {/each}
+              </div>
+            {/if}
+            <form class="ai-chat-composer" on:submit={submitAssistant}>
+              <textarea
+                aria-label="Assistant prompt"
+                on:paste={handlePaste}
+                placeholder="Make the CTA transition feel more cinematic…"
+                bind:value={assistantDraft}
+                disabled={$generationStore.isActive}
+              ></textarea>
+              <button
+                aria-label="Send assistant message"
+                disabled={!assistantDraft.trim() ||
+                  $generationStore.isActive ||
+                  uploadingMedia}
+                type="submit"><Send size={15} /></button
+              >
+            </form>
+          </section>
         </aside>
 
         <main class="me-preview-container">

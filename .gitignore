@@ -19,3 +19,4 @@ coverage/
 output/
 .playwright-cli/
 artifacts/
+.env
