@@ -1,5 +1,19 @@
 import type { ProjectSourceFiles } from "./projects-api";
 
+export const BUILTIN_PREVIEW_ASSET_TOKENS = {
+  logo: "__MOTIONLY_BUILTIN_ASSET_LOGO__",
+  uiScreenshot: "__MOTIONLY_BUILTIN_ASSET_UI_SCREENSHOT__",
+} as const;
+
+export function hydrateBuiltinPreviewAssets(
+  bundle: string,
+  assets: { logo: string; uiScreenshot: string },
+): string {
+  return bundle
+    .replaceAll(BUILTIN_PREVIEW_ASSET_TOKENS.logo, assets.logo)
+    .replaceAll(BUILTIN_PREVIEW_ASSET_TOKENS.uiScreenshot, assets.uiScreenshot);
+}
+
 export function splitCompositionSource(
   compositionHtml: string,
   timelineJs: string,

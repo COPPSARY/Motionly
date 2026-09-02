@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  BUILTIN_PREVIEW_ASSET_TOKENS,
   combineCompositionSource,
+  hydrateBuiltinPreviewAssets,
   splitCompositionSource,
 } from "./project-source";
 
@@ -33,5 +35,18 @@ describe("project source bundles", () => {
       "<style>\n.scene { color: red; }\n</style>",
     );
     expect(files["composition.html"]).not.toContain("<style>");
+  });
+
+  it("hydrates known built-in asset tokens in a saved preview bundle", () => {
+    const bundle = `const logo = "${BUILTIN_PREVIEW_ASSET_TOKENS.logo}"; const screenshot = "${BUILTIN_PREVIEW_ASSET_TOKENS.uiScreenshot}";`;
+
+    expect(
+      hydrateBuiltinPreviewAssets(bundle, {
+        logo: "/assets/logo.svg",
+        uiScreenshot: "/assets/ui.png",
+      }),
+    ).toBe(
+      'const logo = "/assets/logo.svg"; const screenshot = "/assets/ui.png";',
+    );
   });
 });
