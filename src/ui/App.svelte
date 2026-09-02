@@ -29,7 +29,10 @@
     X,
   } from "lucide-svelte";
   import CloudProjectGallery from "../cloud/CloudProjectGallery.svelte";
-  import { splitCompositionSource } from "../cloud/project-source";
+  import {
+    hydrateBuiltinPreviewAssets,
+    splitCompositionSource,
+  } from "../cloud/project-source";
   import { ProjectsApi } from "../cloud/projects-api";
   import type {
     ProjectSourceFiles,
@@ -49,7 +52,9 @@
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
   import compositionHtmlSource from "../compositions/presets/motionly-promo/composition.html?raw";
   import adapterSource from "../compositions/presets/motionly-promo/index.ts?raw";
+  import promoLogoUrl from "../compositions/presets/motionly-promo/logo.svg?url";
   import timelineSource from "../compositions/presets/motionly-promo/timeline.js?raw";
+  import promoUiScreenshotUrl from "../compositions/presets/motionly-promo/ui-screenshot.png?url";
   import {
     deriveSceneTracks,
     formatTimelineSeconds,
@@ -389,8 +394,12 @@ export default defineComposition({
     const sequence = ++previewLoadSequence;
     try {
       const preview = await previewApi.getPreview(project.id);
+      const hydratedBundle = hydrateBuiltinPreviewAssets(preview.bundle, {
+        logo: promoLogoUrl,
+        uiScreenshot: promoUiScreenshotUrl,
+      });
       const url = URL.createObjectURL(
-        new Blob([preview.bundle], { type: "text/javascript" }),
+        new Blob([hydratedBundle], { type: "text/javascript" }),
       );
       try {
         const module = (await import(/* @vite-ignore */ url)) as {
