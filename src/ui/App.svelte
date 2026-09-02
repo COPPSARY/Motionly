@@ -28,6 +28,12 @@
     Wand2,
     X,
   } from "lucide-svelte";
+  import CloudProjectGallery from "../cloud/CloudProjectGallery.svelte";
+  import { splitCompositionSource } from "../cloud/project-source";
+  import type {
+    ProjectSourceFiles,
+    ProjectSummary,
+  } from "../cloud/projects-api";
   import {
     downloadBlob,
     exportPng,
@@ -36,6 +42,9 @@
   import { CompositionRuntime } from "../composition/runtime";
   import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
+  import compositionHtmlSource from "../compositions/presets/motionly-promo/composition.html?raw";
+  import adapterSource from "../compositions/presets/motionly-promo/index.ts?raw";
+  import timelineSource from "../compositions/presets/motionly-promo/timeline.js?raw";
   import {
     deriveSceneTracks,
     formatTimelineSeconds,
@@ -61,6 +70,12 @@
     text: string;
   }
 
+  const initialProjectFiles = splitCompositionSource(
+    compositionHtmlSource,
+    timelineSource,
+    adapterSource,
+  );
+
   const textElementTags = new Set([
     "B",
     "BUTTON",
@@ -81,6 +96,7 @@
   let previewRoot: HTMLDivElement;
   let previewStage: HTMLDivElement;
   let fileInput: HTMLInputElement;
+  let cloudProjects: CloudProjectGallery;
   let runtime: CompositionRuntime | null = null;
   let snapshot: RuntimeSnapshot = { time: 0, playing: false, sceneId: "brand" };
   let selectedSceneId = "brand";
@@ -101,6 +117,8 @@
   let authChecked = false;
   let timelineMode: TimelineMode = "project";
   let sourceOpen = false;
+  let cloudFiles = initialProjectFiles;
+  let cloudProject: ProjectSummary | null = null;
 
   interface SelectionRect {
     visible: boolean;
@@ -568,12 +586,18 @@
     assistantDraft = "";
   }
 
-  function saveSource(): void {
-    downloadBlob(
-      new Blob([demoComposition.sourcePreview], { type: "text/html" }),
-      "motionly-product-promo.html",
-    );
-    showNotice("Saved the HTML composition source.");
+  async function saveSource(): Promise<void> {
+    await cloudProjects.saveActive();
+  }
+
+  function handleCloudProjectChange(
+    event: CustomEvent<{
+      project: ProjectSummary | null;
+      files: ProjectSourceFiles;
+    }>,
+  ): void {
+    cloudProject = event.detail.project;
+    cloudFiles = event.detail.files;
   }
 
   function handleOpenFile(event: Event): void {
@@ -648,7 +672,9 @@
       <h1>Motionly</h1>
     </div>
     <div class="file-info">
-      <FileText size={16} /><span>product-demo.ts</span>
+      <FileText size={16} /><span
+        >{cloudProject?.name ?? "Unsaved Motionly project"}</span
+      >
     </div>
     <div class="actions">
       {#if authChecked}
@@ -674,7 +700,7 @@
         accept=".ts,.tsx,text/typescript"
         on:change={handleOpenFile}
       />
-      <button class="btn" on:click={() => fileInput.click()}
+      <button class="btn" on:click={() => cloudProjects.openManager()}
         ><FolderOpen size={17} /><span>Open</span></button
       >
       <button class="btn btn-primary" on:click={saveSource}
@@ -803,9 +829,10 @@
             {#if sourceOpen}
               <h3 class="me-category-title">Composition source</h3>
               <div class="source-heading">
-                <Braces size={15} /> presets/motionly-promo/composition.html
+                <Braces size={15} />
+                {cloudProject?.name ?? "Unsaved project"} / composition.html
               </div>
-              <pre class="source-code">{demoComposition.sourcePreview}</pre>
+              <pre class="source-code">{cloudFiles["composition.html"]}</pre>
             {:else if activeTab === "text"}
               <h3 class="me-category-title">Text in this scene</h3>
               <p class="me-category-hint">
@@ -1495,4 +1522,14 @@
   </div>
 
   {#if notice}<div class="notice" role="status">{notice}</div>{/if}
+  <CloudProjectGallery
+    bind:this={cloudProjects}
+    initialFiles={initialProjectFiles}
+    width={demoComposition.width}
+    height={demoComposition.height}
+    fps={demoComposition.fps}
+    duration={demoComposition.duration}
+    on:projectchange={handleCloudProjectChange}
+    on:notice={(event) => showNotice(event.detail)}
+  />
 </div>
