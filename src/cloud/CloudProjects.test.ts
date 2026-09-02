@@ -36,12 +36,20 @@ describe("CloudProjectGallery", () => {
       height: 1080,
       fps: 60,
       duration: 12,
-      sourceHash: revision === 1 ? "hash-one" : "hash-two",
+      currentVersionId: `00000000-0000-4000-8000-00000000000${revision + 3}`,
       revision,
       createdBy: "00000000-0000-4000-8000-000000000001",
       createdAt: "2026-09-01T00:00:00.000Z",
       updatedAt: "2026-09-01T00:00:00.000Z",
-      savedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const version = () => ({
+      id: `00000000-0000-4000-8000-00000000000${revision + 3}`,
+      projectId: project().id,
+      versionNumber: revision,
+      sourceHash: revision === 1 ? "hash-one" : "hash-two",
+      message: null,
+      createdBy: "00000000-0000-4000-8000-000000000001",
+      createdAt: "2026-09-01T00:00:00.000Z",
     });
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const url = input instanceof URL ? input : new URL(String(input));
@@ -84,7 +92,7 @@ describe("CloudProjectGallery", () => {
         projectExists = true;
         return json(
           {
-            data: project(),
+            data: { project: project(), version: version() },
           },
           201,
         );
@@ -94,7 +102,7 @@ describe("CloudProjectGallery", () => {
         return json({
           data: {
             project: project(),
-            unchanged: false,
+            version: version(),
           },
         });
       }

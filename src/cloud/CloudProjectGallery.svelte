@@ -36,6 +36,7 @@
       files: ProjectSourceFiles;
     };
     notice: string;
+    cloudready: { workspaceId: string };
   }>();
   const api = new ProjectsApi();
   const coverPalettes = [
@@ -100,6 +101,20 @@
     await saveProject();
   }
 
+  export function setFiles(nextFiles: ProjectSourceFiles): void {
+    files = copyFiles(nextFiles);
+  }
+
+  export function startUnsaved(nextFiles: ProjectSourceFiles): void {
+    currentProject = null;
+    files = copyFiles(nextFiles);
+  }
+
+  export async function openProjectById(projectId: string): Promise<void> {
+    const project = projects.find((candidate) => candidate.id === projectId);
+    await openProject(project ?? (await api.getProject(projectId)));
+  }
+
   function copyFiles(source: ProjectSourceFiles): ProjectSourceFiles {
     return {
       "composition.html": source["composition.html"],
@@ -119,6 +134,7 @@
       workspaceId = workspaces[0]?.id ?? "";
       state = "ready";
       await refreshProjects();
+      dispatch("cloudready", { workspaceId });
     } catch (error) {
       if (error instanceof CloudApiError && error.status === 401) {
         state = "guest";
@@ -142,6 +158,7 @@
       workspaceId = workspaces[0]?.id ?? "";
       state = "ready";
       await refreshProjects();
+      dispatch("cloudready", { workspaceId });
     } catch (error) {
       errorMessage = errorText(error);
     } finally {
@@ -158,6 +175,7 @@
     closeDetails();
     dispatch("projectchange", { project: null, files: copyFiles(files) });
     await refreshProjects();
+    dispatch("cloudready", { workspaceId });
   }
 
   async function refreshProjects(): Promise<void> {
@@ -177,6 +195,7 @@
   }
 
   function beginCreate(): void {
+    files = copyFiles(initialFiles);
     createMode = true;
     closeDetails();
     newProjectName = "Untitled Motionly Project";
@@ -262,12 +281,7 @@
         project: currentProject,
         files: copyFiles(files),
       });
-      dispatch(
-        "notice",
-        saved.unchanged
-          ? `${currentProject.name} is already up to date.`
-          : `${currentProject.name} saved to the cloud.`,
-      );
+      dispatch("notice", `${currentProject.name} saved to the cloud.`);
     } catch (error) {
       if (
         error instanceof CloudApiError &&
@@ -604,9 +618,7 @@
           >
             <div>
               <strong>Name your new project</strong>
-              <span
-                >The project starts with what is currently open in Motionly.</span
-              >
+              <span>The project starts as a blank Motionly composition.</span>
             </div>
             <input
               id="cloud-new-project-name"
@@ -636,7 +648,7 @@
               <span class="cloud-new-project-cover"><Plus size={28} /></span>
               <span class="cloud-card-copy">
                 <strong>Create new project</strong>
-                <small>Start from the composition open now</small>
+                <small>Start from a blank composition</small>
               </span>
             </button>
           {/if}
@@ -771,7 +783,7 @@
                   <Clock3 size={16} />
                   <div>
                     <strong>Latest save protected</strong>
-                    <span>{formatUpdatedAt(detailsProject.savedAt)}</span>
+                    <span>{formatUpdatedAt(detailsProject.updatedAt)}</span>
                   </div>
                 </section>
               </div>

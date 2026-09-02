@@ -30,6 +30,7 @@
   } from "lucide-svelte";
   import CloudProjectGallery from "../cloud/CloudProjectGallery.svelte";
   import { splitCompositionSource } from "../cloud/project-source";
+  import { ProjectsApi } from "../cloud/projects-api";
   import type {
     ProjectSourceFiles,
     ProjectSummary,
@@ -40,7 +41,11 @@
     exportVideo,
   } from "../composition/exporter";
   import { CompositionRuntime } from "../composition/runtime";
-  import type { ElementOverride, RuntimeSnapshot } from "../composition/types";
+  import type {
+    CompositionDefinition,
+    ElementOverride,
+    RuntimeSnapshot,
+  } from "../composition/types";
   import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
   import compositionHtmlSource from "../compositions/presets/motionly-promo/composition.html?raw";
   import adapterSource from "../compositions/presets/motionly-promo/index.ts?raw";
@@ -51,6 +56,12 @@
     type SceneTrack,
   } from "./timeline-data";
   import AnimationControls from "./AnimationControls.svelte";
+  import {
+    generationStore,
+    startNewGeneration,
+    startEditGeneration,
+  } from "../stores/generation";
+  import { uploadAsset } from "../api/assets";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
   import "./styles/content-panel.css";
@@ -70,11 +81,102 @@
     text: string;
   }
 
-  const initialProjectFiles = splitCompositionSource(
+  const ASSISTANT_HISTORY_KEY = "motionly-assistant-history-v1";
+
+  function readAssistantHistory(): AssistantMessage[] {
+    if (typeof localStorage === "undefined") return [];
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(ASSISTANT_HISTORY_KEY) ?? "[]",
+      ) as unknown;
+      if (!Array.isArray(stored)) return [];
+      return stored
+        .filter(
+          (message): message is AssistantMessage =>
+            Boolean(message) &&
+            typeof message === "object" &&
+            ((message as AssistantMessage).role === "user" ||
+              (message as AssistantMessage).role === "assistant") &&
+            typeof (message as AssistantMessage).text === "string",
+        )
+        .slice(-100);
+    } catch {
+      return [];
+    }
+  }
+
+  const initialProjectFiles: ProjectSourceFiles = {
+    "composition.html": `<template id="motionly-template">
+  <style>.motionly-stage { position: relative; width: 100%; height: 100%; overflow: hidden; background: #080b14; }</style>
+  <main class="motionly-stage" data-edit="stage"></main>
+</template>`,
+    "styles.css": "",
+    "timeline.js": `export function buildTimeline({ root, timeline, register }) {
+  const stage = root.querySelector("[data-edit='stage']");
+  if (!stage) throw new Error("Motionly stage was not found.");
+  register("stage", stage);
+}`,
+    "index.ts": `import { defineComposition, type CompositionContext } from '@motionly/runtime';
+import compositionHtml from './composition.html?raw';
+import { buildTimeline } from './timeline.js';
+
+function mount(context: CompositionContext) {
+  const documentNode = new DOMParser().parseFromString(compositionHtml, 'text/html');
+  const template = documentNode.querySelector<HTMLTemplateElement>('#motionly-template');
+  if (!template) throw new Error('Motionly template was not found.');
+  context.root.replaceChildren(template.content.cloneNode(true));
+}
+
+export default defineComposition({
+  id: 'blank-composition', title: 'Untitled Motionly Project', description: 'Blank Motionly composition',
+  width: 1920, height: 1080, fps: 60, duration: 5,
+  scenes: [{ id: 'main', label: 'Main', start: 0, duration: 5, accent: '#7657ff', tracks: [{ id: 'stage', label: 'Stage', kind: 'Background', start: 0, end: 5 }] }],
+  sourcePreview: compositionHtml,
+  build(context) { mount(context); buildTimeline(context); },
+});`,
+  };
+  const presetProjectFiles = splitCompositionSource(
     compositionHtmlSource,
     timelineSource,
     adapterSource,
   );
+  const blankComposition: CompositionDefinition = {
+    id: "blank-composition",
+    title: "Untitled Motionly Project",
+    description: "Blank Motionly composition",
+    width: 1920,
+    height: 1080,
+    fps: 60,
+    duration: 5,
+    scenes: [
+      {
+        id: "main",
+        label: "Main",
+        start: 0,
+        duration: 5,
+        accent: "#7657ff",
+        tracks: [
+          { id: "stage", label: "Stage", kind: "Background", start: 0, end: 5 },
+        ],
+      },
+    ],
+    sourcePreview: initialProjectFiles["composition.html"],
+    build({ root, register }) {
+      const stage = document.createElement("main");
+      stage.className = "motionly-stage";
+      stage.dataset["edit"] = "stage";
+      Object.assign(stage.style, {
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        background: "#080b14",
+      });
+      root.replaceChildren(stage);
+      register("stage", stage);
+    },
+  };
+  const previewApi = new ProjectsApi();
 
   const textElementTags = new Set([
     "B",
@@ -95,9 +197,18 @@
 
   let previewRoot: HTMLDivElement;
   let previewStage: HTMLDivElement;
+  let timelinePanel: HTMLElement;
+  let playheadMarker: HTMLSpanElement;
   let fileInput: HTMLInputElement;
   let cloudProjects: CloudProjectGallery;
+  let mediaInput: HTMLInputElement;
+  let stagedAssets: { id: string; name: string }[] = [];
+  let uploadingMedia = false;
   let runtime: CompositionRuntime | null = null;
+  let runtimeUnsubscribe: (() => void) | null = null;
+  let activeComposition: CompositionDefinition = blankComposition;
+  let previewLoadSequence = 0;
+  let projectStyles: HTMLStyleElement | null = null;
   let snapshot: RuntimeSnapshot = { time: 0, playing: false, sceneId: "brand" };
   let selectedSceneId = "brand";
   let selectedId = "";
@@ -109,12 +220,76 @@
   let notice = "";
   let chatOpen = false;
   let assistantDraft = "";
-  let assistantMessages: AssistantMessage[] = [];
+  let assistantMessages: AssistantMessage[] = readAssistantHistory();
+  $: if (typeof localStorage !== "undefined") {
+    localStorage.setItem(
+      ASSISTANT_HISTORY_KEY,
+      JSON.stringify(assistantMessages.slice(-100)),
+    );
+  }
   let editorRevision = 0;
   let animationSpeed = 1;
   let animationEase = "power3.inOut";
   let currentUser: MotionlyUser | null = null;
   let authChecked = false;
+  let workspaceId = "";
+  let pendingLandingPrompt = "";
+  let landingPromptStarted = false;
+
+  let lastGenState = "";
+  $: {
+    if (
+      $generationStore.isActive &&
+      $generationStore.message !== lastGenState
+    ) {
+      lastGenState = $generationStore.message;
+      const lastMessage = assistantMessages.at(-1);
+      assistantMessages =
+        lastMessage?.role === "assistant"
+          ? [
+              ...assistantMessages.slice(0, -1),
+              { role: "assistant", text: $generationStore.message },
+            ]
+          : [
+              ...assistantMessages,
+              { role: "assistant", text: $generationStore.message },
+            ];
+    } else if (
+      !$generationStore.isActive &&
+      $generationStore.status === "COMPLETED" &&
+      lastGenState !== "COMPLETED"
+    ) {
+      lastGenState = "COMPLETED";
+      const completedMessage =
+        $generationStore.message ||
+        "Done — I updated the project and saved your changes.";
+      assistantMessages =
+        assistantMessages.at(-1)?.role === "assistant"
+          ? [
+              ...assistantMessages.slice(0, -1),
+              { role: "assistant", text: completedMessage },
+            ]
+          : [
+              ...assistantMessages,
+              { role: "assistant", text: completedMessage },
+            ];
+    } else if (
+      $generationStore.status === "AWAITING_APPLY" &&
+      lastGenState !== "AWAITING_APPLY"
+    ) {
+      lastGenState = "AWAITING_APPLY";
+      assistantMessages = [
+        ...assistantMessages,
+        { role: "assistant", text: $generationStore.message },
+      ];
+    } else if ($generationStore.error && lastGenState !== "ERROR") {
+      lastGenState = "ERROR";
+      assistantMessages = [
+        ...assistantMessages,
+        { role: "assistant", text: "Error: " + $generationStore.error },
+      ];
+    }
+  }
   let timelineMode: TimelineMode = "project";
   let sourceOpen = false;
   let cloudFiles = initialProjectFiles;
@@ -137,16 +312,37 @@
   };
 
   onMount(() => {
+    const url = new URL(window.location.href);
+    const promptFromUrl = url.searchParams.get("prompt")?.trim() ?? "";
+    pendingLandingPrompt =
+      promptFromUrl || sessionStorage.getItem("motionly_pending_prompt") || "";
+    if (pendingLandingPrompt) {
+      sessionStorage.setItem("motionly_pending_prompt", pendingLandingPrompt);
+      url.searchParams.delete("prompt");
+      window.history.replaceState({}, "", url);
+      activeTab = "ai";
+      chatOpen = true;
+    }
     void currentMotionlyUser().then((user) => {
       currentUser = user;
       authChecked = true;
     });
-    runtime = new CompositionRuntime(demoComposition, previewRoot);
-    const unsubscribe = runtime.subscribe((value) => {
-      snapshot = value;
-      selectedSceneId = value.sceneId;
-      updateSelectionRect();
-    });
+    mountComposition(activeComposition);
+    let playbackFrame = 0;
+    const syncPlaybackUi = () => {
+      if (runtime) {
+        snapshot = runtime.snapshot;
+        selectedSceneId = snapshot.sceneId;
+        const playheadPosition = `${timelinePlayheadPosition()}%`;
+        timelinePanel?.style.setProperty(
+          "--playhead-position",
+          playheadPosition,
+        );
+        if (playheadMarker) playheadMarker.style.left = playheadPosition;
+      }
+      playbackFrame = requestAnimationFrame(syncPlaybackUi);
+    };
+    playbackFrame = requestAnimationFrame(syncPlaybackUi);
     const observer = new ResizeObserver(() => {
       fitPreview();
       updateSelectionRect();
@@ -155,19 +351,89 @@
     fitPreview();
     updateSelectionRect();
     return () => {
-      unsubscribe();
+      runtimeUnsubscribe?.();
+      cancelAnimationFrame(playbackFrame);
       observer.disconnect();
       runtime?.destroy();
+      projectStyles?.remove();
     };
   });
+
+  function mountComposition(composition: CompositionDefinition): void {
+    runtimeUnsubscribe?.();
+    runtime?.destroy();
+    activeComposition = composition;
+    selectedId = "";
+    selectedSceneId = composition.scenes[0]?.id ?? "";
+    runtime = new CompositionRuntime(composition, previewRoot);
+    runtimeUnsubscribe = runtime.subscribe((value) => {
+      snapshot = value;
+      selectedSceneId = value.sceneId;
+      updateSelectionRect();
+    });
+    fitPreview();
+  }
+
+  function loadPromoPreset(): void {
+    previewLoadSequence += 1;
+    cloudProject = null;
+    cloudFiles = { ...presetProjectFiles };
+    cloudProjects?.startUnsaved(cloudFiles);
+    mountComposition(demoComposition);
+    showNotice(
+      "Fast Product Story preset loaded. Save it as a new project when ready.",
+    );
+  }
+
+  async function mountSavedProject(project: ProjectSummary): Promise<void> {
+    const sequence = ++previewLoadSequence;
+    try {
+      const preview = await previewApi.getPreview(project.id);
+      const url = URL.createObjectURL(
+        new Blob([preview.bundle], { type: "text/javascript" }),
+      );
+      try {
+        const module = (await import(/* @vite-ignore */ url)) as {
+          default?: CompositionDefinition;
+        };
+        if (sequence !== previewLoadSequence) return;
+        const composition = module.default;
+        if (
+          !composition ||
+          typeof composition.build !== "function" ||
+          !Array.isArray(composition.scenes)
+        ) {
+          throw new Error(
+            "The saved project did not export a valid Motionly composition.",
+          );
+        }
+        projectStyles?.remove();
+        projectStyles = document.createElement("style");
+        projectStyles.dataset["motionlyProjectStyles"] = project.id;
+        projectStyles.textContent = preview.styles;
+        document.head.append(projectStyles);
+        mountComposition(composition);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      if (sequence !== previewLoadSequence) return;
+      showNotice(
+        error instanceof Error
+          ? `Could not open saved preview: ${error.message}`
+          : "Could not open saved preview.",
+        10000,
+      );
+    }
+  }
 
   function fitPreview(): void {
     if (!previewStage) return;
     const width = Math.max(1, previewStage.clientWidth - 72);
     const height = Math.max(1, previewStage.clientHeight - 72);
     fitScale = Math.min(
-      width / demoComposition.width,
-      height / demoComposition.height,
+      width / activeComposition.width,
+      height / activeComposition.height,
     );
     zoom = 1;
   }
@@ -193,7 +459,7 @@
     }
     const rootRect = previewRoot.getBoundingClientRect();
     const elRect = element.getBoundingClientRect();
-    const scale = rootRect.width / demoComposition.width;
+    const scale = rootRect.width / activeComposition.width;
     if (scale <= 0 || elRect.width <= 0 || elRect.height <= 0) {
       selectionRect = { visible: false, left: 0, top: 0, width: 0, height: 0 };
       return;
@@ -270,8 +536,8 @@
 
   function selectedScene() {
     return (
-      demoComposition.scenes.find((scene) => scene.id === selectedSceneId) ??
-      demoComposition.scenes[0]
+      activeComposition.scenes.find((scene) => scene.id === selectedSceneId) ??
+      activeComposition.scenes[0]
     );
   }
 
@@ -287,8 +553,8 @@
 
   function timelineDuration(): number {
     return timelineMode === "project"
-      ? demoComposition.duration
-      : (selectedScene()?.duration ?? demoComposition.duration);
+      ? activeComposition.duration
+      : (selectedScene()?.duration ?? activeComposition.duration);
   }
 
   function timelinePlayheadPosition(): number {
@@ -311,10 +577,10 @@
     return values;
   }
 
-  function enterScene(scene: (typeof demoComposition.scenes)[number]): void {
+  function enterScene(scene: CompositionDefinition["scenes"][number]): void {
     const arrivalOffset = scene.id === "brand" ? 0.2 : 1.15;
     const visibleFrame = Math.min(
-      scene.start + scene.duration - 1 / demoComposition.fps,
+      scene.start + scene.duration - 1 / activeComposition.fps,
       scene.start + arrivalOffset,
     );
     timelineMode = "scene";
@@ -339,12 +605,12 @@
     );
   }
 
-  function sceneLeft(scene: (typeof demoComposition.scenes)[number]): number {
-    return (scene.start / demoComposition.duration) * 100;
+  function sceneLeft(scene: CompositionDefinition["scenes"][number]): number {
+    return (scene.start / activeComposition.duration) * 100;
   }
 
-  function sceneWidth(scene: (typeof demoComposition.scenes)[number]): number {
-    return (scene.duration / demoComposition.duration) * 100;
+  function sceneWidth(scene: CompositionDefinition["scenes"][number]): number {
+    return (scene.duration / activeComposition.duration) * 100;
   }
 
   function selectTrack(track: SceneTrack): void {
@@ -364,7 +630,7 @@
       runtime.seek(
         scene.start +
           Math.min(
-            track.end - 1 / demoComposition.fps,
+            track.end - 1 / activeComposition.fps,
             track.start + previewOffset,
           ),
       );
@@ -387,7 +653,7 @@
 
   function selectedTrack(): SceneTrack | undefined {
     if (!selectedId) return undefined;
-    return demoComposition.scenes
+    return activeComposition.scenes
       .flatMap((scene) => scene.tracks ?? [])
       .find((track) => track.id === selectedId);
   }
@@ -403,7 +669,7 @@
     if (!element) return false;
     if (element.dataset["motionlySplitUnit"]) return true;
     return (
-      element.children.length === 0 && textElementTags.has(element.tagName)
+      selectedTrack()?.kind === "Text" || textElementTags.has(element.tagName)
     );
   }
 
@@ -490,43 +756,49 @@
 
   function setNumber(property: keyof ElementOverride, event: Event): void {
     if (!runtime || !selectedId) return;
-    runtime.setOverride(selectedId, {
+    const patch = {
       [property]: Number((event.currentTarget as HTMLInputElement).value),
-    });
+    } as ElementOverride;
+    runtime.setOverride(selectedId, patch);
+    persistSourceOverride(selectedId, patch);
     editorRevision += 1;
     updateSelectionRect();
   }
 
   function setText(event: Event): void {
     if (!runtime || !selectedId) return;
-    runtime.setOverride(selectedId, {
-      text: (event.currentTarget as HTMLInputElement).value,
-    });
+    const patch = { text: (event.currentTarget as HTMLInputElement).value };
+    runtime.setOverride(selectedId, patch);
+    persistSourceOverride(selectedId, patch);
     editorRevision += 1;
     updateSelectionRect();
   }
 
   function setColor(property: ColorProperty, event: Event): void {
     if (!runtime || !selectedId) return;
-    runtime.setOverride(selectedId, {
+    const patch = {
       [property]: (event.currentTarget as HTMLInputElement).value,
-    });
+    } as ElementOverride;
+    runtime.setOverride(selectedId, patch);
+    persistSourceOverride(selectedId, patch);
     editorRevision += 1;
     updateSelectionRect();
   }
 
   function clearBackground(): void {
     if (!runtime || !selectedId) return;
-    runtime.setOverride(selectedId, { backgroundColor: "transparent" });
+    const patch = { backgroundColor: "transparent" };
+    runtime.setOverride(selectedId, patch);
+    persistSourceOverride(selectedId, patch);
     editorRevision += 1;
     updateSelectionRect();
   }
 
   function toggleSelectedLayer(): void {
     if (!runtime || !selectedId) return;
-    runtime.setOverride(selectedId, {
-      hidden: !currentOverride().hidden,
-    });
+    const patch = { hidden: !currentOverride().hidden };
+    runtime.setOverride(selectedId, patch);
+    persistSourceOverride(selectedId, patch);
     editorRevision += 1;
     updateSelectionRect();
   }
@@ -571,23 +843,154 @@
     showNotice("Opened the HTML source for the active GSAP composition.");
   }
 
-  function submitAssistant(event: SubmitEvent): void {
+  async function handlePaste(event: ClipboardEvent): Promise<void> {
+    if (!event.clipboardData) return;
+    let file: File | null = null;
+    for (const item of event.clipboardData.items) {
+      if (item.type.startsWith("image/")) {
+        file = item.getAsFile();
+        break;
+      }
+    }
+    if (file) await stageAsset(file, "Pasted image");
+  }
+
+  async function handleMediaUpload(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) await stageAsset(file, file.name);
+    input.value = "";
+  }
+
+  async function stageAsset(file: File, name: string): Promise<void> {
+    if (!workspaceId) {
+      showNotice("Wait for your cloud workspace to finish loading.");
+      return;
+    }
+    uploadingMedia = true;
+    showNotice(`Uploading ${name}...`);
+    try {
+      const assetId = await uploadAsset(workspaceId, file);
+      stagedAssets = [...stagedAssets, { id: assetId, name }];
+      showNotice(`${name} is ready for the next prompt.`);
+    } catch (error: unknown) {
+      showNotice(
+        `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    } finally {
+      uploadingMedia = false;
+    }
+  }
+
+  async function submitAssistant(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     const prompt = assistantDraft.trim();
-    if (!prompt) return;
-    assistantMessages = [
-      ...assistantMessages,
-      { role: "user", text: prompt },
-      {
-        role: "assistant",
-        text: "Request captured. Connect a web AI provider to turn it into source edits; generated changes must target semantic HTML/SVG, CSS, and the caller-owned GSAP timeline.",
-      },
-    ];
+    if (!prompt || $generationStore.isActive) return;
+    if (!cloudProject && !workspaceId) {
+      showNotice("Your cloud workspace is still loading.");
+      return;
+    }
+    assistantMessages = [...assistantMessages, { role: "user", text: prompt }];
+    const assetIds = stagedAssets.map((asset) => asset.id);
+    stagedAssets = [];
     assistantDraft = "";
+    if (cloudProject) {
+      await startEditGeneration(
+        cloudProject.id,
+        prompt,
+        cloudProject.sourceHash,
+        cloudProject.revision,
+        assetIds,
+        handleGenerationComplete,
+      );
+    } else if (workspaceId) {
+      await startNewGeneration(
+        workspaceId,
+        prompt,
+        assetIds,
+        handleGenerationComplete,
+      );
+    }
+  }
+
+  async function handleGenerationComplete(generation: {
+    projectId: string;
+  }): Promise<void> {
+    try {
+      await cloudProjects.openProjectById(generation.projectId);
+    } catch (error: unknown) {
+      showNotice(
+        error instanceof Error
+          ? error.message
+          : "The generation completed, but its project could not be reloaded.",
+      );
+    }
+  }
+
+  async function handleCloudReady(
+    event: CustomEvent<{ workspaceId: string }>,
+  ): Promise<void> {
+    workspaceId = event.detail.workspaceId;
+    if (!workspaceId || !pendingLandingPrompt || landingPromptStarted) return;
+    landingPromptStarted = true;
+    const prompt = pendingLandingPrompt;
+    pendingLandingPrompt = "";
+    sessionStorage.removeItem("motionly_pending_prompt");
+    assistantMessages = [...assistantMessages, { role: "user", text: prompt }];
+    await startNewGeneration(
+      workspaceId,
+      prompt,
+      stagedAssets.map((asset) => asset.id),
+      handleGenerationComplete,
+    );
+    stagedAssets = [];
   }
 
   async function saveSource(): Promise<void> {
+    cloudProjects.setFiles(cloudFiles);
     await cloudProjects.saveActive();
+  }
+
+  function persistSourceOverride(id: string, patch: ElementOverride): void {
+    const documentSource = new DOMParser().parseFromString(
+      cloudFiles["composition.html"],
+      "text/html",
+    );
+    const template = documentSource.querySelector("template");
+    const scope: ParentNode = template?.content ?? documentSource;
+    const escapedId = CSS.escape(id);
+    const element = scope.querySelector<HTMLElement>(
+      `[data-edit="${escapedId}"], [data-motionly-id="${escapedId}"], #${escapedId}`,
+    );
+    if (!element) return;
+
+    if (patch.text !== undefined) element.textContent = patch.text;
+    if (patch.x !== undefined || patch.y !== undefined) {
+      element.style.translate = `${patch.x ?? 0}px ${patch.y ?? 0}px`;
+    }
+    if (patch.scale !== undefined) element.style.scale = String(patch.scale);
+    if (patch.rotation !== undefined)
+      element.style.rotate = `${patch.rotation}deg`;
+    if (patch.opacity !== undefined)
+      element.style.opacity = String(patch.opacity);
+    if (patch.color !== undefined) element.style.color = patch.color;
+    if (patch.backgroundColor !== undefined)
+      element.style.backgroundColor = patch.backgroundColor;
+    if (patch.fill !== undefined) element.style.fill = patch.fill;
+    if (patch.stroke !== undefined) element.style.stroke = patch.stroke;
+    if (patch.fontSize !== undefined)
+      element.style.fontSize = `${patch.fontSize}px`;
+    if (patch.borderRadius !== undefined)
+      element.style.borderRadius = `${patch.borderRadius}px`;
+    if (patch.hidden !== undefined)
+      element.style.visibility = patch.hidden ? "hidden" : "";
+
+    cloudFiles = {
+      ...cloudFiles,
+      "composition.html":
+        template?.outerHTML ?? documentSource.body.innerHTML.trim(),
+    };
+    cloudProjects.setFiles(cloudFiles);
   }
 
   function handleCloudProjectChange(
@@ -598,6 +1001,7 @@
   ): void {
     cloudProject = event.detail.project;
     cloudFiles = event.detail.files;
+    if (cloudProject) void mountSavedProject(cloudProject);
   }
 
   function handleOpenFile(event: Event): void {
@@ -622,9 +1026,9 @@
         (_progress, statusText) => {
           exportStatus = statusText;
         },
-        demoComposition.fps,
+        activeComposition.fps,
       );
-      downloadBlob(blob, `motionly-launch-ad-${demoComposition.fps}fps.mp4`);
+      downloadBlob(blob, `motionly-${activeComposition.fps}fps.mp4`);
       showNotice("Video export successful! Download started.");
     } catch (error) {
       console.error("Video export failed:", error);
@@ -645,7 +1049,7 @@
       const blob = await exportPng(runtime, 1);
       downloadBlob(
         blob,
-        `motionly-${Math.round(snapshot.time * demoComposition.fps)}.png`,
+        `motionly-${Math.round(snapshot.time * activeComposition.fps)}.png`,
       );
       showNotice("Frame PNG saved.");
     } catch (error) {
@@ -693,6 +1097,14 @@
           </a>
         {/if}
       {/if}
+      <input
+        bind:this={mediaInput}
+        type="file"
+        accept="image/*,video/*,image/svg+xml"
+        style="display: none"
+        on:change={handleMediaUpload}
+        disabled={uploadingMedia}
+      />
       <input
         bind:this={fileInput}
         class="file-input"
@@ -800,7 +1212,7 @@
               </div>
               <button
                 class="me-import-header-btn"
-                on:click={() => fileInput.click()}
+                on:click={() => mediaInput.click()}
                 ><Upload size={14} /> Import</button
               >
             {:else}
@@ -858,7 +1270,7 @@
             {:else if activeTab === "scenes"}
               <h3 class="me-category-title">Scenes</h3>
               <div class="me-layer-list">
-                {#each demoComposition.scenes as scene}
+                {#each activeComposition.scenes as scene}
                   <button
                     class="me-layer-row"
                     class:me-selected={selectedSceneId === scene.id}
@@ -902,10 +1314,7 @@
             {:else if activeTab === "media" && mediaTab === "presets"}
               <h3 class="me-category-title">Promo video</h3>
               <div class="me-preset-grid">
-                <button
-                  class="me-preset-card"
-                  on:click={() => runtime?.restart()}
-                >
+                <button class="me-preset-card" on:click={loadPromoPreset}>
                   <span class="me-preset-thumbnail promo-thumbnail">
                     <span class="promo-thumbnail-art"
                       ><small>WRITE / DIRECT / EXPORT</small><strong
@@ -963,7 +1372,9 @@
                 <div><strong>Add media</strong><span>Images and SVG</span></div>
                 <button
                   class="me-import-media-button"
-                  on:click={() => fileInput.click()}>Import</button
+                  on:click={() => mediaInput.click()}
+                  disabled={uploadingMedia}
+                  >{uploadingMedia ? "Uploading…" : "Import"}</button
                 >
               </div>
             {:else}
@@ -1011,15 +1422,31 @@
                   </div>
                 {/each}
               </div>
+              {#if stagedAssets.length > 0}
+                <div
+                  style="padding: 10px; background: #222; border-top: 1px solid #333; font-size: 12px; display: flex; gap: 8px;"
+                >
+                  {#each stagedAssets as asset}
+                    <span
+                      style="background: #444; padding: 2px 6px; border-radius: 4px;"
+                      >{asset.name}</span
+                    >
+                  {/each}
+                </div>
+              {/if}
               <form class="ai-chat-composer" on:submit={submitAssistant}>
                 <textarea
                   aria-label="Assistant prompt"
+                  on:paste={handlePaste}
                   placeholder="Make the CTA transition feel more cinematic…"
                   bind:value={assistantDraft}
+                  disabled={$generationStore.isActive}
                 ></textarea>
                 <button
                   aria-label="Send assistant message"
-                  disabled={!assistantDraft.trim()}
+                  disabled={!assistantDraft.trim() ||
+                    $generationStore.isActive ||
+                    uploadingMedia}
                   type="submit"><Send size={15} /></button
                 >
               </form>
@@ -1036,7 +1463,7 @@
 
         <main class="me-preview-container">
           <div class="me-stage-meta">
-            <span>{demoComposition.width} x {demoComposition.height}</span>
+            <span>{activeComposition.width} x {activeComposition.height}</span>
             <div class="me-stage-actions">
               <button class="me-meta-btn" on:click={fitPreview}>Fit</button>
               <span>{Math.round(fitScale * zoom * 100)}%</span>
@@ -1059,14 +1486,14 @@
           >
             <div
               class="me-canvas-shell"
-              style:width={`${demoComposition.width}px`}
-              style:height={`${demoComposition.height}px`}
+              style:width={`${activeComposition.width}px`}
+              style:height={`${activeComposition.height}px`}
               style:transform={`scale(${fitScale * zoom})`}
             >
               <div
                 class="composition-canvas"
-                style:width={`${demoComposition.width}px`}
-                style:height={`${demoComposition.height}px`}
+                style:width={`${activeComposition.width}px`}
+                style:height={`${activeComposition.height}px`}
                 bind:this={previewRoot}
               ></div>
               {#if selectionRect.visible && selectedId}
@@ -1328,13 +1755,13 @@
             <span class="storyboard-strip__title">Storyboard</span>
           {/if}
           <span class="storyboard-strip__meta"
-            >{demoComposition.scenes.length} scenes · {formatTimelineSeconds(
-              demoComposition.duration,
+            >{activeComposition.scenes.length} scenes · {formatTimelineSeconds(
+              activeComposition.duration,
             )}</span
           >
         </div>
         <ol class="storyboard-strip__scenes">
-          {#each demoComposition.scenes as scene}
+          {#each activeComposition.scenes as scene}
             <li>
               <button
                 class="storyboard-scene"
@@ -1358,10 +1785,7 @@
         <span class="source-chip">TS</span>
       </section>
 
-      <section
-        class="me-timeline-panel"
-        style={`--playhead-position:${timelinePlayheadPosition()}%`}
-      >
+      <section bind:this={timelinePanel} class="me-timeline-panel">
         <button class="me-timeline-resizer" aria-label="Resize timeline"
           ><span></span></button
         >
@@ -1397,7 +1821,7 @@
             >
             <span class="me-timecode">{timecode(snapshot.time)}</span><span
               class="me-framecode"
-              >F{Math.round(snapshot.time * demoComposition.fps)}</span
+              >F{Math.round(snapshot.time * activeComposition.fps)}</span
             >
           </div>
           <div class="me-timeline-actions"></div>
@@ -1416,9 +1840,7 @@
                   style:left={`${(tick / timelineDuration()) * 100}%`}
                   >{formatTimelineSeconds(tick)}</span
                 >{/each}
-              <span
-                class="me-playhead-marker"
-                style:left={`${timelinePlayheadPosition()}%`}
+              <span bind:this={playheadMarker} class="me-playhead-marker"
               ></span>
               <input
                 class="me-timeline-scrubber"
@@ -1426,7 +1848,7 @@
                 type="range"
                 min={timelineStart()}
                 max={timelineStart() + timelineDuration()}
-                step={1 / demoComposition.fps}
+                step={1 / activeComposition.fps}
                 value={snapshot.time}
                 on:input={seek}
               />
@@ -1442,7 +1864,7 @@
                 ></button
               >
               <div class="me-track-lane project-scene-lane">
-                {#each demoComposition.scenes as scene}
+                {#each activeComposition.scenes as scene}
                   <button
                     class="me-clip me-project-scene-clip"
                     style:left={`${sceneLeft(scene)}%`}
@@ -1466,12 +1888,12 @@
                 >
               </div>
               <div class="me-track-lane project-scene-lane">
-                {#each demoComposition.scenes.slice(1) as scene}
+                {#each activeComposition.scenes.slice(1) as scene}
                   <button
                     class="me-project-handoff"
                     aria-label={`Preview handoff into ${scene.label}`}
-                    style:left={`${((scene.start - 0.7) / demoComposition.duration) * 100}%`}
-                    style:width={`${(0.7 / demoComposition.duration) * 100}%`}
+                    style:left={`${((scene.start - 0.7) / activeComposition.duration) * 100}%`}
+                    style:width={`${(0.7 / activeComposition.duration) * 100}%`}
                     on:click={() => runtime?.seek(scene.start - 0.35)}
                     ><span></span></button
                   >
@@ -1525,10 +1947,11 @@
   <CloudProjectGallery
     bind:this={cloudProjects}
     initialFiles={initialProjectFiles}
-    width={demoComposition.width}
-    height={demoComposition.height}
-    fps={demoComposition.fps}
-    duration={demoComposition.duration}
+    width={1920}
+    height={1080}
+    fps={60}
+    duration={5}
+    on:cloudready={handleCloudReady}
     on:projectchange={handleCloudProjectChange}
     on:notice={(event) => showNotice(event.detail)}
   />

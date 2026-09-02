@@ -47,6 +47,17 @@ export interface ProjectSource {
   files: ProjectSourceFiles;
 }
 
+export interface ProjectMutationResult {
+  project: ProjectSummary;
+  unchanged: boolean;
+}
+
+export interface ProjectPreview {
+  sourceHash: string;
+  bundle: string;
+  styles: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -75,7 +86,7 @@ export class ProjectsApi {
   private csrfToken = "";
 
   constructor(
-    readonly baseUrl = (import.meta.env["VITE_API_URL"] as
+    readonly baseUrl = (import.meta.env["VITE_MOTIONLY_API_URL"] as
       string | undefined) ?? "http://localhost:3000",
   ) {}
 
@@ -142,11 +153,17 @@ export class ProjectsApi {
     );
   }
 
+  getPreview(projectId: string) {
+    return this.request<ProjectPreview>(
+      `/v1/projects/${encodeURIComponent(projectId)}/preview`,
+    );
+  }
+
   saveSource(
     projectId: string,
     input: { revision: number; files: ProjectSourceFiles },
   ) {
-    return this.request<{ project: ProjectSummary; unchanged: boolean }>(
+    return this.request<ProjectMutationResult>(
       `/v1/projects/${encodeURIComponent(projectId)}/source`,
       { method: "PUT", body: input },
     );
