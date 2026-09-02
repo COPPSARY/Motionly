@@ -12,7 +12,9 @@ interface AuthResponse {
 
 const API_URL =
   import.meta.env["VITE_MOTIONLY_API_URL"] ||
-  (typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname) ? "" : "http://localhost:3000");
+  (typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "https://motionly-backend.onrender.com"
+    : "http://localhost:3000");
 let csrfToken = "";
 
 export function currentCsrfToken(): string {
