@@ -1,6 +1,4 @@
-export const config = {
-  runtime: "edge",
-};
+export const maxDuration = 60;
 
 const MOTIONLY_SYSTEM_PROMPT = `You are Motionly AI — a senior motion designer, creative director, product storyteller, and creative coder.
 
@@ -662,6 +660,16 @@ ${temporalMandate}`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+    const generationConfig: Record<string, unknown> = {
+      response_mime_type: "application/json",
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+    };
+
+    if (model.includes("3.7")) {
+      generationConfig["thinking_config"] = { thinking_budget: 0 };
+    }
+
     const geminiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -675,11 +683,7 @@ ${temporalMandate}`;
             parts: [{ text: userMessage }],
           },
         ],
-        generationConfig: {
-          response_mime_type: "application/json",
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-        },
+        generationConfig,
       }),
     });
 

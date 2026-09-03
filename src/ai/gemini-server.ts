@@ -767,6 +767,16 @@ ${temporalMandate}`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+    const generationConfig: Record<string, unknown> = {
+      response_mime_type: "application/json",
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+    };
+
+    if (model.includes("3.7")) {
+      generationConfig["thinking_config"] = { thinking_budget: 0 };
+    }
+
     // Attempt primary request with system_instruction and JSON mode
     const geminiResponse = await fetch(geminiUrl, {
       method: "POST",
@@ -781,11 +791,7 @@ ${temporalMandate}`;
             parts: [{ text: userMessage }],
           },
         ],
-        generationConfig: {
-          response_mime_type: "application/json",
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-        },
+        generationConfig,
       }),
     });
 
