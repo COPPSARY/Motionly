@@ -1,0 +1,184 @@
+import gsap from "gsap";
+import * as presets from "./presets";
+import type {
+  CompositionContext,
+  CompositionDefinition,
+  SceneDefinition,
+} from "./types";
+
+export interface DynamicCompositionOptions {
+  id?: string;
+  title?: string;
+  description?: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+  duration?: number;
+  scenes?: readonly SceneDefinition[];
+}
+
+/**
+ * Strips ES module import/export declarations so the code can execute
+ * in a dynamic Function runner in the browser.
+ */
+export function sanitizeTimelineScript(script: string): string {
+  return script
+    .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, "")
+    .replace(/export\s+default\s+/g, "")
+    .replace(/export\s+function\s+/g, "function ")
+    .replace(/export\s+(const|let|var)\s+/g, "$1 ")
+    .trim();
+}
+
+export function extractTimelineFunctionName(script: string): string {
+  const match =
+    /function\s+([A-Za-z0-9_$]*timeline[A-Za-z0-9_$]*)/i.exec(script) ||
+    /function\s+([A-Za-z0-9_$]+)/.exec(script);
+  return match?.[1] ?? "buildTimeline";
+}
+
+/**
+ * Compiles raw HTML and GSAP timeline script into an active, runnable CompositionDefinition
+ * directly in the browser DOM with zero backend or build-step dependencies.
+ */
+export function createDynamicComposition(
+  compositionHtml: string,
+  timelineJs: string,
+  options: DynamicCompositionOptions = {},
+): CompositionDefinition {
+  const id = options.id ?? `dynamic-comp-${Date.now()}`;
+  const title = options.title ?? "AI Generated Composition";
+  const width = options.width ?? 1920;
+  const height = options.height ?? 1080;
+  const fps = options.fps ?? 60;
+  let duration = options.duration ?? 18.0;
+
+  const sanitizedJs = sanitizeTimelineScript(timelineJs);
+  const fnName = extractTimelineFunctionName(sanitizedJs);
+
+  const defaultScenes: SceneDefinition[] = [
+    {
+      id: "scene-01",
+      label: "01 · Scene",
+      start: 0,
+      duration,
+      accent: "#6366f1",
+    },
+  ];
+
+  const scenes =
+    options.scenes && options.scenes.length > 0
+      ? options.scenes
+      : defaultScenes;
+
+  return {
+    id,
+    title,
+    description: options.description ?? "Dynamic AI-generated composition.",
+    width,
+    height,
+    fps,
+    duration,
+    scenes,
+    sourcePreview: compositionHtml,
+    build(context: CompositionContext) {
+      // 1. Mount the HTML source into context.root
+      const doc = new DOMParser().parseFromString(compositionHtml, "text/html");
+      const template = doc.querySelector("template");
+      if (template) {
+        context.root.replaceChildren(template.content.cloneNode(true));
+      } else {
+        const wrapper =
+          doc.querySelector(
+            ".firstwave-promo, .hard-video-scene, .motionly-promo",
+          ) ?? doc.body.firstElementChild;
+        if (wrapper) {
+          context.root.replaceChildren(wrapper.cloneNode(true));
+        } else {
+          context.root.innerHTML = compositionHtml;
+        }
+      }
+
+      // 2. Register all data-edit elements automatically
+      context.root
+        .querySelectorAll<HTMLElement>("[data-edit]")
+        .forEach((el) => {
+          const editId = el.dataset["edit"];
+          if (editId) context.register(editId, el);
+        });
+
+      // Also auto-register elements with classes or key semantic tags
+      const candidates = context.root.querySelectorAll<HTMLElement>(
+        "[id], [class], h1, h2, h3, h4, p, button, svg",
+      );
+      candidates.forEach((el, index) => {
+        if (el === context.root) return;
+        const autoId =
+          el.dataset["edit"] ||
+          el.id ||
+          (el.className && typeof el.className === "string"
+            ? el.className.trim().split(/\s+/)[0]
+            : null) ||
+          `${el.tagName.toLowerCase()}-${index + 1}`;
+
+        if (autoId && !el.dataset["motionlyId"]) {
+          context.register(autoId, el);
+        }
+      });
+
+      // 3. Execute the timeline choreography with context.root / context.element compatibility
+      try {
+        const presetVarNames = Object.keys(presets).join(", ");
+        const runner = new Function(
+          "context",
+          "gsap",
+          "presets",
+          `
+          const { ${presetVarNames} } = presets;
+          ${sanitizedJs}
+          if (typeof ${fnName} === "function") {
+            ${fnName}(context);
+          } else if (typeof buildFirstwaveTimeline === "function") {
+            buildFirstwaveTimeline(context);
+          } else if (typeof buildTimeline === "function") {
+            buildTimeline(context);
+          }
+        `,
+        );
+        runner(context, gsap, presets);
+      } catch (err) {
+        console.error("Error executing dynamic timeline JS:", err);
+        throw err;
+      }
+
+      // 4. Auto-register any animated GSAP tween targets that were not previously registered
+      try {
+        const tweens = context.timeline.getChildren(true, true, false);
+        tweens.forEach((tween, i) => {
+          const targets = (tween as gsap.core.Tween).targets?.() ?? [];
+          targets.forEach((target, targetIndex) => {
+            if (target instanceof HTMLElement || target instanceof SVGElement) {
+              const el = target as HTMLElement;
+              const existingId = el.dataset["edit"] || el.dataset["motionlyId"];
+              if (!existingId) {
+                const autoId =
+                  (el.className && typeof el.className === "string"
+                    ? el.className.trim().split(/\s+/)[0]
+                    : "") || `${el.tagName.toLowerCase()}-${i}-${targetIndex}`;
+                context.register(autoId, el);
+              }
+            }
+          });
+        });
+      } catch {
+        // Ignore tween inspection errors
+      }
+
+      // 5. If the timeline duration is longer than default, expand it
+      const actualDuration = context.timeline.duration();
+      if (actualDuration > 0 && actualDuration > duration) {
+        duration = actualDuration;
+      }
+    },
+  };
+}

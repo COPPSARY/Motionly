@@ -20,6 +20,8 @@ export interface SceneDefinition {
 
 export interface CompositionContext {
   root: HTMLElement;
+  element: HTMLElement;
+  container: HTMLElement;
   timeline: gsap.core.Timeline;
   register(id: string, element: HTMLElement): HTMLElement;
 }

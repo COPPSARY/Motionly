@@ -49,16 +49,19 @@ function detectElementKind(element?: HTMLElement): SceneTrackKind {
 /**
  * Dynamically derives timeline scene tracks for any composition or preset.
  * 1. Returns authored `scene.tracks` if provided by the composition definition.
- * 2. Otherwise auto-generates tracks from registered `data-edit` elements for that scene.
+ * 2. Otherwise auto-generates tracks from registered `data-edit` elements for that scene,
+ *    introspecting GSAP tween timings for accurate start/end clips.
  */
 export function deriveSceneTracks(
   scene: SceneDefinition,
   registeredElements?: Map<string, HTMLElement>,
+  timeline?: gsap.core.Timeline,
 ): readonly SceneTrack[] {
   if (scene.tracks && scene.tracks.length > 0) {
-    return registeredElements
+    const validTracks = registeredElements
       ? scene.tracks.filter((track) => registeredElements.has(track.id))
       : scene.tracks;
+    if (validTracks.length > 0) return validTracks;
   }
 
   if (!registeredElements || registeredElements.size === 0) {
@@ -73,44 +76,57 @@ export function deriveSceneTracks(
     ];
   }
 
+  const tweens = timeline
+    ? (timeline.getChildren(true, true, false) as gsap.core.Tween[])
+    : [];
+
   const generatedTracks: SceneTrack[] = [];
   registeredElements.forEach((element, id) => {
-    // If element ID matches or belongs to this scene, or is relevant
-    const belongsToScene =
-      id.includes(scene.id) ||
-      (scene.id === "problem" && id.includes("beat")) ||
-      (scene.id === "intro" && (id.includes("intro") || id.includes("hero"))) ||
-      (scene.id === "solutions" && id.includes("sol")) ||
-      (scene.id === "product" &&
-        (id.includes("prompt") ||
-          id.includes("screenshot") ||
-          id.includes("morph") ||
-          id.includes("generate"))) ||
-      (scene.id === "cta" && (id.includes("final") || id.includes("brand")));
+    let trackStart = 0;
+    let trackEnd = scene.duration;
 
-    if (belongsToScene) {
-      generatedTracks.push({
-        id,
-        label: humanizeLabel(id),
-        kind: detectElementKind(element),
-        start: 0.1,
-        end: scene.duration,
+    if (tweens.length > 0) {
+      const matching = tweens.filter((tw) => {
+        try {
+          const targets = tw.targets?.() ?? [];
+          return (
+            targets.includes(element) ||
+            targets.some(
+              (t) =>
+                t === element || (t instanceof Node && element.contains(t)),
+            )
+          );
+        } catch {
+          return false;
+        }
       });
+
+      if (matching.length > 0) {
+        const minStart = Math.min(...matching.map((tw) => tw.startTime()));
+        const maxEnd = Math.max(...matching.map((tw) => tw.endTime()));
+        trackStart = Math.max(0, Math.round(minStart * 100) / 100);
+        trackEnd = Math.max(trackStart + 0.3, Math.round(maxEnd * 100) / 100);
+      }
     }
+
+    generatedTracks.push({
+      id,
+      label: humanizeLabel(id),
+      kind: detectElementKind(element),
+      start: trackStart,
+      end: trackEnd,
+    });
   });
 
-  if (generatedTracks.length === 0) {
-    // Fallback: take all registered elements if none matched scene keywords
-    registeredElements.forEach((element, id) => {
-      generatedTracks.push({
-        id,
-        label: humanizeLabel(id),
-        kind: detectElementKind(element),
-        start: 0,
-        end: scene.duration,
-      });
-    });
-  }
-
-  return generatedTracks;
+  return generatedTracks.length > 0
+    ? generatedTracks
+    : [
+        {
+          id: `${scene.id}-main`,
+          label: scene.label,
+          kind: "Element",
+          start: 0,
+          end: scene.duration,
+        },
+      ];
 }

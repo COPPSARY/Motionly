@@ -20,3 +20,4 @@ output/
 .playwright-cli/
 artifacts/
 .env
+scratch/

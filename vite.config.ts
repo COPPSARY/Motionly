@@ -1,21 +1,34 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { createGeminiMiddleware } from "./src/ai/gemini-server";
 
-export default defineConfig({
-  plugins: [svelte()],
-  base: process.env.BASE_PATH ?? "/",
-  server: { port: 5173, open: false },
-  build: {
-    outDir: "dist",
-    sourcemap: true,
-    target: "es2022",
-    rollupOptions: {
-      input: {
-        editor: "index.html",
-        render: "render.html",
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+
+  return {
+    plugins: [
+      svelte(),
+      {
+        name: "motionly-gemini-ai",
+        configureServer(server) {
+          server.middlewares.use(createGeminiMiddleware(env));
+        },
+      },
+    ],
+    base: process.env.BASE_PATH ?? "/",
+    server: { port: 5173, open: false },
+    build: {
+      outDir: "dist",
+      sourcemap: true,
+      target: "es2022",
+      rollupOptions: {
+        input: {
+          editor: "index.html",
+          render: "render.html",
+        },
       },
     },
-  },
-  resolve: { alias: { "@": "/src" } },
-  optimizeDeps: { include: ["gsap"] },
+    resolve: { alias: { "@": "/src" } },
+    optimizeDeps: { include: ["gsap"] },
+  };
 });

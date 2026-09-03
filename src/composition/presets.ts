@@ -281,6 +281,7 @@ export function cameraPush(
   target: Target,
   options: MotionOptions & { scale?: number; x?: number; y?: number } = {},
 ): gsap.core.Timeline {
+  if (!target) return timeline;
   return timeline.to(
     target,
     {
@@ -299,6 +300,7 @@ export function cameraPull(
   target: Target,
   options: MotionOptions & { scale?: number; x?: number; y?: number } = {},
 ): gsap.core.Timeline {
+  if (!target) return timeline;
   return timeline.to(
     target,
     {
@@ -317,6 +319,7 @@ export function cameraZoomPan(
   target: Target,
   options: CameraZoomPanOptions = {},
 ): gsap.core.Timeline {
+  if (!target) return timeline;
   return timeline.fromTo(
     target,
     {
@@ -341,9 +344,10 @@ export function cameraZoomPan(
 
 export function giantKineticCrop(
   timeline: gsap.core.Timeline,
-  element: HTMLElement,
+  element: HTMLElement | null | undefined,
   options: GiantCropOptions = {},
 ): HTMLElement[] {
+  if (!element) return [];
   const chars = splitText(element, "chars");
   const startScale = options.startScale ?? 2.8;
   const endScale = options.endScale ?? 1.0;
@@ -504,9 +508,10 @@ export function morph(
 }
 
 export function splitText(
-  element: HTMLElement,
+  element: HTMLElement | null | undefined,
   unit: "words" | "chars",
 ): HTMLElement[] {
+  if (!element || !element.dataset) return [];
   if (element.dataset["motionlySplitUnit"] === unit) {
     return Array.from(element.querySelectorAll(".motionly-split-item"));
   }
@@ -538,9 +543,10 @@ export function splitText(
 
 export function textReveal(
   timeline: gsap.core.Timeline,
-  element: HTMLElement,
+  element: HTMLElement | null | undefined,
   options: StaggerOptions & { unit?: "words" | "chars" } = {},
 ): HTMLElement[] {
+  if (!element) return [];
   const pieces = splitText(element, options.unit ?? "words");
   timeline.fromTo(
     pieces,
@@ -560,9 +566,10 @@ export function textReveal(
 
 export function wordSlideRotate(
   timeline: gsap.core.Timeline,
-  element: HTMLElement,
+  element: HTMLElement | null | undefined,
   options: StaggerOptions & { rotation?: number } = {},
 ): HTMLElement[] {
+  if (!element) return [];
   const words = splitText(element, "words");
   timeline.fromTo(
     words,
@@ -586,9 +593,10 @@ export function wordSlideRotate(
 
 export function charSpringBounce(
   timeline: gsap.core.Timeline,
-  element: HTMLElement,
+  element: HTMLElement | null | undefined,
   options: StaggerOptions = {},
 ): HTMLElement[] {
+  if (!element) return [];
   const chars = splitText(element, "chars");
   timeline.fromTo(
     chars,

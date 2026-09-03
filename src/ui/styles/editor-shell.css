@@ -24,17 +24,15 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 52px var(--content-panel-width, 260px) 50px minmax(
-      0,
-      1fr
-    ) 300px;
+  grid-template-columns:
+    52px var(--content-panel-width, 260px) 50px minmax(0, 1fr)
+    300px;
 }
 
 .code-editor-scope .me-workbench.me-chat-open {
-  grid-template-columns: 52px var(--content-panel-width, 260px) 324px minmax(
-      0,
-      1fr
-    ) 300px;
+  grid-template-columns:
+    52px var(--content-panel-width, 260px) 324px minmax(0, 1fr)
+    300px;
 }
 
 .code-editor-scope .me-chat-drawer {
@@ -132,6 +130,40 @@
   border-color: rgba(120, 168, 255, 0.34);
   background: rgba(120, 168, 255, 0.11);
   color: #eef4ff;
+}
+
+.code-editor-scope .ai-chat-message.is-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+}
+
+.code-editor-scope .ai-fix-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: #ef4444;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+  transition: all 0.15s ease;
+}
+
+.code-editor-scope .ai-fix-btn:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+
+.code-editor-scope .ai-fix-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .code-editor-scope .ai-chat-activity {
