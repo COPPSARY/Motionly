@@ -13,6 +13,7 @@
     FolderOpen,
     Headphones,
     Image as ImageIcon,
+    Key,
     Layers3,
     Maximize2,
     Pause,
@@ -28,6 +29,8 @@
     Wand2,
     X,
   } from "lucide-svelte";
+  import { createDynamicComposition } from "../composition/dynamic-compiler";
+  import { generateWithDirectAi } from "../ai/direct-ai";
   import CloudProjectGallery from "../cloud/CloudProjectGallery.svelte";
   import {
     hydrateBuiltinPreviewAssets,
@@ -49,12 +52,18 @@
     ElementOverride,
     RuntimeSnapshot,
   } from "../composition/types";
-  import { motionlyPromoPreset as demoComposition } from "../compositions/presets";
+  import {
+    motionlyPromoPreset as demoComposition,
+    flowdeskPreset,
+  } from "../compositions/presets";
   import compositionHtmlSource from "../compositions/presets/motionly-promo/composition.html?raw";
   import adapterSource from "../compositions/presets/motionly-promo/index.ts?raw";
   import promoLogoUrl from "../compositions/presets/motionly-promo/logo.svg?url";
   import timelineSource from "../compositions/presets/motionly-promo/timeline.js?raw";
   import promoUiScreenshotUrl from "../compositions/presets/motionly-promo/ui-screenshot.png?url";
+  import flowdeskHtmlSource from "../compositions/presets/flowdesk/composition.html?raw";
+  import flowdeskAdapterSource from "../compositions/presets/flowdesk/index.ts?raw";
+  import flowdeskTimelineSource from "../compositions/presets/flowdesk/timeline.js?raw";
   import {
     deriveSceneTracks,
     formatTimelineSeconds,
@@ -86,27 +95,11 @@
     text: string;
   }
 
-  const ASSISTANT_HISTORY_KEY = "motionly-assistant-history-v1";
-
-  function readAssistantHistory(): AssistantMessage[] {
-    if (typeof localStorage === "undefined") return [];
+  if (typeof localStorage !== "undefined") {
     try {
-      const stored = JSON.parse(
-        localStorage.getItem(ASSISTANT_HISTORY_KEY) ?? "[]",
-      ) as unknown;
-      if (!Array.isArray(stored)) return [];
-      return stored
-        .filter(
-          (message): message is AssistantMessage =>
-            Boolean(message) &&
-            typeof message === "object" &&
-            ((message as AssistantMessage).role === "user" ||
-              (message as AssistantMessage).role === "assistant") &&
-            typeof (message as AssistantMessage).text === "string",
-        )
-        .slice(-100);
+      localStorage.removeItem("motionly-assistant-history-v1");
     } catch {
-      return [];
+      // ignore
     }
   }
 
@@ -144,6 +137,11 @@ export default defineComposition({
     compositionHtmlSource,
     timelineSource,
     adapterSource,
+  );
+  const flowdeskProjectFiles = splitCompositionSource(
+    flowdeskHtmlSource,
+    flowdeskTimelineSource,
+    flowdeskAdapterSource,
   );
   const blankComposition: CompositionDefinition = {
     id: "blank-composition",
@@ -224,7 +222,7 @@ export default defineComposition({
   let exporting = false;
   let notice = "";
   let assistantDraft = "";
-  let assistantMessages: AssistantMessage[] = readAssistantHistory();
+  let assistantMessages: AssistantMessage[] = [];
   const activityVerbs = [
     "Composing",
     "Shaping",
@@ -234,12 +232,6 @@ export default defineComposition({
   ];
   let activityVerb: string = activityVerbs[0] ?? "Composing";
   let activityTimer: ReturnType<typeof setInterval> | undefined;
-  $: if (typeof localStorage !== "undefined") {
-    localStorage.setItem(
-      ASSISTANT_HISTORY_KEY,
-      JSON.stringify(assistantMessages.slice(-100)),
-    );
-  }
   let editorRevision = 0;
   let animationSpeed = 1;
   let animationEase = "power3.inOut";
@@ -392,6 +384,7 @@ export default defineComposition({
       updateSelectionRect();
     });
     fitPreview();
+    editorRevision += 1;
   }
 
   function loadPromoPreset(): void {
@@ -403,6 +396,15 @@ export default defineComposition({
     showNotice(
       "Fast Product Story preset loaded. Save it as a new project when ready.",
     );
+  }
+
+  function loadFlowdeskPreset(): void {
+    previewLoadSequence += 1;
+    cloudProject = null;
+    cloudFiles = { ...flowdeskProjectFiles };
+    cloudProjects?.startUnsaved(cloudFiles);
+    mountComposition(flowdeskPreset);
+    showNotice("Flowdesk SaaS Commercial loaded (Silicon Valley standard).");
   }
 
   async function mountSavedProject(project: ProjectSummary): Promise<void> {
@@ -566,9 +568,10 @@ export default defineComposition({
   }
 
   function visibleSceneTracks(): readonly SceneTrack[] {
+    void editorRevision;
     const scene = selectedScene();
     if (!scene) return [];
-    return deriveSceneTracks(scene, runtime?.elements);
+    return deriveSceneTracks(scene, runtime?.elements, runtime?.timeline);
   }
 
   function timelineStart(): number {
@@ -619,7 +622,9 @@ export default defineComposition({
   }
 
   function trackLeft(track: SceneTrack): number {
-    return Math.max(0, (track.start / timelineDuration()) * 100);
+    const start = timelineStart();
+    const trackStart = track.start >= start ? track.start - start : track.start;
+    return Math.max(0, Math.min(100, (trackStart / timelineDuration()) * 100));
   }
 
   function trackWidth(track: SceneTrack): number {
@@ -909,30 +914,191 @@ export default defineComposition({
     event.preventDefault();
     const prompt = assistantDraft.trim();
     if (!prompt || $generationStore.isActive) return;
-    if (!cloudProject && !workspaceId) {
-      showNotice("Your cloud workspace is still loading.");
-      return;
-    }
+
     assistantMessages = [...assistantMessages, { role: "user", text: prompt }];
-    const assetIds = stagedAssets.map((asset) => asset.id);
-    stagedAssets = [];
     assistantDraft = "";
-    if (cloudProject) {
-      await startEditGeneration(
-        cloudProject.id,
+
+    generationStore.set({
+      isActive: true,
+      status: "GENERATING",
+      stage: "GENERATING",
+      progress: 20,
+      message: "Motionly AI is analyzing your prompt...",
+    });
+
+    try {
+      const currentHtml = cloudFiles["composition.html"] || "";
+      const currentJs = cloudFiles["timeline.js"] || "";
+
+      const result = await generateWithDirectAi(
         prompt,
-        cloudProject.sourceHash,
-        cloudProject.revision,
-        assetIds,
-        handleGenerationComplete,
+        {
+          compositionHtml: currentHtml,
+          timelineJs: currentJs,
+        },
+        (statusMsg) => {
+          generationStore.update((s) => ({ ...s, message: statusMsg }));
+        },
       );
-    } else if (workspaceId) {
-      await startNewGeneration(
-        workspaceId,
-        prompt,
-        assetIds,
-        handleGenerationComplete,
+
+      generationStore.set({
+        isActive: false,
+        status: "COMPLETED",
+        stage: "COMPLETED",
+        progress: 100,
+        message: result.reply,
+      });
+
+      // Update active project files purely in memory
+      cloudFiles = {
+        ...cloudFiles,
+        "composition.html": result.compositionHtml,
+        "timeline.js": result.timelineJs,
+      };
+
+      // Dynamically compile and mount the new composition in the browser in-memory
+      const dynamicComp = createDynamicComposition(
+        result.compositionHtml,
+        result.timelineJs,
+        {
+          duration: result.duration || 18.0,
+          title: result.title || "AI Generated Video",
+          scenes: result.scenes,
+        },
       );
+      mountComposition(dynamicComp);
+      runtime?.seek(0);
+      runtime?.play();
+      showNotice("Composition updated by Motionly AI!");
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : "AI generation failed.";
+      generationStore.set({
+        isActive: false,
+        status: "FAILED",
+        stage: "FAILED",
+        progress: 0,
+        message: "",
+        error: errorMsg,
+      });
+      const formattedError = errorMsg.startsWith("Error:")
+        ? errorMsg
+        : `Error: ${errorMsg}`;
+      if (assistantMessages.at(-1)?.text !== formattedError) {
+        assistantMessages = [
+          ...assistantMessages,
+          { role: "assistant", text: formattedError },
+        ];
+      }
+      showNotice(errorMsg);
+    }
+  }
+
+  function isErrorMessage(text: string): boolean {
+    return (
+      text.startsWith("Error:") ||
+      text.includes("JSON at position") ||
+      text.includes("Expected ',' or '}'") ||
+      text.includes("SyntaxError") ||
+      text.includes("AI generation error") ||
+      text.includes("AI generation failed")
+    );
+  }
+
+  async function handleFixError(errorMessage: string): Promise<void> {
+    if ($generationStore.isActive) return;
+
+    let lastPrompt = "";
+    for (let i = assistantMessages.length - 1; i >= 0; i--) {
+      if (
+        assistantMessages[i].role === "user" &&
+        !assistantMessages[i].text.startsWith("Fix:")
+      ) {
+        lastPrompt = assistantMessages[i].text;
+        break;
+      }
+    }
+
+    const fixInstruction = lastPrompt
+      ? `The previous response failed with JSON error: "${errorMessage}".\n\nPlease fix the error and regenerate the complete composition for: "${lastPrompt}". Ensure the output is strictly valid JSON with no unescaped quotes or raw control characters.`
+      : `The previous response had JSON error: "${errorMessage}". Please fix the JSON syntax and return valid JSON.`;
+
+    assistantDraft = "";
+    assistantMessages = [
+      ...assistantMessages,
+      { role: "user", text: "Fix: Repair composition JSON error" },
+    ];
+
+    generationStore.set({
+      isActive: true,
+      status: "GENERATING",
+      stage: "GENERATING",
+      progress: 20,
+      message: "Motionly AI is fixing the composition...",
+    });
+
+    try {
+      const currentHtml = cloudFiles["composition.html"] || "";
+      const currentJs = cloudFiles["timeline.js"] || "";
+
+      const result = await generateWithDirectAi(
+        fixInstruction,
+        {
+          compositionHtml: currentHtml,
+          timelineJs: currentJs,
+        },
+        (statusMsg) => {
+          generationStore.update((s) => ({ ...s, message: statusMsg }));
+        },
+      );
+
+      generationStore.set({
+        isActive: false,
+        status: "COMPLETED",
+        stage: "COMPLETED",
+        progress: 100,
+        message: result.reply,
+      });
+
+      cloudFiles = {
+        ...cloudFiles,
+        "composition.html": result.compositionHtml,
+        "timeline.js": result.timelineJs,
+      };
+
+      const dynamicComp = createDynamicComposition(
+        result.compositionHtml,
+        result.timelineJs,
+        {
+          duration: result.duration || 18.0,
+          title: result.title || "Repaired Video",
+          scenes: result.scenes,
+        },
+      );
+      mountComposition(dynamicComp);
+      runtime?.seek(0);
+      runtime?.play();
+      showNotice("Composition repaired and updated by Motionly AI!");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "AI fix failed.";
+      generationStore.set({
+        isActive: false,
+        status: "FAILED",
+        stage: "FAILED",
+        progress: 0,
+        message: "",
+        error: errorMsg,
+      });
+      const formattedError = errorMsg.startsWith("Error:")
+        ? errorMsg
+        : `Error: ${errorMsg}`;
+      if (assistantMessages.at(-1)?.text !== formattedError) {
+        assistantMessages = [
+          ...assistantMessages,
+          { role: "assistant", text: formattedError },
+        ];
+      }
+      showNotice(errorMsg);
     }
   }
 
@@ -1351,6 +1517,19 @@ export default defineComposition({
                     ><small>20s · HTML/CSS + GSAP</small></span
                   >
                 </button>
+                <button class="me-preset-card" on:click={loadFlowdeskPreset}>
+                  <span class="me-preset-thumbnail flowdesk-thumbnail">
+                    <span class="promo-thumbnail-art"
+                      ><small>AI CUSTOMER SUPPORT</small><strong
+                        >FLOW<br /><em>DESK.</em></strong
+                      ><i>TRIAGE · COPILOT · RESOLVE</i></span
+                    >
+                  </span>
+                  <span class="me-preset-info"
+                    ><strong class="me-preset-name">Flowdesk Commercial</strong>
+                    <small>32s · 6 Laws of SaaS Motion</small></span
+                  >
+                </button>
               </div>
               <p class="panel-copy">
                 Fast kinetic type, native product UI, overlapping handoffs, and
@@ -1433,9 +1612,21 @@ export default defineComposition({
                 <div
                   class:assistant={message.role === "assistant"}
                   class:user={message.role === "user"}
+                  class:is-error={message.role === "assistant" &&
+                    isErrorMessage(message.text)}
                   class="ai-chat-message"
                 >
-                  {message.text}
+                  <div>{message.text}</div>
+                  {#if message.role === "assistant" && isErrorMessage(message.text)}
+                    <button
+                      class="ai-fix-btn"
+                      disabled={$generationStore.isActive}
+                      on:click={() => handleFixError(message.text)}
+                    >
+                      <Wand2 size={12} />
+                      Fix
+                    </button>
+                  {/if}
                 </div>
               {/each}
               {#if $generationStore.isActive}

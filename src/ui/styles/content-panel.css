@@ -1,4 +1,4 @@
-﻿.code-editor-scope .me-content-panel {
+.code-editor-scope .me-content-panel {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -647,6 +647,38 @@
       transparent 42%
     ),
     #090a0e;
+}
+
+.code-editor-scope .firstwave-thumbnail {
+  padding: 12px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(12, 74, 126, 0.6), transparent 45%),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(92, 224, 208, 0.35),
+      transparent 45%
+    ),
+    #070b14;
+}
+
+.code-editor-scope .firstwave-thumbnail .promo-thumbnail-art em {
+  color: #5ce0d0;
+}
+
+.code-editor-scope .flowdesk-thumbnail {
+  padding: 12px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.6), transparent 45%),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(16, 185, 129, 0.4),
+      transparent 45%
+    ),
+    #0f172a;
+}
+
+.code-editor-scope .flowdesk-thumbnail .promo-thumbnail-art em {
+  color: #818cf8;
 }
 
 .code-editor-scope .promo-thumbnail-art {

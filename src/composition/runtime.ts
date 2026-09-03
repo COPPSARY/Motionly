@@ -1,4 +1,4 @@
-﻿import gsap from "gsap";
+import gsap from "gsap";
 import type {
   AnimationOverride,
   CompositionDefinition,
@@ -52,11 +52,30 @@ export class CompositionRuntime {
     this.context = gsap.context(() => {
       definition.build({
         root,
+        element: root,
+        container: root,
         timeline: this.timeline,
-        register: (id, element) => {
-          element.dataset["motionlyId"] = id;
-          this.elements.set(id, element);
-          return element;
+        register: (first: unknown, second?: unknown) => {
+          const targetId: string =
+            typeof first === "string"
+              ? first
+              : typeof second === "string"
+                ? second
+                : "";
+          const targetEl: HTMLElement | null =
+            first && typeof first === "object" && "dataset" in first
+              ? (first as HTMLElement)
+              : second && typeof second === "object" && "dataset" in second
+                ? (second as HTMLElement)
+                : null;
+          if (targetEl) {
+            if (targetId) {
+              targetEl.dataset["motionlyId"] = targetId;
+              this.elements.set(targetId, targetEl);
+            }
+            return targetEl;
+          }
+          return (first as HTMLElement) || root;
         },
       });
       if (this.timeline.duration() < definition.duration) {

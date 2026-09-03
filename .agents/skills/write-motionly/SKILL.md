@@ -34,7 +34,7 @@ Use a clear change in belief:
 5. Proof: show the real interaction or product surface.
 6. Resolution: reduce the product to one memorable promise and CTA.
 
-Give every beat one spoken thought, one focal subject, one primary action, and one transition destination. Do not add visuals merely because the frame feels empty. Read [story-timing.md](references/story-timing.md) when scripting, retiming, or synchronizing narration.
+Give every beat one spoken thought, one focal subject, one primary action, and one transition destination. Do not add visuals merely because the frame feels empty. Read [story-timing.md](references/story-timing.md) and [silicon-valley-motion.md](references/silicon-valley-motion.md) (Zelios & ElevenLabs 6 Laws) when scripting, retiming, or animating.
 
 ## Use continuous transition ownership
 
