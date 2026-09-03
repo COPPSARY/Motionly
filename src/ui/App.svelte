@@ -232,7 +232,7 @@ export default defineComposition({
     "Polishing",
     "Rendering",
   ];
-  let activityVerb = activityVerbs[0];
+  let activityVerb: string = activityVerbs[0] ?? "Composing";
   let activityTimer: ReturnType<typeof setInterval> | undefined;
   $: if (typeof localStorage !== "undefined") {
     localStorage.setItem(
@@ -366,7 +366,8 @@ export default defineComposition({
       if (!$generationStore.isActive) return;
       const currentIndex = activityVerbs.indexOf(activityVerb);
       const nextIndex = (currentIndex + 1) % activityVerbs.length;
-      activityVerb = activityVerbs[nextIndex] ?? activityVerbs[0];
+      activityVerb =
+        activityVerbs[nextIndex] ?? activityVerbs[0] ?? "Composing";
     }, 1200);
     return () => {
       runtimeUnsubscribe?.();
@@ -1134,9 +1135,10 @@ export default defineComposition({
         accept=".ts,.tsx,text/typescript"
         on:change={handleOpenFile}
       />
-      <button class="btn" on:click={() => cloudProjects.openManager()}
+      <!-- Temporarily hidden during maintenance -->
+      <!-- <button class="btn" on:click={() => cloudProjects.openManager()}
         ><FolderOpen size={17} /><span>Open</span></button
-      >
+      > -->
       <button class="btn btn-primary" on:click={saveSource}
         ><Save size={17} /><span>Save</span></button
       >
