@@ -22,7 +22,14 @@ export interface DynamicCompositionOptions {
  * in a dynamic Function runner in the browser.
  */
 export function sanitizeTimelineScript(script: string): string {
-  return script
+  let cleaned = script.trim();
+  // Strip markdown code fences if model returned them
+  cleaned = cleaned
+    .replace(/^```(?:javascript|js|ts)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  return cleaned
     .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, "")
     .replace(/export\s+default\s+/g, "")
     .replace(/export\s+function\s+/g, "function ")
@@ -33,7 +40,11 @@ export function sanitizeTimelineScript(script: string): string {
 export function extractTimelineFunctionName(script: string): string {
   const match =
     /function\s+([A-Za-z0-9_$]*timeline[A-Za-z0-9_$]*)/i.exec(script) ||
-    /function\s+([A-Za-z0-9_$]+)/.exec(script);
+    /(?:const|let|var)\s+([A-Za-z0-9_$]*timeline[A-Za-z0-9_$]*)\s*=/i.exec(
+      script,
+    ) ||
+    /function\s+([A-Za-z0-9_$]+)/.exec(script) ||
+    /(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=/i.exec(script);
   return match?.[1] ?? "buildTimeline";
 }
 
@@ -135,13 +146,14 @@ export function createDynamicComposition(
           "presets",
           `
           const { ${presetVarNames} } = presets;
-          ${sanitizedJs}
+          ${sanitizedJs};
+
           if (typeof ${fnName} === "function") {
             ${fnName}(context);
-          } else if (typeof buildFirstwaveTimeline === "function") {
-            buildFirstwaveTimeline(context);
           } else if (typeof buildTimeline === "function") {
             buildTimeline(context);
+          } else if (typeof buildFirstwaveTimeline === "function") {
+            buildFirstwaveTimeline(context);
           }
         `,
         );

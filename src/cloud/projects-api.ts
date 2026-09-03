@@ -88,7 +88,8 @@ export class ProjectsApi {
   constructor(
     readonly baseUrl = (import.meta.env["VITE_MOTIONLY_API_URL"] as
       string | undefined) ??
-      (typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname)
+      (typeof window !== "undefined" &&
+      !["localhost", "127.0.0.1"].includes(window.location.hostname)
         ? "https://motionly-backend.onrender.com"
         : "http://localhost:3000"),
   ) {}
