@@ -612,21 +612,15 @@ function getLiveEnv(
 
 function normalizeGeminiModel(rawModel: string): string {
   let model = rawModel.trim().replace(/^models\//, "");
-
+  model = model.replace(/\s+/g, "-");
+  if (!model.startsWith("gemini-") && !model.startsWith("gemma-")) {
+    model = `gemini-${model}`;
+  }
   // Correct hyphen typos to dots (e.g. gemini-3-5-flash-lite -> gemini-3.5-flash-lite)
   model = model.replace(/gemini-(\d+)-(\d+)/g, "gemini-$1.$2");
-
-  // Upgrade deprecated models to the current production flash model
-  if (
-    model === "gemini-2.0-flash" ||
-    model === "gemini-2.5-flash" ||
-    model === "gemini-1.5-flash" ||
-    model === "gemini-flash" ||
-    !model
-  ) {
-    return "gemini-3.6-flash";
+  if (!model || model === "gemini-") {
+    return "gemini-3.5-flash-lite";
   }
-
   return model;
 }
 
@@ -774,7 +768,7 @@ ${temporalMandate}`;
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     // Attempt primary request with system_instruction and JSON mode
-    let geminiResponse = await fetch(geminiUrl, {
+    const geminiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -791,37 +785,9 @@ ${temporalMandate}`;
           response_mime_type: "application/json",
           temperature: 0.7,
           maxOutputTokens: 8192,
-          thinking_config: { thinking_budget: 0 },
         },
       }),
     });
-
-    // Automatic Fallback: If primary model has 503/high demand or fails, retry with rock-solid gemini-2.5-flash-lite
-    if (!geminiResponse.ok) {
-      const firstErrText = await geminiResponse.text();
-      console.warn(
-        `[Motionly AI] ⚠️ Primary model ${model} failed (${geminiResponse.status}: ${firstErrText}), failing over to gemini-2.5-flash-lite...`,
-      );
-      const fallbackModel = "gemini-2.5-flash-lite";
-      const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${apiKey}`;
-      geminiResponse = await fetch(fallbackUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${systemPrompt}\n\n---\n\n${userMessage}` }],
-            },
-          ],
-          generationConfig: {
-            response_mime_type: "application/json",
-            temperature: 0.7,
-            maxOutputTokens: 8192,
-          },
-        }),
-      });
-    }
 
     if (!geminiResponse.ok) {
       const errText = await geminiResponse.text();
