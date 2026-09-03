@@ -285,9 +285,9 @@ ${temporalMandate}`;
 
         // Automatic Fallback: If primary model has 503/high demand or fails, retry with rock-solid gemini-2.5-flash-lite
         if (!geminiResponse.ok) {
-          const _firstErrText = await geminiResponse.text();
+          const firstErrText = await geminiResponse.text();
           console.warn(
-            `[Motionly AI] ⚠️ Primary model ${model} failed (${geminiResponse.status}), failing over to gemini-2.5-flash-lite...`,
+            `[Motionly AI] ⚠️ Primary model ${model} failed (${geminiResponse.status}: ${firstErrText}), failing over to gemini-2.5-flash-lite...`,
           );
           const fallbackModel = "gemini-2.5-flash-lite";
           const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${apiKey}`;
