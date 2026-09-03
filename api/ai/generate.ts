@@ -594,6 +594,7 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const body = (await req.json()) as {
       userPrompt?: string;
+      model?: string;
       currentFiles?: { compositionHtml?: string; timelineJs?: string };
     };
 
@@ -601,7 +602,11 @@ export default async function handler(req: Request): Promise<Response> {
     const currentFiles = body.currentFiles ?? {};
 
     const apiKey = (process.env["GEMINI_API_KEY"] ?? "").trim();
-    const rawModel = (process.env["GEMINI_MODEL"] ?? "gemini-3.6-flash").trim();
+    const rawModel = (
+      body.model ||
+      process.env["GEMINI_MODEL"] ||
+      "gemini-3.5-flash-lite"
+    ).trim();
     const model = normalizeGeminiModel(rawModel);
 
     if (!apiKey) {

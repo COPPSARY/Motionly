@@ -664,6 +664,7 @@ export async function handleAiGenerateRequest(
   try {
     interface RequestPayload {
       userPrompt?: string;
+      model?: string;
       currentFiles?: { compositionHtml?: string; timelineJs?: string };
     }
     let bodyObj: RequestPayload | null = null;
@@ -705,9 +706,10 @@ export async function handleAiGenerateRequest(
       ""
     ).trim();
     const rawModel = (
+      bodyObj?.model ||
       env["GEMINI_MODEL"] ||
       process.env["GEMINI_MODEL"] ||
-      "gemini-3.6-flash"
+      "gemini-3.5-flash-lite"
     ).trim();
     const model = normalizeGeminiModel(rawModel);
 
