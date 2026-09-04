@@ -13,7 +13,6 @@
     FolderOpen,
     Headphones,
     Image as ImageIcon,
-    Key,
     Layers3,
     Maximize2,
     Pause,
@@ -70,11 +69,7 @@
     type SceneTrack,
   } from "./timeline-data";
   import AnimationControls from "./AnimationControls.svelte";
-  import {
-    generationStore,
-    startNewGeneration,
-    startEditGeneration,
-  } from "../stores/generation";
+  import { generationStore, startNewGeneration } from "../stores/generation";
   import { uploadAsset } from "../api/assets";
   import "./styles/editor-shell.css";
   import "./styles/navigation-rail.css";
@@ -1010,11 +1005,9 @@ export default defineComposition({
 
     let lastPrompt = "";
     for (let i = assistantMessages.length - 1; i >= 0; i--) {
-      if (
-        assistantMessages[i].role === "user" &&
-        !assistantMessages[i].text.startsWith("Fix:")
-      ) {
-        lastPrompt = assistantMessages[i].text;
+      const msg = assistantMessages[i];
+      if (msg && msg.role === "user" && !msg.text.startsWith("Fix:")) {
+        lastPrompt = msg.text;
         break;
       }
     }

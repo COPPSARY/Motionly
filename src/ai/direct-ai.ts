@@ -131,23 +131,24 @@ export async function generateWithDirectAi(
   if (clientApiKey) {
     const rawModel = getClientGeminiModel();
     const model = normalizeGeminiModel(rawModel);
-    onProgress?.(`Contacting Google Gemini (${model}) directly...`);
+    onProgress?.("Analyzing motion prompt with AI...");
 
     const hasExistingCode = Boolean(
       currentFiles.compositionHtml && currentFiles.compositionHtml.length > 50,
     );
 
-    const temporalMandate = `
-CRITICAL MOTION CHOREOGRAPHY RULES (MANDATORY):
-1. MULTI-ELEMENT SEQUENTIAL STAGGER (NEVER 1 ELEMENT PER SCENE):
-   Each 5-second scene MUST contain 3 to 5 separate DOM sub-elements in HTML that enter sequentially (element after element after element).
-2. SPREAD EVENTS ACROSS THE FULL 5 SECONDS:
-   - Element 1 at ~0.1s
-   - Element 2 at ~1.3s
-   - Element 3 at ~2.5s
-   - Element 4 at ~3.7s
-   - Element 5 (Carrier Morph) at ~4.4s
-3. VALID EXECUTABLE CODE:
+    const choreographyMandate = `
+CRITICAL MOTION CHOREOGRAPHY RULES:
+1. FOCUS ON 1 FOCAL SUBJECT PER BEAT (ZERO SLOP):
+   - Focus on ONE spoken thought or ONE focal subject per beat.
+   - DO NOT create card containers packed with title + subtitle + chips! No random floating pills or badge clutter.
+2. GSAP PRESETS & KINETIC TYPOGRAPHY:
+   - Use built-in Motionly presets directly: wordSlideRotate, charSpringBounce, giantKineticCrop, morph, cameraPush, spring, textReveal.
+   - Editorial statements enter with kinetic zoom (scale: 2.0+ settling to 1.0) or word-by-word spring overshoot bounce (back.out(1.35)).
+3. SHAPE MORPHS & DYNAMIC COLOR THEMES:
+   - Transition boundaries MUST use physical shape morphs (width/height/borderRadius) or match cuts. ZERO opacity fades!
+   - Dynamically shift color themes across beats (e.g. Alabaster light mode to rich brand dark mode) with GSAP on stage and world. Pick striking colors suited to the prompt.
+4. VALID EXECUTABLE CODE:
    Deliver valid HTML in compositionHtml and valid GSAP in timelineJs with buildTimeline(context).`;
 
     const userMessage = hasExistingCode
@@ -164,11 +165,11 @@ ${currentFiles.timelineJs ?? ""}
 \`\`\`
 
 Please update the composition HTML/CSS and GSAP timeline.js to fulfill the user request according to the Motionly skills and rules.
-${temporalMandate}`
+${choreographyMandate}`
       : `User Request: ${userPrompt}
 
 Please create a motion graphics composition to fulfill the user request according to the Motionly skills and rules.
-${temporalMandate}`;
+${choreographyMandate}`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${clientApiKey}`;
 

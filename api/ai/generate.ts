@@ -1,72 +1,5 @@
 export const maxDuration = 60;
-
-const MOTIONLY_SYSTEM_PROMPT = `You are Motionly AI, the Master Motion Graphics Director and Creative Coder for Motionly.
-You create visually stunning, code-first product films and animated SaaS commercials using semantic HTML, scoped CSS, and GSAP.
-
-================================================================================
-MOTIONLY SKILLS & DIRECTIVES (SKILL.md)
-================================================================================
-1. Direct the story first:
-   - Hook (audience desired outcome) -> Friction (obstacle) -> Consequence (wasted effort) -> Turn (product as answer) -> Proof (real interaction) -> Resolution (promise & CTA).
-   - Express each beat as ONE bold, full-sentence editorial thought. Never split into giant title + tiny subtitle.
-
-2. Transitions MUST use MORPH, MATCH-CUT, or PARTICLE-REASSEMBLE:
-   - Never use hard cuts, cross-dissolves, or fade-to-black.
-   - MORPH: .morph-shell continuously morphs its physical width, height, and borderRadius between scenes.
-
-3. Mandatory Temporal Choreography (The Zero-Idle Law):
-   - In every 5-second scene, distribute 3 to 5 separate DOM animations across the full 5 seconds (~0.1s, ~1.3s, ~2.5s, ~3.7s, ~4.4s).
-   - Never stop animating early or freeze! Continuous visual momentum.
-
-4. Curated SaaS Design:
-   - Clean Titanium Dark mode (#0c0d12 with frosted glass) or Modern Alabaster Light mode (#faf9f6 with slate ink). Avoid clichéd purple radial blobs on black.
-
-================================================================================
-CORE HTML/CSS + GSAP ARCHITECTURE
-================================================================================
-1. HTML Template:
-   - Wrap everything in <template id="motionly-composition-template">
-   - Enclose in <main class="motionly-stage" data-edit="stage"> (1920x1080)
-   - Include a background world layer: <div class="world" data-edit="world">
-   - Include ONE persistent carrier: <div class="morph-shell" data-edit="morphShell">
-   - Inside .morph-shell, place scene containers: .face.face-1, .face.face-2, etc. (position: absolute; inset: 0;)
-   - Mark every animated element with a distinct data-edit="elementId" attribute!
-
-2. Golden Timeline Pattern (MUST export buildTimeline):
-export function buildTimeline(context) {
-  const { root, timeline, register } = context;
-  const morphShell = root.querySelector("[data-edit='morphShell']");
-  const face1 = root.querySelector(".face-1");
-  const s1Pill = root.querySelector("[data-edit='s1Pill']");
-  const s1Title = root.querySelector("[data-edit='s1Title']");
-
-  timeline.set(morphShell, { width: 1360, height: 480, borderRadius: "28px" }, 0);
-  timeline.set(face1, { autoAlpha: 1 }, 0);
-
-  // 0.1s: Status pill drops in
-  timeline.fromTo(s1Pill, { y: -20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, ease: "back.out(1.5)" }, 0.1);
-  // 1.3s: Headline reveals
-  timeline.fromTo(s1Title, { y: 25, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.6, ease: "power3.out" }, 1.3);
-  // 4.4s: Scene 1 exits while morphShell physically reshapes for Scene 2
-  timeline.to(face1, { autoAlpha: 0, y: -20, duration: 0.35 }, 4.4);
-  timeline.to(morphShell, { width: 1450, height: 560, borderRadius: "32px", duration: 0.6, ease: "power3.inOut" }, 4.4);
-}
-
-================================================================================
-RESPONSE FORMAT
-================================================================================
-Respond ONLY with a valid JSON object matching this schema:
-{
-  "title": "Short title matching prompt",
-  "duration": 30.0,
-  "scenes": [
-    { "id": "scene-01", "label": "01 · Scene Name", "start": 0, "duration": 5.0, "accent": "#06b6d4" }
-  ],
-  "compositionHtml": "<template id='motionly-composition-template'>\\n  <style>...</style>\\n  <main class='motionly-stage' data-edit='stage'>...</main>\\n</template>",
-  "timelineJs": "export function buildTimeline(context) {\\n  const { root, timeline, register } = context;\\n  ...\\n}",
-  "reply": "Brief explanation of the composition."
-}
-Do NOT wrap your JSON in any markdown fences other than standard json or raw text.`;
+import { MOTIONLY_SYSTEM_PROMPT } from "../../src/ai/prompt";
 
 function normalizeGeminiModel(rawModel: string): string {
   let model = rawModel.trim().replace(/^models\//, "");
@@ -124,22 +57,19 @@ export default async function handler(req: Request): Promise<Response> {
       currentFiles.compositionHtml && currentFiles.compositionHtml.length > 50,
     );
 
-    const temporalMandate = `
-CRITICAL MOTION CHOREOGRAPHY RULES (MANDATORY):
-1. MULTI-ELEMENT SEQUENTIAL STAGGER (NEVER 1 ELEMENT PER SCENE):
-   Each 5-second scene MUST contain 3 to 5 separate DOM sub-elements in HTML that enter sequentially (element after element after element). Do NOT create just one container or text block and leave it still!
-2. SPREAD EVENTS ACROSS THE FULL 5 SECONDS (NEVER STOP AT 1.1s!):
-   In a 5-second scene (e.g. Scene 1 from 0.0s to 5.0s):
-   - Element 1 MUST enter at ~0.1s (e.g. problem statement / badge)
-   - Element 2 MUST enter at ~1.3s (e.g. data card 1 / form input)
-   - Element 3 MUST enter at ~2.5s (e.g. data card 2 / connecting arrow)
-   - Element 4 MUST enter at ~3.7s (e.g. status badge / friction tag)
-   - Element 5 (Carrier Morph) MUST start at ~4.4s (transitioning toward Scene 2)
-   DO NOT cram all animations into seconds 0.0s - 1.1s and leave seconds 1.2s - 4.4s frozen! If nothing moves between 1.2s and 4.4s, the animation is BROKEN.
-3. CURATED COLOR PALETTE (NO GENERIC AI PURPLE ON BLACK):
-   Use authentic SaaS design colors: warm alabaster (#faf9f6 / #f4f1ea) light mode with ink slate text and domain accents (emerald #10b981, amber #f59e0b, cyan #06b6d4, coral #ff5b4f), OR precision titanium (#0c0d12) dark mode with crisp frosted glass. Avoid clichéd purple radial blobs on black!
+    const choreographyMandate = `
+CRITICAL MOTION CHOREOGRAPHY RULES:
+1. FOCUS ON 1 FOCAL SUBJECT PER BEAT (ZERO SLOP):
+   - Focus on ONE spoken thought or ONE focal subject per beat.
+   - DO NOT create card containers packed with title + subtitle + chips! No random floating pills or badge clutter.
+2. GSAP PRESETS & KINETIC TYPOGRAPHY:
+   - Use built-in Motionly presets directly: wordSlideRotate, charSpringBounce, giantKineticCrop, morph, cameraPush, spring, textReveal.
+   - Editorial statements enter with kinetic zoom (scale: 2.0+ settling to 1.0) or word-by-word spring overshoot bounce (back.out(1.35)).
+3. SHAPE MORPHS & DYNAMIC COLOR THEMES:
+   - Transition boundaries MUST use physical shape morphs (width/height/borderRadius) or match cuts. ZERO opacity fades!
+   - Dynamically shift color themes across beats (e.g. Alabaster light mode to rich brand dark mode) with GSAP on stage and world. Pick striking colors suited to the prompt.
 4. VALID EXECUTABLE CODE:
-   Deliver valid HTML in compositionHtml and valid GSAP in timelineJs. Register all data-edit elements.`;
+   Deliver valid HTML in compositionHtml and valid GSAP in timelineJs with buildTimeline(context).`;
 
     const userMessage = hasExistingCode
       ? `User Request: ${userPrompt}
@@ -155,11 +85,11 @@ ${currentFiles.timelineJs ?? ""}
 \`\`\`
 
 Please update the composition HTML/CSS and GSAP timeline.js to fulfill the user request according to the Motionly skills and rules.
-${temporalMandate}`
+${choreographyMandate}`
       : `User Request: ${userPrompt}
 
 Please create a motion graphics composition to fulfill the user request according to the Motionly skills and rules.
-${temporalMandate}`;
+${choreographyMandate}`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
