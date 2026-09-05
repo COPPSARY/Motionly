@@ -1285,16 +1285,16 @@ export default defineComposition({
         ><Save size={17} /><span>Save</span></button
       >
       <button
-        class="btn"
-        title="Export Current Frame as PNG"
+        class="btn me-tooltip"
+        data-tooltip="Export Current Frame as PNG"
         on:click={exportFrame}
         disabled={exporting}
       >
         <ImageIcon size={16} /><span>PNG</span>
       </button>
       <button
-        class="btn export-action"
-        title="Render and Download 1080p Full Video"
+        class="btn export-action me-tooltip"
+        data-tooltip="Render and Download 1080p Full Video"
         on:click={exportFullVideo}
         disabled={exporting}
       >
@@ -1377,7 +1377,8 @@ export default defineComposition({
                 >
               </div>
               <button
-                class="me-import-header-btn"
+                class="me-import-header-btn me-tooltip"
+                data-tooltip="Import media"
                 on:click={() => mediaInput.click()}
                 ><Upload size={14} /> Import</button
               >
@@ -1529,7 +1530,8 @@ export default defineComposition({
               <div class="me-asset-grid project-asset-grid">
                 <div class="me-asset-card-wrap">
                   <button
-                    class="me-asset-card"
+                    class="me-asset-card me-tooltip"
+                    data-tooltip="Select logo.svg"
                     on:click={() => (selectedId = "brand-token")}
                   >
                     <span class="me-asset-thumbnail project-asset-thumbnail"
@@ -1544,7 +1546,8 @@ export default defineComposition({
                 </div>
                 <div class="me-asset-card-wrap">
                   <button
-                    class="me-asset-card"
+                    class="me-asset-card me-tooltip"
+                    data-tooltip="Select github.svg"
                     on:click={() =>
                       showNotice("github.svg is ready in public/.")}
                   >
@@ -1766,18 +1769,22 @@ export default defineComposition({
               {/if}
               <div class="me-property-row">
                 <label class="me-property-group"
-                  ><span class="me-property-label">X</span><input
+                  ><span class="me-property-label">X</span>
+                  <input
                     class="me-number-input"
                     aria-label="X position"
+                    title="Horizontal position"
                     type="number"
                     value={currentOverride().x ?? 0}
                     on:input={(event) => setNumber("x", event)}
                   /></label
                 >
                 <label class="me-property-group"
-                  ><span class="me-property-label">Y</span><input
+                  ><span class="me-property-label">Y</span>
+                  <input
                     class="me-number-input"
                     aria-label="Y position"
+                    title="Vertical position"
                     type="number"
                     value={currentOverride().y ?? 0}
                     on:input={(event) => setNumber("y", event)}
@@ -1786,9 +1793,11 @@ export default defineComposition({
               </div>
               <div class="me-property-row">
                 <label class="me-property-group"
-                  ><span class="me-property-label">Scale</span><input
+                  ><span class="me-property-label">Scale</span>
+                  <input
                     class="me-number-input"
                     aria-label="Scale"
+                    title="Scale selected element"
                     type="number"
                     step="0.05"
                     value={currentOverride().scale ?? 1}
@@ -1796,9 +1805,11 @@ export default defineComposition({
                   /></label
                 >
                 <label class="me-property-group"
-                  ><span class="me-property-label">Rotation</span><input
+                  ><span class="me-property-label">Rotation</span>
+                  <input
                     class="me-number-input"
                     aria-label="Rotation"
+                    title="Rotate selected element"
                     type="number"
                     value={currentOverride().rotation ?? 0}
                     on:input={(event) => setNumber("rotation", event)}
@@ -1812,6 +1823,7 @@ export default defineComposition({
                 <input
                   id="property-opacity"
                   class="me-custom-slider"
+                  title="Adjust opacity"
                   type="range"
                   min="0"
                   max="1"
@@ -1987,9 +1999,11 @@ export default defineComposition({
           <div class="me-timeline-context">
             {#if timelineMode === "scene"}
               <button
-                class="me-timeline-back"
+                class="me-timeline-back me-tooltip"
                 on:click={showProjectTimeline}
-                aria-label="Back to all scenes"><ArrowLeft size={14} /></button
+                aria-label="Back to all scenes"
+                data-tooltip="Back to all scenes"
+                ><ArrowLeft size={14} /></button
               >
               <Layers3 size={14} /><span>{selectedScene()?.label}</span>
             {:else}
@@ -2000,14 +2014,16 @@ export default defineComposition({
           </div>
           <div class="me-playback-controls">
             <button
-              class="me-control-btn"
+              class="me-control-btn me-tooltip"
               aria-label="Restart"
+              data-tooltip="Restart"
               on:click={() => runtime?.restart()}
               ><RefreshCcw size={15} /></button
             >
             <button
-              class="me-control-btn me-play-btn"
+              class="me-control-btn me-play-btn me-tooltip"
               aria-label={snapshot.playing ? "Pause" : "Play"}
+              data-tooltip={snapshot.playing ? "Pause" : "Play"}
               on:click={togglePlayback}
               >{#if snapshot.playing}<Pause size={16} />{:else}<Play
                   size={16}
