@@ -83,6 +83,10 @@ npm run qa:editor
 
 See [Contributing](CONTRIBUTING.md), the [Roadmap](ROADMAP.md), and the [documentation](docs/introduction.md) for project details.
 
+## Third-Party & Credits
+
+Motionly incorporates open-source motion components, blocks, and motion primitives from **[HyperFrames](https://hyperframes.heygen.com)** by HeyGen, Inc. and its community contributors under the Apache License 2.0. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full attribution, licensing details, and component manifests.
+
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).

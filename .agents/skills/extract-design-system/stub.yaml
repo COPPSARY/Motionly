@@ -1,0 +1,7 @@
+type: package
+tier: experimental
+category: figma-code
+rank: 2
+upstream: https://github.com/arvindrk/extract-design-system
+version: latest
+install_default: "npx skills add arvindrk/extract-design-system"

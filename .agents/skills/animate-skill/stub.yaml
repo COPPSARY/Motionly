@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: motion-animation
+rank: 2
+upstream: https://github.com/delphi-ai/animate-skill
+upstream_path: SKILL.md
+version: latest

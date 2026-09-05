@@ -1,0 +1,7 @@
+type: package
+tier: experimental
+category: motion-animation
+rank: 3
+upstream: https://github.com/msrbuilds/animate-css-skill
+version: latest
+install_default: "npx skills add msrbuilds/animate-css-skill"

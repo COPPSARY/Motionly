@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: design-review
+rank: 2
+upstream: https://github.com/smixs/creative-director-skill
+upstream_path: creative-director/SKILL.md
+version: latest

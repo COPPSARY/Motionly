@@ -1,0 +1,8 @@
+type: package
+tier: community
+category: motion-animation
+rank: 2
+upstream: https://github.com/kylezantos/design-motion-principles
+version: latest
+install_default: "npx skills add kylezantos/design-motion-principles"
+note: "Requires workflow files alongside SKILL.md — install via npx, not curl"
