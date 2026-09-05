@@ -1,0 +1,7 @@
+type: skill
+tier: official
+category: figma-code
+rank: 3
+upstream: https://github.com/google-labs-code/stitch-skills
+upstream_path: plugins/stitch-design/skills/extract-design-md/SKILL.md
+version: latest

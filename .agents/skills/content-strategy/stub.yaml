@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: content-design
+rank: 2
+upstream: https://github.com/Owl-Listener/designer-skills
+upstream_path: ux-strategy/skills/content-strategy/SKILL.md
+version: latest

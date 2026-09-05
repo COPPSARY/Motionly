@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: visual-components
+rank: 2
+upstream: https://github.com/judicael-s/Copywriting-skill
+upstream_path: SKILL.md
+version: latest

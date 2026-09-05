@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: motion-animation
+rank: 3
+upstream: https://github.com/neonwatty/css-animation-skill
+upstream_path: SKILL.md
+version: latest

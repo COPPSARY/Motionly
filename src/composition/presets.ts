@@ -41,6 +41,110 @@ export interface GiantCropOptions extends MotionOptions {
   panX?: number;
 }
 
+export interface SquashStretchOptions extends MotionOptions {
+  factor?: number;
+  direction?: "horizontal" | "vertical";
+}
+
+export interface AnticipateOptions extends MotionOptions {
+  distance?: number;
+  direction?: "left" | "right" | "up" | "down";
+  scale?: number;
+}
+
+export interface MotionArcOptions extends MotionOptions {
+  startX?: number;
+  startY?: number;
+  endX: number;
+  endY: number;
+  arcHeight?: number;
+}
+
+export interface ImpactShakeOptions extends MotionOptions {
+  intensity?: number;
+  rotational?: boolean;
+}
+
+export interface ErrorWobbleOptions extends MotionOptions {
+  distance?: number;
+  angle?: number;
+}
+
+export interface AmbientBreathingOptions extends MotionOptions {
+  minScale?: number;
+  maxScale?: number;
+  yDrift?: number;
+  repeat?: number;
+}
+
+export interface AmbientFloatOptions extends MotionOptions {
+  distance?: number;
+  rotation?: number;
+  repeat?: number;
+}
+
+export interface StepSurgeCounterOptions extends MotionOptions {
+  start?: number;
+  surgeTarget?: number;
+  end: number;
+  suffix?: string;
+  prefix?: string;
+  pauseDuration?: number;
+}
+
+export interface PerspectiveCardOptions extends MotionOptions {
+  rotateX?: number;
+  rotateY?: number;
+  z?: number;
+  perspective?: number;
+}
+
+export interface MatchCutOptions extends MotionOptions {
+  scale?: number;
+}
+
+export interface MaskRevealOptions extends MotionOptions {
+  shape?: "rectangle" | "circle";
+  direction?: "left" | "right" | "up" | "down" | "center";
+}
+
+export interface PunchInOptions extends MotionOptions {
+  scale?: number;
+  origin?: string;
+  holdDuration?: number;
+  returnToNormal?: boolean;
+}
+
+export interface CaptionPopOptions extends MotionOptions {
+  activeColor?: string;
+  normalColor?: string;
+  distance?: number;
+}
+
+export interface CutTheCurveOptions extends MotionOptions {
+  outgoing: Target;
+  incoming: Target;
+  direction?: "left" | "right" | "up" | "down";
+  distance?: number;
+  blur?: number;
+}
+
+export interface ZoomThroughOptions extends MotionOptions {
+  outgoing: Target;
+  incoming: Target;
+  scaleExit?: number;
+  scaleEntry?: number;
+  blur?: number;
+}
+
+export interface InverseZoomThroughOptions extends MotionOptions {
+  outgoing: Target;
+  incoming: Target;
+  scaleExit?: number;
+  scaleEntry?: number;
+  blur?: number;
+}
+
 type Target = gsap.TweenTarget;
 
 export function reveal(
@@ -516,29 +620,49 @@ export function splitText(
     return Array.from(element.querySelectorAll(".motionly-split-item"));
   }
 
-  const childElements = Array.from(element.children) as HTMLElement[];
-  if (childElements.length > 0) {
-    const allPieces: HTMLElement[] = [];
-    childElements.forEach((child) => {
-      const childPieces = splitText(child, unit);
-      allPieces.push(...childPieces);
-    });
-    element.dataset["motionlySplitUnit"] = unit;
-    return allPieces;
+  const allPieces: HTMLElement[] = [];
+
+  function processNode(node: Node): Node[] {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent ?? "";
+      if (!text) return [];
+      const parts = unit === "words" ? text.split(/(\s+)/) : Array.from(text);
+      const newNodes: Node[] = [];
+      for (const part of parts) {
+        if (!part) continue;
+        const span = document.createElement("span");
+        span.textContent = part;
+        span.className = "motionly-split-item";
+        span.style.display = part.trim() ? "inline-block" : "inline";
+        allPieces.push(span);
+        newNodes.push(span);
+      }
+      return newNodes;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      if (el.classList.contains("motionly-split-item")) {
+        allPieces.push(el);
+        return [el];
+      }
+      const children = Array.from(el.childNodes);
+      const newChildren: Node[] = [];
+      for (const child of children) {
+        newChildren.push(...processNode(child));
+      }
+      el.replaceChildren(...newChildren);
+      return [el];
+    }
+    return [node];
   }
 
-  const value = element.textContent ?? "";
-  const pieces = unit === "words" ? value.split(/(\s+)/) : Array.from(value);
+  const rootChildren = Array.from(element.childNodes);
+  const newRootChildren: Node[] = [];
+  for (const child of rootChildren) {
+    newRootChildren.push(...processNode(child));
+  }
+  element.replaceChildren(...newRootChildren);
   element.dataset["motionlySplitUnit"] = unit;
-  element.replaceChildren();
-  return pieces.map((piece) => {
-    const span = document.createElement("span");
-    span.textContent = piece;
-    span.className = "motionly-split-item";
-    span.style.display = piece.trim() ? "inline-block" : "inline";
-    element.append(span);
-    return span;
-  });
+  return allPieces;
 }
 
 export function textReveal(
@@ -570,7 +694,9 @@ export function wordSlideRotate(
   options: StaggerOptions & { rotation?: number } = {},
 ): HTMLElement[] {
   if (!element) return [];
-  const words = splitText(element, "words");
+  const words = splitText(element, "words").filter((item) =>
+    Boolean(item.textContent?.trim()),
+  );
   timeline.fromTo(
     words,
     {
@@ -612,4 +738,625 @@ export function charSpringBounce(
     options.at,
   );
   return chars;
+}
+
+export function squashAndStretch(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: SquashStretchOptions = {},
+): gsap.core.Timeline {
+  const factor = options.factor ?? 0.14;
+  const isHoriz = options.direction !== "vertical";
+  const duration = options.duration ?? 0.44;
+  const squashTime = duration * 0.35;
+  const settleTime = duration * 0.65;
+
+  const squashScale = isHoriz
+    ? { scaleX: 1 + factor, scaleY: Math.max(0.5, 1 - factor) }
+    : { scaleX: Math.max(0.5, 1 - factor), scaleY: 1 + factor };
+
+  const sub = gsap.timeline();
+  sub
+    .to(target, {
+      ...squashScale,
+      duration: squashTime,
+      ease: "power2.in",
+    })
+    .to(target, {
+      scaleX: 1,
+      scaleY: 1,
+      duration: settleTime,
+      ease: options.ease ?? "back.out(1.4)",
+    });
+
+  return timeline.add(sub, options.at);
+}
+
+export function anticipate(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: AnticipateOptions = {},
+): gsap.core.Timeline {
+  const distance = options.distance ?? 18;
+  const scale = options.scale ?? 0.95;
+  const dir = options.direction ?? "right";
+  const fromVars: gsap.TweenVars = {
+    x: dir === "right" ? -distance : dir === "left" ? distance : 0,
+    y: dir === "down" ? -distance : dir === "up" ? distance : 0,
+    scale,
+    duration: options.duration ?? 0.28,
+    ease: options.ease ?? "power2.inOut",
+  };
+  return timeline.to(target, fromVars, options.at);
+}
+
+export function motionArc(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: MotionArcOptions,
+): gsap.core.Timeline {
+  const duration = options.duration ?? 0.72;
+  const arcHeight = options.arcHeight ?? 38;
+  const startX = options.startX ?? 0;
+  const startY = options.startY ?? 0;
+  const endX = options.endX;
+  const endY = options.endY;
+  const midX = (startX + endX) / 2;
+  const midY = Math.min(startY, endY) - arcHeight;
+
+  const sub = gsap.timeline();
+  if (options.startX !== undefined || options.startY !== undefined) {
+    sub.set(target, { x: startX, y: startY }, 0);
+  }
+  sub.to(
+    target,
+    {
+      keyframes: [
+        { x: midX, y: midY, duration: duration * 0.48, ease: "power1.out" },
+        { x: endX, y: endY, duration: duration * 0.52, ease: "power2.in" },
+      ],
+    },
+    0,
+  );
+
+  return timeline.add(sub, options.at);
+}
+
+export function impactShake(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: ImpactShakeOptions = {},
+): gsap.core.Timeline {
+  const intensity = options.intensity ?? 10;
+  const duration = options.duration ?? 0.42;
+  const rotational = options.rotational ?? true;
+  const step = duration / 4;
+
+  const sub = gsap.timeline();
+  sub
+    .to(target, {
+      x: intensity,
+      rotation: rotational ? 2.2 : 0,
+      duration: step,
+      ease: "power2.out",
+    })
+    .to(target, {
+      x: -intensity * 0.6,
+      rotation: rotational ? -1.6 : 0,
+      duration: step,
+      ease: "power1.inOut",
+    })
+    .to(target, {
+      x: intensity * 0.28,
+      rotation: rotational ? 0.8 : 0,
+      duration: step,
+      ease: "power1.inOut",
+    })
+    .to(target, {
+      x: 0,
+      rotation: 0,
+      duration: step,
+      ease: "power2.out",
+    });
+
+  return timeline.add(sub, options.at);
+}
+
+export function errorWobble(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: ErrorWobbleOptions = {},
+): gsap.core.Timeline {
+  const distance = options.distance ?? 12;
+  const angle = options.angle ?? 3.5;
+  const duration = options.duration ?? 0.48;
+  const step = duration / 5;
+
+  const sub = gsap.timeline();
+  sub
+    .to(target, {
+      x: -distance,
+      rotation: -angle,
+      duration: step,
+      ease: "power2.out",
+    })
+    .to(target, {
+      x: distance,
+      rotation: angle,
+      duration: step,
+      ease: "power1.inOut",
+    })
+    .to(target, {
+      x: -distance * 0.5,
+      rotation: -angle * 0.5,
+      duration: step,
+      ease: "power1.inOut",
+    })
+    .to(target, {
+      x: distance * 0.25,
+      rotation: angle * 0.25,
+      duration: step,
+      ease: "power1.inOut",
+    })
+    .to(target, { x: 0, rotation: 0, duration: step, ease: "power2.out" });
+
+  return timeline.add(sub, options.at);
+}
+
+export function ambientBreathing(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: AmbientBreathingOptions = {},
+): gsap.core.Timeline {
+  const minScale = options.minScale ?? 0.985;
+  const maxScale = options.maxScale ?? 1.015;
+  const yDrift = options.yDrift ?? 3;
+  const duration = options.duration ?? 2.8;
+
+  return timeline.fromTo(
+    target,
+    { scale: minScale, y: -yDrift },
+    {
+      scale: maxScale,
+      y: yDrift,
+      duration,
+      yoyo: true,
+      repeat: options.repeat ?? 1,
+      ease: options.ease ?? "sine.inOut",
+    },
+    options.at,
+  );
+}
+
+export function ambientFloat(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: AmbientFloatOptions = {},
+): gsap.core.Timeline {
+  const distance = options.distance ?? 8;
+  const rotation = options.rotation ?? 1.5;
+  const duration = options.duration ?? 3.2;
+
+  return timeline.fromTo(
+    target,
+    { y: -distance, rotation: -rotation },
+    {
+      y: distance,
+      rotation,
+      duration,
+      yoyo: true,
+      repeat: options.repeat ?? 1,
+      ease: options.ease ?? "sine.inOut",
+    },
+    options.at,
+  );
+}
+
+export function stepSurgeCounter(
+  timeline: gsap.core.Timeline,
+  targetElement: HTMLElement | null | undefined,
+  options: StepSurgeCounterOptions,
+): gsap.core.Timeline {
+  if (!targetElement) return timeline;
+  const start = options.start ?? 0;
+  const end = options.end;
+  const surgeTarget =
+    options.surgeTarget ?? Math.round(start + (end - start) * 0.74);
+  const duration = options.duration ?? 1.25;
+  const pause = options.pauseDuration ?? 0.12;
+  const p1Duration = Math.max(0.18, (duration - pause) * 0.44);
+  const p2Duration = Math.max(0.18, (duration - pause) * 0.56);
+  const prefix = options.prefix ?? "";
+  const suffix = options.suffix ?? "";
+
+  const state = { val: start };
+  targetElement.style.fontVariantNumeric = "tabular-nums";
+  targetElement.textContent = `${prefix}${Math.round(start)}${suffix}`;
+
+  const sub = gsap.timeline();
+  sub
+    .to(state, {
+      val: surgeTarget,
+      duration: p1Duration,
+      ease: "power2.out",
+      onUpdate: () => {
+        targetElement.textContent = `${prefix}${Math.round(state.val)}${suffix}`;
+      },
+    })
+    .to(state, {
+      val: surgeTarget,
+      duration: pause,
+    })
+    .to(state, {
+      val: end,
+      duration: p2Duration,
+      ease: "power3.out",
+      onUpdate: () => {
+        targetElement.textContent = `${prefix}${Math.round(state.val)}${suffix}`;
+      },
+    });
+
+  return timeline.add(sub, options.at);
+}
+
+export function perspectiveCardReveal(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: PerspectiveCardOptions = {},
+): gsap.core.Timeline {
+  const rotateX = options.rotateX ?? 16;
+  const rotateY = options.rotateY ?? -12;
+  const z = options.z ?? -120;
+  const perspective = options.perspective ?? 1200;
+
+  return timeline.fromTo(
+    target,
+    {
+      transformPerspective: perspective,
+      rotateX,
+      rotateY,
+      z,
+      autoAlpha: 0,
+      scale: 0.9,
+    },
+    {
+      rotateX: 0,
+      rotateY: 0,
+      z: 0,
+      autoAlpha: 1,
+      scale: 1,
+      duration: options.duration ?? 0.74,
+      ease: options.ease ?? "back.out(1.25)",
+    },
+    options.at,
+  );
+}
+
+export function matchCut(
+  timeline: gsap.core.Timeline,
+  outgoing: Target,
+  incoming: Target,
+  options: MatchCutOptions = {},
+): gsap.core.Timeline {
+  const duration = options.duration ?? 0.45;
+  const sub = gsap.timeline();
+
+  sub
+    .set(incoming, { autoAlpha: 0, scale: options.scale ?? 1.0 }, 0)
+    .to(
+      outgoing,
+      { scale: 0.94, duration: duration * 0.45, ease: "power2.in" },
+      0,
+    )
+    .set(outgoing, { autoAlpha: 0 }, duration * 0.45)
+    .set(incoming, { autoAlpha: 1, scale: 0.94 }, duration * 0.45)
+    .to(
+      incoming,
+      { scale: 1, duration: duration * 0.55, ease: "back.out(1.35)" },
+      duration * 0.45,
+    );
+
+  return timeline.add(sub, options.at);
+}
+
+export function maskReveal(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: MaskRevealOptions = {},
+): gsap.core.Timeline {
+  const shape = options.shape ?? "rectangle";
+  const dir = options.direction ?? "right";
+
+  if (shape === "circle") {
+    return timeline.fromTo(
+      target,
+      { clipPath: "circle(0% at 50% 50%)" },
+      {
+        clipPath: "circle(142% at 50% 50%)",
+        duration: options.duration ?? 0.78,
+        ease: options.ease ?? "expo.out",
+      },
+      options.at,
+    );
+  }
+
+  const hidden =
+    dir === "left"
+      ? "inset(0 0 0 100%)"
+      : dir === "up"
+        ? "inset(100% 0 0 0)"
+        : dir === "down"
+          ? "inset(0 0 100% 0)"
+          : dir === "center"
+            ? "inset(50% 50% 50% 50%)"
+            : "inset(0 100% 0 0)";
+
+  return timeline.fromTo(
+    target,
+    { clipPath: hidden },
+    {
+      clipPath: "inset(0 0 0 0)",
+      duration: options.duration ?? 0.76,
+      ease: options.ease ?? "expo.out",
+    },
+    options.at,
+  );
+}
+
+export function punchIn(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: PunchInOptions = {},
+): gsap.core.Timeline {
+  const scale = options.scale ?? 1.12;
+  const origin = options.origin ?? "50% 45%";
+  const duration = options.duration ?? 0.22;
+  const sub = gsap.timeline();
+
+  sub.to(target, {
+    scale,
+    transformOrigin: origin,
+    duration,
+    ease: options.ease ?? "back.out(1.4)",
+  });
+
+  if (options.returnToNormal) {
+    sub.to(
+      target,
+      {
+        scale: 1,
+        duration: 0.32,
+        ease: "power2.out",
+      },
+      `+=${options.holdDuration ?? 0.3}`,
+    );
+  }
+
+  return timeline.add(sub, options.at);
+}
+
+export function captionPop(
+  timeline: gsap.core.Timeline,
+  target: Target,
+  options: CaptionPopOptions = {},
+): gsap.core.Timeline {
+  const distance = options.distance ?? 14;
+  const sub = gsap.timeline();
+
+  const toVars: gsap.TweenVars = {
+    scale: 1,
+    y: 0,
+    autoAlpha: 1,
+    duration: options.duration ?? 0.34,
+    ease: options.ease ?? "back.out(1.4)",
+  };
+
+  if (options.activeColor) {
+    toVars.color = options.activeColor;
+  }
+
+  sub.fromTo(
+    target,
+    {
+      scale: 0.68,
+      y: distance,
+      autoAlpha: 0,
+      transformOrigin: "50% 80%",
+    },
+    toVars,
+  );
+
+  if (options.normalColor && options.activeColor) {
+    sub.to(
+      target,
+      { color: options.normalColor, duration: 0.12, ease: "linear" },
+      "+=0.2",
+    );
+  }
+
+  return timeline.add(sub, options.at);
+}
+
+export function cutTheCurve(
+  timeline: gsap.core.Timeline,
+  options: CutTheCurveOptions,
+): gsap.core.Timeline {
+  const duration = options.duration ?? 0.6;
+  const halfDur = duration * 0.5;
+  const dir = options.direction ?? "left";
+  const dist = options.distance ?? 230;
+  const blurPx = options.blur ?? 8;
+  const sub = gsap.timeline();
+
+  const dx = dir === "left" ? -dist : dir === "right" ? dist : 0;
+  const dy = dir === "up" ? -dist : dir === "down" ? dist : 0;
+  const dxIn = -dx;
+  const dyIn = -dy;
+
+  sub.set(options.incoming, { autoAlpha: 0 }, 0);
+
+  // Phase 1: Outgoing accelerates mid-motion
+  sub.to(
+    options.outgoing,
+    {
+      x: dx,
+      y: dy,
+      filter: `blur(${blurPx}px)`,
+      duration: halfDur,
+      ease: "power4.in",
+    },
+    0,
+  );
+  sub.to(
+    options.outgoing,
+    {
+      autoAlpha: 0,
+      duration: duration * 0.47,
+      ease: "power2.in",
+    },
+    duration * 0.03,
+  );
+
+  // Hard cut & Phase 2: Incoming continues same vector and decelerates
+  sub.fromTo(
+    options.incoming,
+    {
+      x: dxIn,
+      y: dyIn,
+      filter: `blur(${blurPx}px)`,
+      autoAlpha: 0.35,
+    },
+    {
+      x: 0,
+      y: 0,
+      filter: "blur(0px)",
+      autoAlpha: 1,
+      duration: halfDur,
+      ease: "power4.out",
+      immediateRender: false,
+    },
+    halfDur,
+  );
+
+  return timeline.add(sub, options.at);
+}
+
+export function zoomThrough(
+  timeline: gsap.core.Timeline,
+  options: ZoomThroughOptions,
+): gsap.core.Timeline {
+  const duration = options.duration ?? 0.6;
+  const exitDur = duration * 0.33;
+  const entryDur = duration * 0.67;
+  const blurPx = options.blur ?? 10;
+  const scaleExit = options.scaleExit ?? 1.2;
+  const scaleEntry = options.scaleEntry ?? 0.75;
+  const sub = gsap.timeline();
+
+  sub.set(options.incoming, { autoAlpha: 0 }, 0);
+
+  // Phase 1: Accelerate forward toward camera
+  sub.to(
+    options.outgoing,
+    {
+      scale: scaleExit,
+      filter: `blur(${blurPx}px)`,
+      duration: exitDur,
+      ease: "power3.in",
+    },
+    0,
+  );
+  sub.to(
+    options.outgoing,
+    {
+      autoAlpha: 0.15,
+      duration: exitDur,
+      ease: "none",
+    },
+    0,
+  );
+
+  // Cut
+  sub.set(options.outgoing, { autoAlpha: 0 }, exitDur);
+
+  // Phase 2: Incoming expands from 0.75 into focal plane
+  sub.fromTo(
+    options.incoming,
+    {
+      scale: scaleEntry,
+      filter: `blur(${blurPx}px)`,
+      autoAlpha: 0.15,
+    },
+    {
+      scale: 1,
+      filter: "blur(0px)",
+      autoAlpha: 1,
+      duration: entryDur,
+      ease: "expo.out",
+      immediateRender: false,
+    },
+    exitDur,
+  );
+
+  return timeline.add(sub, options.at);
+}
+
+export function inverseZoomThrough(
+  timeline: gsap.core.Timeline,
+  options: InverseZoomThroughOptions,
+): gsap.core.Timeline {
+  const duration = options.duration ?? 0.7;
+  const exitDur = duration * 0.3;
+  const entryDur = duration * 0.7;
+  const blurPx = options.blur ?? 10;
+  const scaleExit = options.scaleExit ?? 0.8;
+  const scaleEntry = options.scaleEntry ?? 1.25;
+  const sub = gsap.timeline();
+
+  sub.set(options.incoming, { autoAlpha: 0 }, 0);
+
+  // Phase 1: Outgoing recedes away from viewer
+  sub.to(
+    options.outgoing,
+    {
+      scale: scaleExit,
+      filter: `blur(${blurPx}px)`,
+      duration: exitDur,
+      ease: "power3.in",
+    },
+    0,
+  );
+  sub.to(
+    options.outgoing,
+    {
+      autoAlpha: 0.15,
+      duration: exitDur,
+      ease: "none",
+    },
+    0,
+  );
+
+  // Cut
+  sub.set(options.outgoing, { autoAlpha: 0 }, exitDur);
+
+  // Phase 2: Incoming arrives oversized and retracts into focus
+  sub.fromTo(
+    options.incoming,
+    {
+      scale: scaleEntry,
+      filter: `blur(${blurPx}px)`,
+      autoAlpha: 0.15,
+    },
+    {
+      scale: 1,
+      filter: "blur(0px)",
+      autoAlpha: 1,
+      duration: entryDur,
+      ease: "expo.out",
+      immediateRender: false,
+    },
+    exitDur,
+  );
+
+  return timeline.add(sub, options.at);
 }

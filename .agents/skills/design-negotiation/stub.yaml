@@ -1,0 +1,7 @@
+type: skill
+tier: community
+category: design-review
+rank: 2
+upstream: https://github.com/Owl-Listener/designer-skills
+upstream_path: designer-toolkit/skills/design-negotiation/SKILL.md
+version: latest

@@ -1,0 +1,7 @@
+type: package
+tier: experimental
+category: design-review
+rank: 2
+upstream: https://github.com/Owl-Listener/designer-skills
+version: latest
+install_default: "/plugin marketplace add Owl-Listener/designer-skills"

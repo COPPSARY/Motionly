@@ -31,6 +31,7 @@
   import { createDynamicComposition } from "../composition/dynamic-compiler";
   import { generateWithDirectAi } from "../ai/direct-ai";
   import CloudProjectGallery from "../cloud/CloudProjectGallery.svelte";
+  import EarlyNoticeCard from "./EarlyNoticeCard.svelte";
   import {
     hydrateBuiltinPreviewAssets,
     splitCompositionSource,
@@ -54,6 +55,7 @@
   import {
     motionlyPromoPreset as demoComposition,
     flowdeskPreset,
+    aiNotesPreset,
   } from "../compositions/presets";
   import compositionHtmlSource from "../compositions/presets/motionly-promo/composition.html?raw";
   import adapterSource from "../compositions/presets/motionly-promo/index.ts?raw";
@@ -63,6 +65,9 @@
   import flowdeskHtmlSource from "../compositions/presets/flowdesk/composition.html?raw";
   import flowdeskAdapterSource from "../compositions/presets/flowdesk/index.ts?raw";
   import flowdeskTimelineSource from "../compositions/presets/flowdesk/timeline.js?raw";
+  import aiNotesHtmlSource from "../compositions/presets/ai-notes/composition.html?raw";
+  import aiNotesAdapterSource from "../compositions/presets/ai-notes/index.ts?raw";
+  import aiNotesTimelineSource from "../compositions/presets/ai-notes/timeline.js?raw";
   import {
     deriveSceneTracks,
     formatTimelineSeconds,
@@ -138,42 +143,11 @@ export default defineComposition({
     flowdeskTimelineSource,
     flowdeskAdapterSource,
   );
-  const blankComposition: CompositionDefinition = {
-    id: "blank-composition",
-    title: "Untitled Motionly Project",
-    description: "Blank Motionly composition",
-    width: 1920,
-    height: 1080,
-    fps: 60,
-    duration: 5,
-    scenes: [
-      {
-        id: "main",
-        label: "Main",
-        start: 0,
-        duration: 5,
-        accent: "#7657ff",
-        tracks: [
-          { id: "stage", label: "Stage", kind: "Background", start: 0, end: 5 },
-        ],
-      },
-    ],
-    sourcePreview: initialProjectFiles["composition.html"],
-    build({ root, register }) {
-      const stage = document.createElement("main");
-      stage.className = "motionly-stage";
-      stage.dataset["edit"] = "stage";
-      Object.assign(stage.style, {
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-        background: "#080b14",
-      });
-      root.replaceChildren(stage);
-      register("stage", stage);
-    },
-  };
+  const aiNotesProjectFiles = splitCompositionSource(
+    aiNotesHtmlSource,
+    aiNotesTimelineSource,
+    aiNotesAdapterSource,
+  );
   const previewApi = new ProjectsApi();
 
   const textElementTags = new Set([
@@ -204,7 +178,7 @@ export default defineComposition({
   let uploadingMedia = false;
   let runtime: CompositionRuntime | null = null;
   let runtimeUnsubscribe: (() => void) | null = null;
-  let activeComposition: CompositionDefinition = blankComposition;
+  let activeComposition: CompositionDefinition = aiNotesPreset;
   let previewLoadSequence = 0;
   let projectStyles: HTMLStyleElement | null = null;
   let snapshot: RuntimeSnapshot = { time: 0, playing: false, sceneId: "brand" };
@@ -292,7 +266,7 @@ export default defineComposition({
   }
   let timelineMode: TimelineMode = "project";
   let sourceOpen = false;
-  let cloudFiles = initialProjectFiles;
+  let cloudFiles = aiNotesProjectFiles;
   let cloudProject: ProjectSummary | null = null;
 
   interface SelectionRect {
@@ -400,6 +374,15 @@ export default defineComposition({
     cloudProjects?.startUnsaved(cloudFiles);
     mountComposition(flowdeskPreset);
     showNotice("Flowdesk SaaS Commercial loaded (Silicon Valley standard).");
+  }
+
+  function loadAiNotesPreset(): void {
+    previewLoadSequence += 1;
+    cloudProject = null;
+    cloudFiles = { ...aiNotesProjectFiles };
+    cloudProjects?.startUnsaved(cloudFiles);
+    mountComposition(aiNotesPreset);
+    showNotice("Scribe AI Ambient Notes preset loaded.");
   }
 
   async function mountSavedProject(project: ProjectSummary): Promise<void> {
@@ -1523,6 +1506,19 @@ export default defineComposition({
                     <small>32s · 6 Laws of SaaS Motion</small></span
                   >
                 </button>
+                <button class="me-preset-card" on:click={loadAiNotesPreset}>
+                  <span class="me-preset-thumbnail ai-notes-thumbnail">
+                    <span class="promo-thumbnail-art"
+                      ><small>AMBIENT INTELLIGENCE</small><strong
+                        >SCRIBE<br /><em>AI.</em></strong
+                      ><i>AUDIO · SYNTHESIS · ACTIONS</i></span
+                    >
+                  </span>
+                  <span class="me-preset-info"
+                    ><strong class="me-preset-name">Scribe AI Notes</strong>
+                    <small>16s · Audio Morph & Decisions</small></span
+                  >
+                </button>
               </div>
               <p class="panel-copy">
                 Fast kinetic type, native product UI, overlapping handoffs, and
@@ -2142,6 +2138,7 @@ export default defineComposition({
   </div>
 
   {#if notice}<div class="notice" role="status">{notice}</div>{/if}
+  <EarlyNoticeCard />
   <CloudProjectGallery
     bind:this={cloudProjects}
     initialFiles={initialProjectFiles}

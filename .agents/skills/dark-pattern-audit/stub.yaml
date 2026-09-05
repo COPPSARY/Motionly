@@ -1,0 +1,6 @@
+type: package
+tier: community
+category: accessibility-quality
+rank: 2
+upstream: https://github.com/SidKH/skills
+version: latest
